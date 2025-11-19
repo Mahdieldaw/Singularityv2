@@ -5,5 +5,5 @@
     "baseUrl": "."
   },
   "include": ["./**/*.ts", "./**/*.tsx", "./**/*.d.ts", "types/**/*.d.ts"],
-  "exclude": ["../dist", "../node_modules"]
+  "exclude": ["../dist", "docs", "../node_modules"]
 }

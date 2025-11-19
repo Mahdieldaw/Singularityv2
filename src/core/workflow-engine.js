@@ -1054,6 +1054,18 @@ export class WorkflowEngine {
             "Prompt",
           );
         },
+        onError: (error) => {
+          try {
+            this.port.postMessage({
+              type: "WORKFLOW_STEP_UPDATE",
+              sessionId: context.sessionId,
+              stepId: step.stepId,
+              status: "partial_failure",
+              error: error?.message || String(error),
+            });
+          } catch (_) {}
+          reject(error);
+        },
         onAllComplete: (results, errors) => {
           // Build batch updates
           const batchUpdates = {};

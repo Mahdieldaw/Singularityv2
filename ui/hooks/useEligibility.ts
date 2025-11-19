@@ -27,7 +27,7 @@ export function useEligibility() {
         if (t.type === "user") break;
         if (t.type === "ai") {
           const ai = t as AiTurn;
-          if (!ai.isSynthesisAnswer && !ai.isMappingAnswer) {
+          if (!ai.synthesisResponses && !ai.mappingResponses) {
             aiIndex = i;
             break;
           }

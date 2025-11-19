@@ -56,7 +56,6 @@ let sessionManager = null;
 let persistenceLayer = null;
 let persistenceLayerSingleton = null;
 let sessionManagerSingleton = null;
-let adapterSingleton = null;
 const __HTOS_SESSIONS = (self.__HTOS_SESSIONS = self.__HTOS_SESSIONS || {});
 let promptRefinerService = null;
 
@@ -74,27 +73,19 @@ self.BusController = BusController;
 // PERSISTENCE LAYER INITIALIZATION
 // ============================================================================
 async function initializePersistence() {
+  if (persistenceLayerSingleton) {
+    return persistenceLayerSingleton;
+  }
+
   const operationId = persistenceMonitor.startOperation(
     "INITIALIZE_PERSISTENCE",
-    {
-      useAdapter: true,
-    },
+    { useAdapter: true },
   );
 
   try {
-    if (persistenceLayerSingleton) {
-      persistenceLayer = persistenceLayerSingleton;
-      self.__HTOS_PERSISTENCE_LAYER = persistenceLayerSingleton;
-      persistenceMonitor.endOperation(operationId, { success: true });
-      return persistenceLayerSingleton;
-    }
-
-    const pl = await initializePersistenceLayer();
-    persistenceLayerSingleton = pl;
-    adapterSingleton = pl.adapter;
-    persistenceLayer = pl;
-    self.__HTOS_PERSISTENCE_LAYER = pl;
-
+    persistenceLayerSingleton = await initializePersistenceLayer();
+    persistenceLayer = persistenceLayerSingleton;
+    self.__HTOS_PERSISTENCE_LAYER = persistenceLayerSingleton;
     persistenceMonitor.recordConnection("HTOSPersistenceDB", 1, [
       "sessions",
       "threads",
@@ -103,55 +94,46 @@ async function initializePersistence() {
       "provider_contexts",
       "metadata",
     ]);
-
     console.log("[SW] ✅ Persistence layer initialized");
     persistenceMonitor.endOperation(operationId, { success: true });
     return persistenceLayerSingleton;
   } catch (error) {
     persistenceMonitor.endOperation(operationId, null, error);
+    persistenceLayerSingleton = null;
     const handledError = await errorHandler.handleError(error, {
       operation: "initializePersistence",
       context: { useAdapter: true },
     });
-    console.error(
-      "[SW] ❌ Failed to initialize persistence layer:",
-      handledError,
-    );
-    // Do NOT fallback silently; propagate error to fail initialization
+    console.error("[SW] ❌ Failed to initialize:", handledError);
     throw handledError;
   }
 }
-
+  
 // ============================================================================
 // SESSION MANAGER INITIALIZATION
 // ============================================================================
-async function initializeSessionManager(persistenceLayer) {
-  // ✅ ALWAYS reinitialize if adapter is not ready (indicates stale instance)
+async function initializeSessionManager(pl) {
+  const persistence = pl || persistenceLayerSingleton || persistenceLayer;
   if (sessionManagerSingleton && sessionManagerSingleton.adapter?.isReady()) {
-    console.log("[SW] Reusing existing SessionManager instance");
-    sessionManagerSingleton = sessionManagerSingleton;
+    console.log("[SW] Reusing existing SessionManager");
+    sessionManager = sessionManagerSingleton;
     return sessionManagerSingleton;
   }
-
-  // If we have a stale instance, clear it
   if (sessionManagerSingleton && !sessionManagerSingleton.adapter?.isReady()) {
+    console.warn("[SW] Clearing stale SessionManager instance");
     sessionManagerSingleton = null;
   }
-
   try {
-    console.log("[SW:INIT:5] Initializing session manager...");
-    const sm = new SessionManager();
-    sm.sessions = __HTOS_SESSIONS;
-    await sm.initialize({ adapter: (persistenceLayer?.adapter || adapterSingleton) });
-    sessionManagerSingleton = sm;
-    sessionManager = sm;
-
-    console.log("[SW:INIT:6] ✅ Session manager initialized with persistence");
-
-    return sm;
+    console.log("[SW] Creating new SessionManager");
+    sessionManagerSingleton = new SessionManager();
+    sessionManagerSingleton.sessions = __HTOS_SESSIONS;
+    await sessionManagerSingleton.initialize({ adapter: persistence?.adapter });
+    sessionManager = sessionManagerSingleton;
+    console.log("[SW] ✅ SessionManager initialized");
+    return sessionManagerSingleton;
   } catch (error) {
+    console.error("[SW] ❌ Failed to initialize:", error);
     sessionManagerSingleton = null;
-    console.error("[SW] ❌ Failed to initialize session manager:", error);
     throw error;
   }
 }
@@ -405,13 +387,14 @@ class FaultTolerantOrchestrator {
 // ============================================================================
 // GLOBAL INFRASTRUCTURE INITIALIZATION
 // ============================================================================
-async function initializeGlobalInfrastructure_NonDNR() {
+  async function initializeGlobalInfrastructure() {
   console.log("[SW] Initializing global infrastructure...");
   try {
-   
+  await NetRulesManager.init();
     CSPController.init();
     await UserAgentController.init();
-    
+  await ArkoseController.init();
+  await DNRUtils.initialize();
     await OffscreenController.init();
     await BusController.init();
     self.bus = BusController;
@@ -488,47 +471,28 @@ let globalServicesReady = null;
 
 async function initializeGlobalServices() {
   if (globalServicesReady) return globalServicesReady;
-
   globalServicesReady = (async () => {
     console.log("[SW] 🚀 Initializing global services...");
-
-    // 1. Initialize persistence layer FIRST
+    await initializeGlobalInfrastructure();
     const pl = await initializePersistence();
-    // Expose persistence layer globally for runtime checks
     persistenceLayer = pl;
     self.__HTOS_PERSISTENCE_LAYER = pl;
-
-    // 2. Initialize session manager (depends on persistence)
-    const sessionManager = await initializeSessionManager(pl);
-
-    // 3. Initialize infrastructure
-    await initializeGlobalInfrastructure_NonDNR();
-
-    // 4. Initialize providers
+    const sm = await initializeSessionManager(pl);
     await initializeProviders();
-
-    // 5. Initialize orchestrator
     await initializeOrchestrator();
-
-    // 6. Create compiler and context resolver
-    const compiler = new WorkflowCompiler(sessionManager);
-    const contextResolver = new ContextResolver(sessionManager);
-
-    // Initialize PromptRefinerService
+    const compiler = new WorkflowCompiler(sm);
+    const contextResolver = new ContextResolver(sm);
     promptRefinerService = new PromptRefinerService({ refinerModel: "gemini" });
-    console.log("[SW] ✓ PromptRefinerService initialized");
-
     console.log("[SW] ✅ Global services ready");
     return {
       orchestrator: self.faultTolerantOrchestrator,
-      sessionManager: sessionManager,
+      sessionManager: sm,
       compiler,
       contextResolver,
-      persistenceLayer: pl, // Expose persistence layer to other modules
+      persistenceLayer: pl,
       promptRefinerService,
     };
   })();
-
   return globalServicesReady;
 }
 
@@ -1329,21 +1293,6 @@ globalThis.__HTOS_SW = {
     }
   },
 };
-function validateSingletons() {
-  const checks = {
-    persistenceLayer: !!persistenceLayerSingleton,
-    adapter:
-      !!adapterSingleton &&
-      typeof adapterSingleton.isReady === "function" &&
-      adapterSingleton.isReady(),
-    sessionManager: !!sessionManagerSingleton,
-    sessionManagerAdapter:
-      sessionManagerSingleton?.adapter ===
-      (adapterSingleton || persistenceLayerSingleton?.adapter),
-  };
-  return Object.values(checks).every(Boolean);
-}
-globalThis.__HTOS_VALIDATE_SINGLETONS = validateSingletons;
 // ============================================================================
 // MAIN INITIALIZATION SEQUENCE
 // ============================================================================
@@ -1394,6 +1343,30 @@ globalThis.__HTOS_VALIDATE_SINGLETONS = validateSingletons;
     console.error("[SW] Bootstrap failed:", e);
   }
 })();
+function validateSingletons() {
+  const checks = {
+    persistenceLayer: !!persistenceLayerSingleton,
+    persistenceAdapter: !!persistenceLayerSingleton?.adapter,
+    adapterReady: (persistenceLayerSingleton?.adapter?.isReady &&
+      typeof persistenceLayerSingleton.adapter.isReady === "function"
+      ? persistenceLayerSingleton.adapter.isReady()
+      : persistenceLayerSingleton?.adapter?.isReady) || false,
+    sessionManager: !!sessionManagerSingleton,
+    sessionManagerAdapter: !!sessionManagerSingleton?.adapter,
+    adapterIsSingleton:
+      sessionManagerSingleton?.adapter === persistenceLayerSingleton?.adapter,
+  };
+  console.log("[Validation] Singleton checks:", checks);
+  const allValid = Object.values(checks).every(Boolean);
+  if (!allValid) {
+    console.error("[Validation] ❌ Some singletons failed validation");
+  }
+  return allValid;
+}
+
+if (typeof globalThis !== "undefined") {
+  globalThis.__HTOS_VALIDATE_SINGLETONS = validateSingletons;
+}
 
 async function resumeInflightWorkflows(services) {
   const { sessionManager, compiler, contextResolver, orchestrator } = services;
