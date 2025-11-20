@@ -93,20 +93,6 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 // ... rest of existing sw-entry.js code ...
-
-// FIND function handleUnifiedMessage AND ADD THIS CASE:
-
-    case "REFRESH_AUTH_STATUS": {
-      try {
-        const status = await checkProviderLoginStatus();
-        sendResponse({ success: true, data: status });
-      } catch (e) {
-        sendResponse({ success: false, error: e.message });
-      }
-      return true;
-    }
-
-
 // ============================================================================
 // FEATURE FLAGS (Source of Truth)
 // ============================================================================

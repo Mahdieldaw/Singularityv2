@@ -16,7 +16,7 @@ export const STREAMING_PLACEHOLDER = ""; // CSS will handle visual streaming ind
 
 // Preferred streaming providers to prioritize in visible slots when 4+ are selected
 export const PRIMARY_STREAMING_PROVIDER_IDS: string[] = [
-  "chatgpt",
+  "gemini-exp",
   "claude",
   "qwen",
 ];

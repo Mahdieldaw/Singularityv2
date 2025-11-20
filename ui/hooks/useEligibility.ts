@@ -91,7 +91,7 @@ export function useEligibility() {
 
       const synthMap: Record<string, { disabled: boolean; reason?: string }> =
         {};
-      const PROVIDERS = ["claude", "gemini", "chatgpt", "xai", "qwen"];
+      const PROVIDERS = ["claude", "gemini", "gemini-exp", "chatgpt", "gemini-pro", "qwen"];
 
       PROVIDERS.forEach((p) => {
         if (!enoughOutputs) {

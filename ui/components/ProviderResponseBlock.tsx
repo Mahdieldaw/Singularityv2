@@ -108,7 +108,6 @@ const ProviderResponseBlock = ({
     [effectiveProviderResponses],
   );
 
-  // Visible slots state (shows 3 providers at a time), favor streaming providers (ChatGPT, Claude, Qwen)
   const [visibleSlots, setVisibleSlots] = useState<string[]>(() => {
     if (allProviderIds.length >= 4) {
       const primaryStreaming = PRIMARY_STREAMING_PROVIDER_IDS.filter((id) =>
@@ -117,15 +116,10 @@ const ProviderResponseBlock = ({
       let slots = primaryStreaming.slice(0, 3);
       if (slots.length < 3) {
         const remaining = allProviderIds.filter((id) => !slots.includes(id));
-        // Prefer non-Gemini for remaining visible slots; Gemini/Gemini Pro will be pushed to carousel
-        const nonGemini = remaining.filter(
-          (id) => id !== "gemini" && id !== "gemini-pro",
-        );
-        const gemini = remaining.filter(
-          (id) => id === "gemini" || id === "gemini-pro",
-        );
+        const nonDemoted = remaining.filter((id) => id !== "chatgpt");
+        const demoted = remaining.filter((id) => id === "chatgpt");
         slots = slots.concat(
-          [...nonGemini, ...gemini].slice(0, 3 - slots.length),
+          [...nonDemoted, ...demoted].slice(0, 3 - slots.length),
         );
       }
       return slots;
@@ -133,36 +127,50 @@ const ProviderResponseBlock = ({
     return allProviderIds.slice(0, Math.min(3, allProviderIds.length));
   });
 
-  // Calculate hidden providers (left and right)
-  const hiddenProviders = useMemo(() => {
+  const [rotationIndex, setRotationIndex] = useState<number>(0);
+
+  const initialOrderedHidden = useMemo(() => {
     const hidden = allProviderIds.filter((id) => !visibleSlots.includes(id));
-    // Order hidden so Gemini/Gemini Pro appear first in the carousel
+    const chatgptHidden = hidden.filter((id) => id === "chatgpt");
     const geminiHidden = hidden.filter(
-      (id) => id === "gemini" || id === "gemini-pro",
+      (id) => id === "gemini" || id === "gemini-pro" || id === "gemini-exp",
     );
     const othersHidden = hidden.filter(
-      (id) => id !== "gemini" && id !== "gemini-pro",
+      (id) => id !== "chatgpt" && id !== "gemini" && id !== "gemini-pro" && id !== "gemini-exp",
     );
-    const orderedHidden = [...geminiHidden, ...othersHidden];
-    return {
-      left: orderedHidden[0] || null,
-      right: orderedHidden[1] || null,
-    };
+    return [...chatgptHidden, ...geminiHidden, ...othersHidden];
   }, [allProviderIds, visibleSlots]);
+
+  const [hiddenOrder, setHiddenOrder] = useState<string[]>(initialOrderedHidden);
+
+  useEffect(() => {
+    setHiddenOrder(initialOrderedHidden);
+  }, [initialOrderedHidden]);
+
+  const hiddenLeft = useMemo(() => hiddenOrder.slice(0, 2), [hiddenOrder]);
+  const hiddenRight = useMemo(() => hiddenOrder.slice(2, 3), [hiddenOrder]);
 
   const getProviderConfig = (providerId: string): LLMProvider | undefined => {
     return LLM_PROVIDERS_CONFIG.find((p) => p.id === providerId);
   };
 
-  // Swap a hidden provider into the first visible slot
   const swapProviderIn = useCallback((hiddenProviderId: string) => {
     setVisibleSlots((prev) => {
-      const newSlots = [...prev];
-      // Replace the first slot with the clicked provider
-      newSlots[0] = hiddenProviderId;
-      return newSlots;
+      const replaceIndex = rotationIndex % (prev.length || 1);
+      const displaced = prev[replaceIndex];
+      const nextSlots = [...prev];
+      nextSlots[replaceIndex] = hiddenProviderId;
+      setHiddenOrder((curr) => {
+        const withoutClicked = curr.filter((id) => id !== hiddenProviderId);
+        const appended = [...withoutClicked, displaced].filter(
+          (id) => allProviderIds.includes(id) && !nextSlots.includes(id),
+        );
+        return appended;
+      });
+      return nextSlots;
     });
-  }, []);
+    setRotationIndex((i) => (i + 1) % 3);
+  }, [rotationIndex, allProviderIds]);
 
   // Highlight target provider on citation click and scroll into view
   const [highlightedProviderId, setHighlightedProviderId] = useState<
@@ -645,12 +653,11 @@ const ProviderResponseBlock = ({
             gap: "12px",
           }}
         >
-          {/* Left Side Indicator */}
-          {hiddenProviders.left && (
-            <div style={{ flexShrink: 0 }}>
-              {renderSideIndicator(hiddenProviders.left)}
-            </div>
-          )}
+          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
+            {hiddenLeft.map((pid) => (
+              <div key={`left-${pid}`}>{renderSideIndicator(pid)}</div>
+            ))}
+          </div>
 
           {/* Main Cards Container (3 slots) */}
           <div
@@ -668,12 +675,11 @@ const ProviderResponseBlock = ({
             {visibleSlots.map((id) => renderProviderCard(id, true))}
           </div>
 
-          {/* Right Side Indicator */}
-          {hiddenProviders.right && (
-            <div style={{ flexShrink: 0 }}>
-              {renderSideIndicator(hiddenProviders.right)}
-            </div>
-          )}
+          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
+            {hiddenRight.map((pid) => (
+              <div key={`right-${pid}`}>{renderSideIndicator(pid)}</div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
