@@ -115,9 +115,6 @@ export function usePortMessageHandler() {
           if (msgSessionId) {
             if (!currentSessionId || currentSessionId === msgSessionId) {
               setCurrentSessionId(msgSessionId);
-              try {
-                api.setSessionId(msgSessionId);
-              } catch {}
             }
           }
 
@@ -191,9 +188,6 @@ export function usePortMessageHandler() {
           if (msgSessionId) {
             if (!currentSessionId || currentSessionId === msgSessionId) {
               setCurrentSessionId(msgSessionId);
-              try {
-                api.setSessionId(msgSessionId);
-              } catch {}
             }
           }
 

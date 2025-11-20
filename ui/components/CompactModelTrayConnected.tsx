@@ -15,17 +15,18 @@ import {
   refineModelAtom,
   isHistoryPanelOpenAtom,
 } from "../state/atoms";
+// NEW: Import the hook
+import { useProviderStatus } from "../hooks/useProviderStatus";
 
 const CompactModelTrayConnected = () => {
+  // NEW: Initialize provider status logic
+  const { status: providerStatus } = useProviderStatus();
+
   const [selectedModels, setSelectedModels] = useAtom(selectedModelsAtom);
   const [mappingEnabled, setMappingEnabled] = useAtom(mappingEnabledAtom);
   const [mappingProvider, setMappingProvider] = useAtom(mappingProviderAtom);
-  const [synthesisProvider, setSynthesisProvider] = useAtom(
-    synthesisProviderAtom,
-  );
-  const [synthesisProviders, setSynthesisProviders] = useAtom(
-    synthesisProvidersAtom,
-  );
+  const [synthesisProvider, setSynthesisProvider] = useAtom(synthesisProviderAtom);
+  const [synthesisProviders, setSynthesisProviders] = useAtom(synthesisProvidersAtom);
   const [powerUserMode] = useAtom(powerUserModeAtom);
   const [thinkOnChatGPT, setThinkOnChatGPT] = useAtom(thinkOnChatGPTAtom);
   const [chatInputHeight] = useAtom(chatInputHeightAtom);
@@ -34,7 +35,6 @@ const CompactModelTrayConnected = () => {
   const [refineModel, setRefineModel] = useAtom(refineModelAtom);
   const [isHistoryOpen] = useAtom(isHistoryPanelOpenAtom);
 
-  // ✅ FIX: Proper immutable updates (no draft mutation)
   const handleToggleModel = (providerId: string) => {
     setSelectedModels((prev) => ({
       ...prev,
@@ -44,7 +44,6 @@ const CompactModelTrayConnected = () => {
 
   const handleToggleMapping = (enabled: boolean) => {
     setMappingEnabled(enabled);
-    // Persist immediately
     try {
       localStorage.setItem("htos_mapping_enabled", JSON.stringify(enabled));
     } catch {}
@@ -52,7 +51,6 @@ const CompactModelTrayConnected = () => {
 
   const handleSetMappingProvider = (providerId: string | null) => {
     setMappingProvider(providerId);
-    // Persist immediately
     try {
       if (providerId) {
         localStorage.setItem("htos_mapping_provider", providerId);
@@ -64,7 +62,6 @@ const CompactModelTrayConnected = () => {
 
   const handleSetSynthesisProvider = (providerId: string | null) => {
     setSynthesisProvider(providerId);
-    // Persist immediately
     try {
       if (providerId) {
         localStorage.setItem("htos_synthesis_provider", providerId);
@@ -74,7 +71,6 @@ const CompactModelTrayConnected = () => {
     } catch {}
   };
 
-  // ✅ CORRECT: Immutable array update
   const handleToggleSynthesisProvider = (providerId: string) => {
     setSynthesisProviders((prev) => {
       if (prev.includes(providerId)) {
@@ -122,6 +118,8 @@ const CompactModelTrayConnected = () => {
       refineModel={refineModel}
       onSetRefineModel={handleSetRefineModel}
       isHistoryPanelOpen={!!isHistoryOpen}
+      // NEW: Pass status
+      providerStatus={providerStatus}
     />
   );
 };

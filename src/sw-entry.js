@@ -23,7 +23,6 @@ import { ContextResolver } from "./core/context-resolver.js";
 import { SWBootstrap } from "./HTOS/ServiceWorkerBootstrap.js";
 import { ClaudeAdapter } from "./providers/claude-adapter.js";
 import { GeminiAdapter } from "./providers/gemini-adapter.js";
-import { GeminiProAdapter } from "./providers/gemini-pro-adapter.js";
 import { ChatGPTAdapter } from "./providers/chatgpt-adapter.js";
 import { QwenAdapter } from "./providers/qwen-adapter.js";
 import { ClaudeProviderController } from "./providers/claude.js";
@@ -40,6 +39,73 @@ import { errorHandler } from "./utils/ErrorHandler.js";
 import { persistenceMonitor } from "./debug/PersistenceMonitor.js";
 // Prompt refinement service
 import { PromptRefinerService } from "./services/PromptRefinerService.ts";
+// ============================================================================
+// AUTH DETECTION SYSTEM
+// ============================================================================
+const AUTH_COOKIES = [
+  { provider: "chatgpt", domain: "chatgpt.com", name: "__Secure-next-auth.session-token", url: "https://chatgpt.com" },
+  { provider: "claude", domain: "claude.ai", name: "sessionKey", url: "https://claude.ai" },
+  { provider: "gemini", domain: "google.com", name: "__Secure-1PSID", url: "https://gemini.google.com" }
+];
+
+async function checkProviderLoginStatus() {
+  const status = {};
+  // Default all to true first (optimistic), then overwrite with explicit false if check fails
+  // This ensures providers not in AUTH_COOKIES (like Qwen) remain enabled
+  
+  await Promise.all(AUTH_COOKIES.map(async (config) => {
+    try {
+      const cookie = await chrome.cookies.get({ url: config.url, name: config.name });
+      status[config.provider] = !!cookie;
+    } catch (e) {
+      console.warn(`[Auth] Failed to check ${config.provider}`, e);
+      status[config.provider] = false; 
+    }
+  }));
+
+  const { provider_auth_status: current = {} } = await chrome.storage.local.get("provider_auth_status");
+  const newState = { ...current, ...status };
+  
+  await chrome.storage.local.set({ provider_auth_status: newState });
+  return newState;
+}
+
+// Watchdog: Listen for cookie changes
+chrome.cookies.onChanged.addListener((changeInfo) => {
+  const { cookie, removed } = changeInfo;
+  const match = AUTH_COOKIES.find(c => cookie.domain.includes(c.domain) && cookie.name === c.name);
+  
+  if (match) {
+    chrome.storage.local.get(['provider_auth_status'], (result) => {
+      const current = result.provider_auth_status || {};
+      if (current[match.provider] !== !removed) {
+        const newState = { ...current, [match.provider]: !removed };
+        chrome.storage.local.set({ provider_auth_status: newState });
+        console.log(`[Auth] Status changed for ${match.provider}: ${!removed}`);
+      }
+    });
+  }
+});
+
+// Initial scan on startup
+chrome.runtime.onStartup.addListener(() => {
+  checkProviderLoginStatus();
+});
+
+// ... rest of existing sw-entry.js code ...
+
+// FIND function handleUnifiedMessage AND ADD THIS CASE:
+
+    case "REFRESH_AUTH_STATUS": {
+      try {
+        const status = await checkProviderLoginStatus();
+        sendResponse({ success: true, data: status });
+      } catch (e) {
+        sendResponse({ success: false, error: e.message });
+      }
+      return true;
+    }
+
 
 // ============================================================================
 // FEATURE FLAGS (Source of Truth)
@@ -418,12 +484,26 @@ async function initializeProviders() {
     {
       name: "gemini",
       Controller: GeminiProviderController,
-      Adapter: GeminiAdapter,
+      Adapter: GeminiAdapter, // Defaults to "gemini" -> "gemini-flash"
     },
     {
       name: "gemini-pro",
       Controller: GeminiProviderController,
-      Adapter: GeminiProAdapter,
+      // Inline class that acts exactly like the file you are deleting
+      Adapter: class extends GeminiAdapter {
+        constructor(controller) {
+          super(controller, "gemini-pro");
+        }
+      },
+    },
+    {
+      name: "gemini-exp",
+      Controller: GeminiProviderController,
+      Adapter: class extends GeminiAdapter {
+        constructor(controller) {
+          super(controller, "gemini-exp");
+        }
+      },
     },
     {
       name: "chatgpt",
@@ -510,6 +590,15 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
     }
 
     switch (message.type) {
+      case "REFRESH_AUTH_STATUS": {
+        try {
+          const status = await checkProviderLoginStatus();
+          sendResponse({ success: true, data: status });
+        } catch (e) {
+          sendResponse({ success: false, error: e.message });
+        }
+        return true;
+      }
       // ========================================================================
       // HISTORY OPERATIONS
       // ========================================================================

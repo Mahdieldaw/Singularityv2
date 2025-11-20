@@ -29,6 +29,7 @@ interface CompactModelTrayProps {
   refineModel: string;
   onSetRefineModel: (model: string) => void;
   isHistoryPanelOpen?: boolean;
+  providerStatus?: Record<string, boolean>;
 }
 
 const CompactModelTray = ({
@@ -52,6 +53,7 @@ const CompactModelTray = ({
   refineModel,
   onSetRefineModel,
   isHistoryPanelOpen = false,
+  providerStatus = {}, // Default empty
 }: CompactModelTrayProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showModelsDropdown, setShowModelsDropdown] = useState(false);
@@ -246,6 +248,9 @@ const CompactModelTray = ({
     }
   }, [isFirstLoad, onAcknowledgeFirstLoad]);
 
+  // Helper to check status
+  const isProviderAvailable = (id: string) => providerStatus[id] !== false;
+
   return (
     <div
       ref={containerRef}
@@ -318,6 +323,7 @@ const CompactModelTray = ({
             >
               {LLM_PROVIDERS_CONFIG.map((provider) => {
                 const isSelected = selectedModels[provider.id];
+                const isAuth = isProviderAvailable(provider.id);
                 return (
                   <label
                     key={provider.id}
@@ -326,12 +332,13 @@ const CompactModelTray = ({
                       alignItems: "center",
                       gap: "8px",
                       padding: "4px 8px",
-                      cursor: "pointer",
+                      cursor: isAuth ? "pointer" : "not-allowed",
                       borderRadius: "4px",
                       background: isSelected
                         ? "rgba(99, 102, 241, 0.3)"
                         : "transparent",
                       transition: "all 0.2s ease",
+                       opacity: isAuth ? 1 : 0.5
                     }}
                     onMouseEnter={(e) => {
                       if (isSelected)
@@ -345,21 +352,13 @@ const CompactModelTray = ({
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => !isLoading && onToggleModel(provider.id)}
-                      disabled={isLoading}
-                      style={{
-                        width: "14px",
-                        height: "14px",
-                        accentColor: "#6366f1",
-                      }}
+                      onChange={() => !isLoading && isAuth && onToggleModel(provider.id)}
+                      disabled={isLoading || !isAuth}
+                      style={{ width: "14px", height: "14px", accentColor: "#6366f1" }}
                     />
-                    <span
-                      style={{
-                        fontSize: "12px",
-                        color: isSelected ? "#a5b4fc" : "#94a3b8",
-                      }}
-                    >
+                    <span style={{ fontSize: "12px", color: isSelected ? "#a5b4fc" : "#94a3b8" }}>
                       {provider.name}
+                      {!isAuth && " (Login)"}
                     </span>
                   </label>
                 );

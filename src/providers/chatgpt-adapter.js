@@ -288,16 +288,22 @@ export class ChatGPTAdapter {
       return this.sendPrompt({ originalPrompt: prompt, meta }, onChunk, signal);
     }
 
-    // If no conversation context, fall back to new prompt via sendPrompt
+    // If no conversation context, this is an invalid state for continuation.
     if (!conversationIdIn) {
-      pad(
-        "[ChatGPT Session] No conversation context found, falling back to sendPrompt",
+      console.warn(
+        `[ChatGPT Adapter] sendContinuation called without conversationId. Context possibly lost.`,
       );
-      return this.sendPrompt(
-        { originalPrompt: prompt, sessionId, meta },
-        onChunk,
-        signal,
-      );
+      // STRICT MODE: Do not auto-create new chats when we asked to CONTINUE.
+      // This prevents accidental forking of conversation history.
+      return {
+        providerId: this.id,
+        ok: false,
+        text: null,
+        errorCode: "context_missing", 
+        meta: {
+          error: "Continuity lost: Missing conversationId.",
+        },
+      };
     }
 
     const startTime = Date.now();

@@ -69,7 +69,7 @@ function languageToExt(lang: string): string {
   }
 }
 
-export default function CodeBlock({ inline, className, children }: Props) {
+export default function ({ inline, className, children }: Props) {
   const isInline = inline === true;
   const codeText = useMemo(() => String(children || ""), [children]);
   const match = useMemo(

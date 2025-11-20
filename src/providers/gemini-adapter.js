@@ -1,47 +1,38 @@
 /**
- * HTOS Gemini Provider Adapter
- * - Implements ProviderAdapter interface for Gemini
- *
- * Build-phase safe: emitted to dist/adapters/*
+ * HTOS Gemini Provider Adapter (Unified)
+ * - Implements ProviderAdapter interface for Gemini AND Gemini Pro
+ * - Handles both Flash and Pro models via dynamic configuration
  */
 import { classifyProviderError } from "../core/request-lifecycle-manager.js";
 
-// Provider-specific adapter debug flag (off by default)
 const GEMINI_ADAPTER_DEBUG = false;
 const pad = (...args) => {
   if (GEMINI_ADAPTER_DEBUG) console.log(...args);
 };
 
 export class GeminiAdapter {
-  constructor(controller) {
-    this.id = "gemini";
+  constructor(controller, idOverride = "gemini") {
+    this.id = idOverride;
     this.capabilities = {
       needsDNR: false,
       needsOffscreen: false,
-      supportsStreaming: false,
+      supportsStreaming: true, // Unified to support streaming (like Pro)
       supportsContinuation: true,
       synthesis: false,
-      supportsModelSelection: true, // NEW: Indicate model selection support
+      // Only allow model selection if NOT explicitly Pro (Pro is fixed)
+      supportsModelSelection: this.id !== "gemini-pro", 
     };
     this.controller = controller;
   }
 
-  /**
-   * Initialize the adapter
-   */
   async init() {
-    // Initialization logic if needed
     return;
   }
 
-  /**
-   * Check if the provider is available and working
-   */
   async healthCheck() {
     try {
-      // Perform a simple check to verify Gemini API is accessible
       return await this.controller.isAvailable();
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -49,29 +40,36 @@ export class GeminiAdapter {
   async sendPrompt(req, onChunk, signal) {
     const startTime = Date.now();
     try {
-      // Extract model from request metadata (defaults to "gemini-flash")
-      const model = req.meta?.model || "gemini-flash";
+      // Auto-select model based on adapter ID if not specified in request
+      let defaultModel = "gemini-flash";
+      if (this.id === "gemini-pro") defaultModel = "gemini-pro";
+      if (this.id === "gemini-exp") defaultModel = "gemini-exp";
+      const model = req.meta?.model || defaultModel;
 
-      pad(`[GeminiAdapter] Sending prompt with model: ${model}`);
+      pad(`[GeminiAdapter:${this.id}] Sending prompt with model: ${model}`);
 
-      // Send prompt to Gemini with model selection
       const result = await this.controller.geminiSession.ask(
         req.originalPrompt,
         {
           signal,
           cursor: req.meta?.cursor,
-          model, // Pass model to the API
-        },
+          model, 
+        }
       );
 
-      // Emit a single partial update so WorkflowEngine treats this like streaming
+      // NORMALIZATION LOGIC (From Pro Adapter)
+      const normalizedText =
+        result?.text ??
+        result?.candidates?.[0]?.content ??
+        (typeof result === "string" ? result : JSON.stringify(result));
+
+      // Emit streaming chunk if applicable
       try {
-        const fullText = result?.text ?? "";
-        if (onChunk && fullText && fullText.length > 0) {
+        if (onChunk && normalizedText && normalizedText.length > 0) {
           onChunk({
             providerId: this.id,
             ok: true,
-            text: fullText,
+            text: normalizedText,
             partial: true,
             latencyMs: Date.now() - startTime,
             meta: {
@@ -84,23 +82,21 @@ export class GeminiAdapter {
         }
       } catch (_) {}
 
-      // Return final result
       return {
         providerId: this.id,
         ok: true,
-        id: null, // Request ID not available in BatchRequest type
-        text: result.text,
+        id: null,
+        text: normalizedText,
         partial: false,
         latencyMs: Date.now() - startTime,
         meta: {
           cursor: result.cursor,
           token: result.token,
           modelName: result.modelName,
-          model, // Preserve model in response
+          model,
         },
       };
     } catch (error) {
-      // Handle errors with proper classification
       const classification = classifyProviderError("gemini-session", error);
       const errorCode = classification.type || "unknown";
       return {
@@ -118,58 +114,44 @@ export class GeminiAdapter {
     }
   }
 
-  /**
-   * Send continuation message using existing cursor context
-   * @param {string} prompt - The continuation prompt
-   * @param {Object} providerContext - Context containing cursor and other metadata
-   * @param {string} sessionId - Session identifier
-   * @param {Function} onChunk - Streaming callback
-   * @param {AbortSignal} signal - Abort signal
-   * @returns {Promise<Object>} Response object
-   */
   async sendContinuation(prompt, providerContext, sessionId, onChunk, signal) {
     const startTime = Date.now();
-
     try {
-      // Extract cursor and model from provider context
-      // Support both shapes: top-level and nested under .meta
       const meta = providerContext?.meta || providerContext || {};
       const cursor = providerContext?.cursor ?? meta.cursor;
-      const model = (providerContext?.model ?? meta.model) || "gemini-flash";
+      
+      let defaultModel = "gemini-flash";
+      if (this.id === "gemini-pro") defaultModel = "gemini-pro";
+      if (this.id === "gemini-exp") defaultModel = "gemini-exp";
+      const model = (providerContext?.model ?? meta.model) || defaultModel;
 
+      // STRICT CONTINUATION: Do NOT fall back to new chat. 
+      // If we lost the cursor, we must report it so data integrity is preserved.
       if (!cursor) {
-        console.warn(
-          "[GeminiAdapter] No cursor found in provider context, falling back to new chat",
-        );
-        // Fall back to regular sendPrompt if no context available
-        const metaForPrompt = {
-          ...(meta || {}),
-          model, // Preserve model selection
-        };
-        return await this.sendPrompt(
-          { originalPrompt: prompt, sessionId, meta: metaForPrompt },
-          onChunk,
-          signal,
-        );
+        console.warn(`[GeminiAdapter:${this.id}] Context missing (no cursor)`);
+        throw new Error("Continuity lost: Missing Gemini cursor for this thread.");
       }
 
-      pad(`[GeminiAdapter] Continuing chat with cursor and model: ${model}`);
+      pad(`[GeminiAdapter:${this.id}] Continuing chat with model: ${model}`);
 
-      // Send continuation to Gemini with existing cursor and model
       const result = await this.controller.geminiSession.ask(prompt, {
         signal,
         cursor,
         model,
       });
 
-      // Emit a single partial update so WorkflowEngine treats this like streaming
+      // NORMALIZATION LOGIC (From Pro Adapter)
+      const normalizedText =
+        result?.text ??
+        result?.candidates?.[0]?.content ??
+        (typeof result === "string" ? result : JSON.stringify(result));
+
       try {
-        const fullText = result?.text ?? "";
-        if (onChunk && fullText && fullText.length > 0) {
+        if (onChunk && normalizedText && normalizedText.length > 0) {
           onChunk({
             providerId: this.id,
             ok: true,
-            text: fullText,
+            text: normalizedText,
             partial: true,
             latencyMs: Date.now() - startTime,
             meta: {
@@ -182,26 +164,23 @@ export class GeminiAdapter {
         }
       } catch (_) {}
 
-      // Return final result with preserved/updated context
       return {
         providerId: this.id,
         ok: true,
         id: null,
-        text: result.text,
+        text: normalizedText,
         partial: false,
         latencyMs: Date.now() - startTime,
         meta: {
-          cursor: result.cursor, // Updated cursor for future continuations
+          cursor: result.cursor,
           token: result.token,
           modelName: result.modelName,
-          model, // Preserve model for next continuation
+          model,
         },
       };
     } catch (error) {
-      // Handle errors with proper classification
       const classification = classifyProviderError("gemini-session", error);
       const errorCode = classification.type || "unknown";
-
       return {
         providerId: this.id,
         ok: false,
@@ -212,16 +191,16 @@ export class GeminiAdapter {
           error: error.toString(),
           details: error.details,
           suppressed: classification.suppressed,
-          cursor: providerContext?.cursor ?? meta.cursor, // Preserve context even on error
-          model: providerContext?.model ?? meta.model, // Preserve model even on error
+          // Return partial context so UI can debug what was missing
+          cursor: providerContext?.cursor ?? providerContext?.meta?.cursor,
         },
       };
     }
   }
 
   /**
-   * Unified ask API: prefer continuation when cursor exists, else start new.
-   * ask(prompt, providerContext?, sessionId?, onChunk?, signal?)
+   * Unified ask API
+   * Routes to sendContinuation or sendPrompt based on context presence.
    */
   async ask(
     prompt,
@@ -233,9 +212,9 @@ export class GeminiAdapter {
     try {
       const meta = providerContext?.meta || providerContext || {};
       const hasCursor = Boolean(meta.cursor || providerContext?.cursor);
-      pad(
-        `[ProviderAdapter] ASK_STARTED provider=${this.id} hasContext=${hasCursor}`,
-      );
+      
+      pad(`[ProviderAdapter] ASK_STARTED provider=${this.id} hasContext=${hasCursor}`);
+      
       let res;
       if (hasCursor) {
         res = await this.sendContinuation(
@@ -252,19 +231,16 @@ export class GeminiAdapter {
           signal,
         );
       }
+      
       try {
-        const len = (res?.text || "").length;
-        pad(
-          `[ProviderAdapter] ASK_COMPLETED provider=${this.id} ok=${res?.ok !== false} textLen=${len}`,
-        );
-      } catch (_) {}
+         const len = (res?.text || "").length;
+         pad(`[ProviderAdapter] ASK_COMPLETED provider=${this.id} ok=${res?.ok !== false} textLen=${len}`);
+      } catch(_) {}
+
       return res;
     } catch (e) {
-      console.warn(
-        `[ProviderAdapter] ASK_FAILED provider=${this.id}:`,
-        e?.message || String(e),
-      );
-      throw e;
+       console.warn(`[ProviderAdapter] ASK_FAILED provider=${this.id}:`, e?.message || String(e));
+       throw e;
     }
   }
 }

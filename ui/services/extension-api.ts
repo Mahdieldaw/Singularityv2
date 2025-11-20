@@ -8,6 +8,7 @@ import {
   DELETE_SESSIONS,
   RENAME_SESSION,
   REFINE_PROMPT,
+  REFRESH_AUTH_STATUS,
 } from "../../shared/messaging";
 
 import type { HistorySessionSummary, HistoryApiResponse } from "../types";
@@ -286,13 +287,9 @@ class ExtensionAPI {
     });
   }
 
-  // === DEPRECATED & NO-OP HELPERS ===
-  setSessionId(sessionId: string): void {
-    console.log(
-      `[API] setSessionId called for ${sessionId}, but this is now handled automatically.`,
-    );
+  async refreshAuthStatus(): Promise<Record<string, boolean>> {
+    return this.queryBackend<Record<string, boolean>>({ type: REFRESH_AUTH_STATUS });
   }
-
 }
 
 const api = new ExtensionAPI();

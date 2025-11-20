@@ -93,6 +93,23 @@ export class QwenAdapter {
     let aggregatedText = "";
     let responseContext = {};
 
+    // If no session context, this is an invalid state for continuation.
+    if (!meta.sessionId) {
+      console.warn(
+        `[Qwen Adapter] sendContinuation called without a sessionId. This indicates a logic error in the orchestrator or session manager.`,
+      );
+      // Return an error instead of falling back to sendPrompt to make the contract explicit.
+      return {
+        providerId: this.id,
+        ok: false,
+        text: null,
+        errorCode: "continuation_failed",
+        meta: {
+          error: "Missing sessionId for continuation.",
+        },
+      };
+    }
+
     try {
       const result = await this.controller.qwenSession.ask(
         prompt,

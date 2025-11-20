@@ -202,6 +202,7 @@ export const connectionStatusAtom = atom<{
   isConnected: boolean;
   isReconnecting: boolean;
 }>({ isConnected: false, isReconnecting: true });
+export const providerAuthStatusAtom = atom<Record<string, boolean>>({});
 export const alertTextAtom = atom<string | null>(null);
 export const chatInputHeightAtom = atom<number>(80);
 // Track last meaningful workflow activity to allow UI watchdogs

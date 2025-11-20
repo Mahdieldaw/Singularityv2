@@ -26,8 +26,15 @@ export const GeminiModels = {
     maxTokens: 9999,
     header: '[1,null,null,null,"61530e79959ab139",null,null,0,[4]]',
   },
+  "gemini-exp": { 
+    id: "gemini-exp",
+    name: "Gemini 3.0", // or "Experimental"
+    description: "Latest experimental capability",
+    maxTokens: 9999,
+    // Signature from your 1st fetch (9d8ca3786ebdfbea)
+    header: '[1,null,null,null,"9d8ca3786ebdfbea",null,null,0,[4]]',
+},
 };
-
 // =============================================================================
 // GEMINI ERROR TYPES
 // =============================================================================

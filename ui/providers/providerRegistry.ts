@@ -47,6 +47,14 @@ export const INITIAL_PROVIDERS: ProviderConfig[] = [
     icon: GeminiIcon,
   },
   {
+    id: "gemini-exp", // Must match the key in GeminiModels
+    name: "Gemini 3.0",
+    color: "#8B5CF6", // Purple to distinguish from others
+    logoBgClass: "bg-purple-600",
+    hostnames: ["gemini.google.com"],
+    icon: GeminiIcon,
+  },
+  {
     id: "qwen",
     name: "Qwen",
     color: "#00A9E0",

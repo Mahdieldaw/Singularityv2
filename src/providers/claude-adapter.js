@@ -121,16 +121,8 @@ export class ClaudeAdapter {
         meta.threadUrl;
 
       if (!chatId) {
-        console.warn(
-          "[ClaudeAdapter] No chatId found in provider context, falling back to new chat",
-        );
-        // Fall back to regular sendPrompt if no context available
-        const meta = providerContext?.meta ?? providerContext ?? {};
-        return await this.sendPrompt(
-          { originalPrompt: prompt, sessionId, meta },
-          onChunk,
-          signal,
-        );
+        console.warn(`[ClaudeAdapter] Context missing (no ChatId)`);
+        throw new Error("Continuity lost: Missing Claude ChatId for this thread.");
       }
 
       // Avoid logging per-continuation start to reduce noisy logs.

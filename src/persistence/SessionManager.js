@@ -927,23 +927,6 @@ export class SessionManager {
 
   // createThread* and switchThread* removed. Thread operations will be handled by persist() primitives in future phases.
 
-  /**
-   * Get stored turn by id (backward compatible)
-   */
-  getTurn(sessionId, turnId) {
-    const session = this.sessions[sessionId];
-    if (!session) return null;
-    return (session.turns || []).find((t) => t.id === turnId) || null;
-  }
-
-  /**
-   * Get all turns for a session (backward compatible)
-   */
-  getTurns(sessionId) {
-    const session = this.sessions[sessionId];
-    if (!session) return [];
-    return session.turns || [];
-  }
   // saveTurn() removed. Use persist() primitives.
 
   // saveTurnWithPersistence() removed. Use persist() primitives.
