@@ -1,8 +1,5 @@
-// ui/components/AiTurnBlock.tsx - HYBRID COLLAPSIBLE SOLUTION
-import React from "react";
-import { AiTurn, ProviderResponse, AppStep } from "../types";
-import MarkdownDisplay from "./MarkdownDisplay";
-import {
+// ui/components/AiTurnBlock.tsx - FIXED ALIGNMENT
+import React, {
   useMemo,
   useState,
   useCallback,
@@ -10,6 +7,8 @@ import {
   useEffect,
   useLayoutEffect,
 } from "react";
+import { AiTurn, ProviderResponse, AppStep } from "../types";
+import MarkdownDisplay from "./MarkdownDisplay";
 import { LLM_PROVIDERS_CONFIG } from "../constants";
 import ClipsCarousel from "./ClipsCarousel";
 import { ChevronDownIcon, ChevronUpIcon, ListIcon } from "./Icons";
@@ -17,64 +16,52 @@ import {
   normalizeResponseArray,
   getLatestResponse,
 } from "../utils/turn-helpers";
-import { useCitationEvents } from '../hooks/useCitationEvents';
 
+// --- Helper Functions ---
 function parseMappingResponse(response?: string | null) {
   if (!response) return { mapping: "", options: null };
-
   const separator = "===ALL_AVAILABLE_OPTIONS===";
-
   if (response.includes(separator)) {
     const [mainMapping, optionsSection] = response.split(separator);
-    return {
-      mapping: mainMapping.trim(),
-      options: optionsSection.trim(),
-    };
+    return { mapping: mainMapping.trim(), options: optionsSection.trim() };
   }
-
   const optionsPatterns = [
     /\*\*All Available Options:\*\*/i,
     /## All Available Options/i,
     /All Available Options:/i,
   ];
-
   for (const pattern of optionsPatterns) {
     const match = response.match(pattern);
     if (match && typeof match.index === "number") {
-      const splitIndex = match.index;
       return {
-        mapping: response.substring(0, splitIndex).trim(),
-        options: response.substring(splitIndex).trim(),
+        mapping: response.substring(0, match.index).trim(),
+        options: response.substring(match.index).trim(),
       };
     }
   }
-
-  return {
-    mapping: response,
-    options: null,
-  };
+  return { mapping: response, options: null };
 }
 
-/**
- * Cooperative height measurement hook - pauses during user interaction
- */
+// --- Height Measurement Hook (Stabilized) ---
 const useShorterHeight = (
   hasSynthesis: boolean,
   hasMapping: boolean,
   synthesisVersion: string | number,
-  pause: boolean,
+  pause: boolean
 ) => {
   const synthRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
-
   const [shorterHeight, setShorterHeight] = useState<number | null>(null);
   const [shorterSection, setShorterSection] = useState<
     "synthesis" | "mapping" | null
   >(null);
-
+  
+  // Ref to track user interaction to prevent fighting the user scroll
   const isUserActive = useRef(false);
   const userActiveTimer = useRef<number | null>(null);
-  const rafId = useRef<number | null>(null);
+  
+  // Ref to store the actual measurement function to decouple dependencies
+  const measureRef = useRef<() => void>(() => {});
 
   const measureOnce = useCallback(() => {
     if (pause) return;
@@ -82,34 +69,41 @@ const useShorterHeight = (
     const m = mapRef.current;
 
     if (!hasSynthesis || !hasMapping || !s || !m) {
-      setShorterHeight(null);
-      setShorterSection(null);
+      if (shorterHeight !== null) setShorterHeight(null);
+      if (shorterSection !== null) setShorterSection(null);
       return;
     }
 
-    // Skip measurement during user interaction to avoid thrash
     if (isUserActive.current) return;
 
     const synthH = s.scrollHeight;
     const mapH = m.scrollHeight;
 
-    const isSynthShorter = synthH <= mapH;
+    // STABILITY FIX 1: Add a buffer. 
+    // If the difference is less than 5px, don't change the active section 
+    // to prevent flip-flopping loops.
+    let isSynthShorter = synthH <= mapH;
+    
+    // If they are nearly identical, stick to the existing section to prevent loop
+    if (Math.abs(synthH - mapH) < 5 && shorterSection) {
+       isSynthShorter = shorterSection === "synthesis";
+    }
+
     const h = isSynthShorter ? synthH : mapH;
     const sec = isSynthShorter ? "synthesis" : "mapping";
 
-    // Only update if changed by more than 2px to avoid micro-adjustments
-    setShorterHeight((prev) =>
-      prev === null || Math.abs(prev - h) > 2 ? h : prev,
-    );
-    setShorterSection((prev) => (prev !== sec ? sec : prev));
-  }, [hasSynthesis, hasMapping, pause]);
-
-  const scheduleMeasure = useCallback(() => {
-    if (rafId.current !== null) return;
-    rafId.current = requestAnimationFrame(() => {
-      rafId.current = null;
-      measureOnce();
+    // STABILITY FIX 2: Only update state if height difference is significant (>2px)
+    setShorterHeight((prev) => {
+      if (prev === null) return h;
+      return Math.abs(prev - h) > 2 ? h : prev;
     });
+
+    setShorterSection((prev) => (prev !== sec ? sec : prev));
+  }, [hasSynthesis, hasMapping, pause, shorterHeight, shorterSection]);
+
+  // Keep ref up to date
+  useEffect(() => {
+    measureRef.current = measureOnce;
   }, [measureOnce]);
 
   useEffect(() => {
@@ -117,47 +111,52 @@ const useShorterHeight = (
     const m = mapRef.current;
     if (!s || !m) return;
 
-    const ro = new ResizeObserver(() => scheduleMeasure());
+    // STABILITY FIX 3: Debounce the observer slightly
+    let rafId: number;
+    const handleResize = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => measureRef.current());
+    };
+
+    const ro = new ResizeObserver(handleResize);
     ro.observe(s);
     ro.observe(m);
 
     const markUserActive = () => {
       isUserActive.current = true;
-      if (userActiveTimer.current !== null) {
+      if (userActiveTimer.current !== null)
         window.clearTimeout(userActiveTimer.current);
-      }
       userActiveTimer.current = window.setTimeout(() => {
         isUserActive.current = false;
         userActiveTimer.current = null;
-        scheduleMeasure();
+        handleResize(); // Measure once after user stops
       }, 300);
     };
 
-    // Listen for user interactions
     const events = ["wheel", "touchstart", "pointerdown"];
     events.forEach((evt) => {
       s.addEventListener(evt, markUserActive, { passive: true });
       m.addEventListener(evt, markUserActive, { passive: true });
     });
 
-    scheduleMeasure(); // initial
+    // Initial measure
+    handleResize();
 
     return () => {
       ro.disconnect();
-      if (rafId.current) cancelAnimationFrame(rafId.current);
+      cancelAnimationFrame(rafId);
       if (userActiveTimer.current) window.clearTimeout(userActiveTimer.current);
       events.forEach((evt) => {
         s.removeEventListener(evt, markUserActive as EventListener);
         m.removeEventListener(evt, markUserActive as EventListener);
       });
     };
-  }, [scheduleMeasure]);
+  }, []); // Empty dependency array - we use refs inside
 
+  // Run on content update (synthesisVersion changes)
   useLayoutEffect(() => {
-    if (!hasSynthesis || !hasMapping || pause) return;
-    const id = requestAnimationFrame(measureOnce);
-    return () => cancelAnimationFrame(id);
-  }, [synthesisVersion, hasSynthesis, hasMapping, pause, measureOnce]);
+    measureRef.current();
+  }, [synthesisVersion, hasSynthesis, hasMapping, pause]);
 
   return { synthRef, mapRef, shorterHeight, shorterSection };
 };
@@ -215,14 +214,12 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
   onSetMappingTab,
   children,
 }) => {
-  const mapProseRef = useRef<HTMLDivElement>(null);
-  const optionsProseRef = useRef<HTMLDivElement>(null);
-
-  // Track which section is manually expanded (if truncated)
   const setSynthExpanded = onSetSynthExpanded || (() => {});
   const setMapExpanded = onSetMapExpanded || (() => {});
 
-  // ✅ CRITICAL: Move all hooks to top level (before any conditional logic)
+  // --- REFS REMOVED HERE ---
+  // We do NOT define mapRef/synthRef manually here anymore.
+  // They come from useShorterHeight below.
 
   const synthesisResponses = useMemo(() => {
     if (!aiTurn.synthesisResponses) aiTurn.synthesisResponses = {};
@@ -261,24 +258,20 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               updatedAt: typedResponse.updatedAt || Date.now(),
             } as ProviderResponse;
           }
-        },
+        }
       );
     }
     return sources;
   }, [aiTurn.batchResponses, aiTurn.hiddenBatchOutputs]);
 
   const hasSources = Object.keys(allSources).length > 0;
-
   const providerIds = useMemo(
     () => LLM_PROVIDERS_CONFIG.map((p) => String(p.id)),
-    [],
+    []
   );
 
   const computeActiveProvider = useCallback(
-    (
-      explicit: string | undefined,
-      map: Record<string, ProviderResponse[]>,
-    ): string | undefined => {
+    (explicit: string | undefined, map: Record<string, ProviderResponse[]>) => {
       if (explicit) return explicit;
       for (const pid of providerIds) {
         const arr = map[pid];
@@ -286,16 +279,16 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
       }
       return undefined;
     },
-    [providerIds],
+    [providerIds]
   );
 
   const activeSynthPid = computeActiveProvider(
     activeSynthesisClipProviderId,
-    synthesisResponses,
+    synthesisResponses
   );
   const activeMappingPid = computeActiveProvider(
     activeMappingClipProviderId,
-    mappingResponses,
+    mappingResponses
   );
 
   const isSynthesisTarget = !!(
@@ -313,11 +306,10 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
   const getMappingAndOptions = useCallback(
     (take: ProviderResponse | undefined) => {
-      // Swap synthesis parsing to mapping parsing
       if (!take?.text) return { mapping: "", options: null };
       return parseMappingResponse(String(take.text));
     },
-    [],
+    []
   );
 
   const getOptions = useCallback((): string | null => {
@@ -326,6 +318,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
     const { options } = getMappingAndOptions(take);
     return options;
   }, [activeMappingPid, mappingResponses, getMappingAndOptions]);
+
   const displayedMappingTake = useMemo(() => {
     if (!activeMappingPid) return undefined;
     return getLatestResponse(mappingResponses[activeMappingPid]);
@@ -335,6 +328,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
     if (!displayedMappingTake?.text) return "";
     return String(getMappingAndOptions(displayedMappingTake).mapping ?? "");
   }, [displayedMappingTake, getMappingAndOptions]);
+
   const optionsText = useMemo(() => String(getOptions() || ""), [getOptions]);
 
   const hasMapping = !!(activeMappingPid && displayedMappingTake?.text);
@@ -343,21 +337,20 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
     getLatestResponse(synthesisResponses[activeSynthPid])?.text
   );
 
-  // Respect requested features intent (backward-compatible default true)
   const requestedSynth = (aiTurn.meta as any)?.requestedFeatures?.synthesis;
   const requestedMap = (aiTurn.meta as any)?.requestedFeatures?.mapping;
   const wasSynthRequested =
     requestedSynth === undefined ? true : !!requestedSynth;
   const wasMapRequested = requestedMap === undefined ? true : !!requestedMap;
 
+  // --- REFS COME FROM HERE ---
   const { synthRef, mapRef, shorterHeight, shorterSection } = useShorterHeight(
     hasSynthesis,
     hasMapping,
     displayedMappingText,
-    isLive || isLoading,
+    isLive || isLoading
   );
 
-  // Determine if sections are truncated
   const synthTruncated =
     hasSynthesis && hasMapping && shorterHeight && shorterSection === "mapping";
   const mapTruncated =
@@ -366,24 +359,18 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
     shorterHeight &&
     shorterSection === "synthesis";
 
-  // Determine if sections are truncated
-
   const getSectionStyle = (
     section: "synthesis" | "mapping",
-    isExpanded: boolean,
+    isExpanded: boolean
   ): React.CSSProperties => {
     const isTruncated = section === "synthesis" ? synthTruncated : mapTruncated;
     const duringStreaming = isLive || isLoading;
-
     return {
       border: "1px solid #475569",
       borderRadius: 8,
       padding: 12,
-
-      // ✅ CRITICAL FIX: Explicit flex properties
-      flex: "1 1 0%", // Equal flex basis, ignore intrinsic width
-      minWidth: 0, // Allow shrinking below content width
-
+      flex: "1 1 0%",
+      minWidth: 0,
       display: "flex",
       flexDirection: "column",
       minHeight: 150,
@@ -395,135 +382,23 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
     };
   };
 
-  // (DOM version: no hrefs)
-  const transformCitations = useCallback((text: string) => {
-    if (!text) return "";
-    let t = text;
-    // [[CITE:N]] -> ↗N
-    t = t.replace(/\[\[CITE:(\d+)\]\]/g, (_, num) => `↗${num}`);
-    // [1, 2, 3] -> ↗1 ↗2 ↗3
-    t = t.replace(/\[(\d+(?:\s*,\s*\d+)*)\](?!\()/g, (m, grp) => {
-      const nums = String(grp)
-        .split(/\s*,\s*/)
-        .map((n) => n.trim())
-        .filter(Boolean);
-      return nums.map((n) => `↗${n}`).join(" ");
-    });
-    return t;
-  }, []);
-
-  // DOM-based citation annotation: wrap plain text tokens like "↗N" into
-  // span elements with data attributes so our capture-phase handlers can
-  // delegate clicks without relying on anchors or hrefs.
-  const annotateCitations = useCallback((root: HTMLElement | null) => {
-    if (!root) return;
-    const rx = /↗(\d+)/g;
-    // Use a TreeWalker to process only text nodes; skip any content already annotated
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    const replacements: Array<{ node: Text; parts: (string | HTMLElement)[] }> =
-      [];
-    let node: Node | null = walker.nextNode();
-    while (node) {
-      const textNode = node as Text;
-      const parentEl = textNode.parentElement;
-      // Skip if inside an anchor or already annotated citation element
-      if (
-        parentEl &&
-        (parentEl.closest('a[href^="citation:"]') ||
-          parentEl.closest("[data-citation-number]") ||
-          parentEl.closest("[data-citation]"))
-      ) {
-        node = walker.nextNode();
-        continue;
-      }
-      const value = textNode.nodeValue || "";
-      let match: RegExpExecArray | null;
-      rx.lastIndex = 0;
-      let lastIdx = 0;
-      const parts: (string | HTMLElement)[] = [];
-      while ((match = rx.exec(value)) !== null) {
-        const start = match.index;
-        const end = start + match[0].length;
-        const num = parseInt(match[1], 10);
-        if (start > lastIdx) parts.push(value.slice(lastIdx, start));
-        const span = document.createElement("span");
-        span.setAttribute("data-citation-number", String(num));
-        span.setAttribute("role", "button");
-        span.setAttribute("tabindex", "0");
-        span.textContent = `↗${isNaN(num) ? "" : num}`;
-        // lightweight visual styling to match badge without breaking text selection
-        span.style.display = "inline-flex";
-        span.style.alignItems = "center";
-        span.style.gap = "6px";
-        span.style.padding = "0 4px";
-        span.style.marginLeft = "4px";
-        span.style.marginRight = "4px";
-        span.style.background = "#1f2937";
-        span.style.border = "1px solid #374151";
-        span.style.borderRadius = "6px";
-        span.style.color = "#93c5fd";
-        span.style.fontSize = "12px";
-        span.style.lineHeight = "1.4";
-        parts.push(span);
-        lastIdx = end;
-      }
-      if (parts.length > 0) {
-        if (lastIdx < value.length) parts.push(value.slice(lastIdx));
-        replacements.push({ node: textNode, parts });
-      }
-      node = walker.nextNode();
-    }
-    replacements.forEach(({ node, parts }) => {
-      const frag = document.createDocumentFragment();
-      parts.forEach((p) => {
-        if (typeof p === "string") frag.appendChild(document.createTextNode(p));
-        else frag.appendChild(p);
-      });
-      try {
-        if ((node as any).isConnected && node.parentNode) {
-          node.parentNode.replaceChild(frag, node);
-        }
-      } catch (err) {
-        console.warn("[AiTurnBlock] annotateCitations replace failed", err);
-      }
-    });
-  }, []);
-
-  // After Markdown renders, annotate citations with span[data-citation-number]
-  useEffect(() => {
-    try {
-      annotateCitations(mapProseRef.current!);
-    } catch {}
-  }, [annotateCitations, displayedMappingText, activeMappingPid, mappingTab]);
-  useEffect(() => {
-    try {
-      annotateCitations(optionsProseRef.current!);
-    } catch {}
-  }, [annotateCitations, optionsText, activeMappingPid, mappingTab]);
-
+  // --- 1. DEFINITION: Citation Click Logic (First) ---
   const handleCitationClick = useCallback(
     (modelNumber: number) => {
       try {
-        // Ensure sources are visible when clicking a citation
-        if (!showSourceOutputs) {
-          onToggleSourceOutputs?.();
-        }
+        if (!showSourceOutputs) onToggleSourceOutputs?.();
 
-        // Prefer mapping meta citationSourceOrder if present
         const take = activeMappingPid
           ? getLatestResponse(mappingResponses[activeMappingPid])
           : undefined;
         const metaOrder = (take as any)?.meta?.citationSourceOrder || null;
-
         let providerId: string | undefined;
         if (metaOrder && typeof metaOrder === "object") {
           providerId = metaOrder[modelNumber];
         }
-        // Fallback: use the stable UI provider order, filtered to only those with outputs,
-        // so 1→first active provider, 2→second, etc. This matches the user's expectation.
         if (!providerId) {
           const activeOrdered = LLM_PROVIDERS_CONFIG.map((p) =>
-            String(p.id),
+            String(p.id)
           ).filter((pid) => !!(aiTurn.batchResponses || {})[pid]);
           providerId = activeOrdered[modelNumber - 1];
         }
@@ -547,458 +422,87 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
       onToggleSourceOutputs,
       aiTurn.id,
       aiTurn.batchResponses,
-    ],
+    ]
   );
 
-  // Capture-phase DOM interception for any <a href="citation://N"> clicks that might
-  // slip through ReactMarkdown or browser defaults. This mirrors the composer path's
-  // DOM-based navigation approach so we always scroll in-place rather than opening a new tab.
-  const interceptCitationAnchorClick = useCallback(
-    (e: React.MouseEvent) => {
-      try {
-        const target = e.target as HTMLElement | null;
-        const anchor = target
-          ? (target.closest('a[href^="citation:"]') as HTMLAnchorElement | null)
-          : null;
-        const citeEl = target
-          ? (target.closest(
-              "[data-citation-number], [data-citation]",
-            ) as HTMLElement | null)
-          : null;
-        if (anchor || citeEl) {
-          e.preventDefault();
-          e.stopPropagation();
-          let num = NaN;
-          if (anchor) {
-            const href = anchor.getAttribute("href") || "";
-            const numMatch = href.match(/(\d+)/);
-            num = numMatch ? parseInt(numMatch[1], 10) : NaN;
-          } else if (citeEl) {
-            const raw =
-              citeEl.getAttribute("data-citation-number") ||
-              citeEl.getAttribute("data-citation") ||
-              "";
-            const numMatch = raw.match(/(\d+)/);
-            num = numMatch ? parseInt(numMatch[1], 10) : NaN;
-          }
-          if (!isNaN(num)) {
-            handleCitationClick(num);
-          }
-        }
-      } catch (err) {
-        console.warn("[AiTurnBlock] interceptCitationAnchorClick error", err);
-      }
-    },
-    [handleCitationClick],
-  );
+  // --- 2. DEFINITION: Custom Markdown Components (Depends on 1) ---
+  const markdownComponents = useMemo(
+    () => ({
+    a: ({ href, children, ...props }: any) => {
+      // Check for our specific hash pattern
+      if (href && href.startsWith("#cite-")) {
+        const idStr = href.replace("#cite-", "");
+        const num = parseInt(idStr, 10);
 
-  // Also intercept middle/aux clicks and Ctrl/Cmd+Click, which browsers treat as "open in new tab"
-  const interceptCitationMouseDownCapture = useCallback(
-    (e: React.MouseEvent) => {
-      try {
-        const target = e.target as HTMLElement | null;
-        const anchor = target
-          ? (target.closest('a[href^="citation:"]') as HTMLAnchorElement | null)
-          : null;
-        const citeEl = target
-          ? (target.closest(
-              "[data-citation-number], [data-citation]",
-            ) as HTMLElement | null)
-          : null;
-        if (!anchor && !citeEl) return;
-        const isAux = (e as any).button && (e as any).button !== 0;
-        const isModifier = e.ctrlKey || (e as any).metaKey;
-        if (isAux || isModifier) {
-          e.preventDefault();
-          e.stopPropagation();
-          let num = NaN;
-          if (anchor) {
-            const href = anchor.getAttribute("href") || "";
-            const numMatch = href.match(/(\d+)/);
-            num = numMatch ? parseInt(numMatch[1], 10) : NaN;
-          } else if (citeEl) {
-            const raw =
-              citeEl.getAttribute("data-citation-number") ||
-              citeEl.getAttribute("data-citation") ||
-              "";
-            const numMatch = raw.match(/(\d+)/);
-            num = numMatch ? parseInt(numMatch[1], 10) : NaN;
-          }
-          if (!isNaN(num)) handleCitationClick(num);
-        }
-      } catch (err) {
-        console.warn(
-          "[AiTurnBlock] interceptCitationMouseDownCapture error",
-          err,
+        return (
+          <button
+            type="button"
+              className="citation-pill" // Ensure this class is in your CSS
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleCitationClick(num);
+            }}
+            title={`View Source ${idStr}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "0 6px",
+              margin: "0 2px",
+              backgroundColor: "#2563eb",
+              border: "1px solid #1d4ed8",
+              borderRadius: "9999px",
+              color: "#ffffff",
+              fontSize: "12px",
+              fontWeight: "700",
+              lineHeight: "1.4",
+              cursor: "pointer",
+              textDecoration: "none",
+            }}
+          >
+            {children}
+          </button>
         );
       }
-    },
-    [handleCitationClick],
-  );
 
-  // Intercept pointer down too (some environments dispatch pointer events before mouse/click)
-  const interceptCitationPointerDownCapture = useCallback(
-    (e: React.PointerEvent) => {
-      try {
-        const target = e.target as HTMLElement | null;
-        const anchor = target
-          ? (target.closest('a[href^="citation:"]') as HTMLAnchorElement | null)
-          : null;
-        const citeEl = target
-          ? (target.closest(
-              "[data-citation-number], [data-citation]",
-            ) as HTMLElement | null)
-          : null;
-        if (!anchor && !citeEl) return;
-        const isAux = e.button !== 0;
-        const isModifier = e.ctrlKey || (e as any).metaKey;
-        if (isAux || isModifier) {
-          e.preventDefault();
-          e.stopPropagation();
-          let num = NaN;
-          if (anchor) {
-            const href = anchor.getAttribute("href") || "";
-            const numMatch = href.match(/(\d+)/);
-            num = numMatch ? parseInt(numMatch[1], 10) : NaN;
-          } else if (citeEl) {
-            const raw =
-              citeEl.getAttribute("data-citation-number") ||
-              citeEl.getAttribute("data-citation") ||
-              "";
-            const numMatch = raw.match(/(\d+)/);
-            num = numMatch ? parseInt(numMatch[1], 10) : NaN;
-          }
-          if (!isNaN(num)) handleCitationClick(num);
-        }
-      } catch (err) {
-        console.warn(
-          "[AiTurnBlock] interceptCitationPointerDownCapture error",
-          err,
-        );
-      }
-    },
-    [handleCitationClick],
-  );
-
-  // Intercept mouseup similar to composer badge to block finalization of native click/tab behaviors
-  const interceptCitationMouseUpCapture = useCallback(
-    (e: React.MouseEvent) => {
-      try {
-        const target = e.target as HTMLElement | null;
-        const anchor = target
-          ? (target.closest('a[href^="citation:"]') as HTMLAnchorElement | null)
-          : null;
-        const citeEl = target
-          ? (target.closest(
-              "[data-citation-number], [data-citation]",
-            ) as HTMLElement | null)
-          : null;
-        if (!anchor && !citeEl) return;
-        e.preventDefault();
-        e.stopPropagation();
-        let num = NaN;
-        if (anchor) {
-          const href = anchor.getAttribute("href") || "";
-          const numMatch = href.match(/(\d+)/);
-          num = numMatch ? parseInt(numMatch[1], 10) : NaN;
-        } else if (citeEl) {
-          const raw =
-            citeEl.getAttribute("data-citation-number") ||
-            citeEl.getAttribute("data-citation") ||
-            "";
-          const numMatch = raw.match(/(\d+)/);
-          num = numMatch ? parseInt(numMatch[1], 10) : NaN;
-        }
-        if (!isNaN(num)) handleCitationClick(num);
-      } catch (err) {
-        console.warn(
-          "[AiTurnBlock] interceptCitationMouseUpCapture error",
-          err,
-        );
-      }
-    },
-    [handleCitationClick],
-  );
-
-  // Explicitly intercept auxclick (middle click) to prevent new-tab navigation
-  const interceptCitationAuxClickCapture = useCallback(
-    (e: React.MouseEvent) => {
-      try {
-        const target = e.target as HTMLElement | null;
-        const anchor = target
-          ? (target.closest('a[href^="citation:"]') as HTMLAnchorElement | null)
-          : null;
-        if (!anchor) return;
-        const isAux = (e as any).button && (e as any).button !== 0;
-        if (isAux) {
-          e.preventDefault();
-          e.stopPropagation();
-          const href = anchor.getAttribute("href") || "";
-          const numMatch = href.match(/(\d+)/);
-          const num = numMatch ? parseInt(numMatch[1], 10) : NaN;
-          if (!isNaN(num)) handleCitationClick(num);
-        }
-      } catch (err) {
-        console.warn(
-          "[AiTurnBlock] interceptCitationAuxClickCapture error",
-          err,
-        );
-      }
-    },
-    [handleCitationClick],
-  );
-
-  useCitationEvents(handleCitationClick);
-
-  const CitationLink: React.FC<any> = ({ href, children, ...props }) => {
-    const isCitation = typeof href === "string" && href.startsWith("citation:");
-
-    if (!isCitation) {
+      // Normal links behave normally
       return (
-        <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+        <a href={href} {...props} target="_blank" rel="noopener noreferrer">
           {children}
         </a>
       );
-    }
+    },
+    }),
+    [handleCitationClick]
+  );
 
-    const numMatch = String(href).match(/(\d+)/);
-    const modelNumber = numMatch ? parseInt(numMatch[1], 10) : NaN;
+  // --- 3. DEFINITION: Transformation Logic (Uses Hash Strategy) ---
+  const transformCitations = useCallback((text: string) => {
+    if (!text) return "";
+    let t = text;
 
-    return (
-      <span
-        className="citation-badge"
-        role="button"
-        tabIndex={0}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleCitationClick(modelNumber);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            handleCitationClick(modelNumber);
-          }
-        }}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "2px 10px",
-          marginLeft: 6,
-          marginRight: 6,
-          background: "#2563eb", // solid blue
-          border: "1px solid #1d4ed8",
-          borderRadius: 9999, // pill
-          color: "#ffffff",
-          fontSize: 12,
-          fontWeight: 700,
-          cursor: "pointer",
-          transition: "opacity 0.2s ease",
-          userSelect: "none",
-          lineHeight: 1.4,
-          boxShadow: "0 0 0 1px rgba(29,78,216,0.6)",
-        }}
-        title={`Jump to Model ${modelNumber}`}
-      >
-        {children}
-      </span>
-    );
-  };
+    // A. [[CITE:N]] -> [↗N](#cite-N)
+    t = t.replace(/\[\[CITE:(\d+)\]\]/g, "[↗$1](#cite-$1)");
 
-  // DOM version: aggressively replace any rendered <a href="citation://N"> inside the mapping box
-  // with real <button> elements that call handleCitationClick(N). This avoids relying on
-  // ReactMarkdown's anchor overrides and guarantees no browser navigation.
-  useEffect(() => {
-    const m = mapRef.current;
-    if (!m) return;
-
-    let rafId: number | null = null;
-    const created: Array<{
-      btn: HTMLButtonElement;
-      handler: (e: MouseEvent) => void;
-    }> = [];
-
-    rafId = requestAnimationFrame(() => {
-      const anchors = Array.from(
-        m.querySelectorAll('a[href^="citation:"]'),
-      ) as HTMLAnchorElement[];
-      anchors.forEach((a) => {
-        if (!(a && a.isConnected && a.ownerDocument === document)) return;
-        const href = a.getAttribute("href") || "";
-        const numMatch = href.match(/(\d+)/);
-        const num = numMatch ? parseInt(numMatch[1], 10) : NaN;
-        const label = a.textContent || (isNaN(num) ? "↗" : `↗${num}`);
-
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.setAttribute("data-citation", String(num));
-        btn.setAttribute(
-          "aria-label",
-          isNaN(num) ? "Citation" : `Citation ${num}`,
-        );
-        btn.textContent = label;
-        btn.style.display = "inline-flex";
-        btn.style.alignItems = "center";
-        btn.style.gap = "6px";
-        btn.style.padding = "2px 10px";
-        btn.style.marginLeft = "6px";
-        btn.style.marginRight = "6px";
-        btn.style.background = "#2563eb";
-        btn.style.border = "1px solid #1d4ed8";
-        btn.style.borderRadius = "9999px";
-        btn.style.color = "#ffffff";
-        btn.style.fontSize = "12px";
-        btn.style.fontWeight = "700";
-        btn.style.cursor = "pointer";
-        btn.style.userSelect = "none";
-        btn.style.lineHeight = "1.4";
-        btn.style.boxShadow = "0 0 0 1px rgba(29,78,216,0.6)";
-
-        const handler = (e: MouseEvent) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (!isNaN(num)) handleCitationClick(num);
-        };
-        btn.addEventListener("click", handler, { capture: true });
-        created.push({ btn, handler });
-
-        try {
-          if (a.isConnected && a.parentNode) {
-            a.replaceWith(btn);
-          }
-        } catch (err) {
-          console.warn("[AiTurnBlock] replace citation anchor failed", err);
-        }
-      });
+    // B. [1], [1, 2] -> [↗1](#cite-1) [↗2](#cite-2)
+    // FIX: Added closing parenthesis to lookahead: (?!\()
+    t = t.replace(/\[(\d+(?:\s*,\s*\d+)*)\](?!\()/g, (_m, grp) => {
+      const nums = String(grp)
+        .split(/\s*,\s*/)
+        .map((n) => n.trim())
+        .filter(Boolean);
+      return " " + nums.map((n) => `[↗${n}](#cite-${n})`).join(" ") + " ";
     });
 
-    return () => {
-      if (rafId !== null) {
-        try {
-          cancelAnimationFrame(rafId);
-        } catch {}
-      }
-      created.forEach(({ btn, handler }) => {
-        try {
-          btn.removeEventListener("click", handler, { capture: true } as any);
-        } catch {}
-      });
-    };
-  }, [mapRef, displayedMappingText, activeMappingPid]);
+    return t;
+  }, []);
 
-  // DOM version: wrap plain text tokens "↗N" into clickable buttons inside the mapping box
-  useEffect(() => {
-    const root = mapRef.current;
-    if (!root) return;
-
-    let rafId: number | null = null;
-    const created: Array<{
-      btn: HTMLButtonElement;
-      handler: (e: MouseEvent) => void;
-    }> = [];
-    const rx = /↗(\d+)/g;
-
-    const makeBtn = (num: number, label?: string) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.setAttribute("data-citation", String(num));
-      btn.setAttribute("aria-label", `Citation ${num}`);
-      btn.textContent = label || `↗${num}`;
-      btn.style.display = "inline-flex";
-      btn.style.alignItems = "center";
-      btn.style.gap = "6px";
-      btn.style.padding = "2px 10px";
-      btn.style.marginLeft = "6px";
-      btn.style.marginRight = "6px";
-      btn.style.background = "#2563eb";
-      btn.style.border = "1px solid #1d4ed8";
-      btn.style.borderRadius = "9999px";
-      btn.style.color = "#ffffff";
-      btn.style.fontSize = "12px";
-      btn.style.fontWeight = "700";
-      btn.style.cursor = "pointer";
-      btn.style.userSelect = "none";
-      btn.style.lineHeight = "1.4";
-      btn.style.boxShadow = "0 0 0 1px rgba(29,78,216,0.6)";
-      const handler = (e: MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!isNaN(num)) handleCitationClick(num);
-      };
-      btn.addEventListener("click", handler, { capture: true });
-      created.push({ btn, handler });
-      return btn;
-    };
-
-    rafId = requestAnimationFrame(() => {
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-      const toReplace: Array<{
-        node: Text;
-        parts: (string | HTMLButtonElement)[];
-      }> = [];
-      let node: Node | null = walker.nextNode();
-      while (node) {
-        const textNode = node as Text;
-        if (!(textNode && (textNode as any).isConnected)) {
-          node = walker.nextNode();
-          continue;
-        }
-        const value = textNode.nodeValue || "";
-        let match: RegExpExecArray | null;
-        rx.lastIndex = 0;
-        let lastIdx = 0;
-        const parts: (string | HTMLButtonElement)[] = [];
-        while ((match = rx.exec(value)) !== null) {
-          const start = match.index;
-          const end = start + match[0].length;
-          const num = parseInt(match[1], 10);
-          if (start > lastIdx) parts.push(value.slice(lastIdx, start));
-          parts.push(makeBtn(num));
-          lastIdx = end;
-        }
-        if (parts.length > 0) {
-          if (lastIdx < value.length) parts.push(value.slice(lastIdx));
-          toReplace.push({ node: textNode, parts });
-        }
-        node = walker.nextNode();
-      }
-
-      toReplace.forEach(({ node, parts }) => {
-        const frag = document.createDocumentFragment();
-        parts.forEach((p) => {
-          if (typeof p === "string")
-            frag.appendChild(document.createTextNode(p));
-          else frag.appendChild(p);
-        });
-        try {
-          if ((node as any).isConnected && node.parentNode) {
-            node.parentNode.replaceChild(frag, node);
-          }
-        } catch (err) {
-          console.warn("[AiTurnBlock] replace citation token failed", err);
-        }
-      });
-    });
-
-    return () => {
-      if (rafId !== null) {
-        try {
-          cancelAnimationFrame(rafId);
-        } catch {}
-      }
-      created.forEach(({ btn, handler }) => {
-        try {
-          btn.removeEventListener("click", handler, { capture: true } as any);
-        } catch {}
-      });
-    };
-  }, [mapRef, displayedMappingText]);
-
-  const userPrompt: string | null = ((): string | null => {
-    const maybe = aiTurn as any;
-    return maybe?.userPrompt ?? maybe?.prompt ?? maybe?.input ?? null;
-  })();
+  const userPrompt: string | null =
+    (aiTurn as any)?.userPrompt ??
+    (aiTurn as any)?.prompt ??
+    (aiTurn as any)?.input ??
+    null;
 
   return (
     <div
@@ -1115,18 +619,14 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                         padding: 12,
                         paddingBottom: 18,
                         flex: 1,
-                        minWidth: 0, // ← NEW
-                        wordBreak: "break-word", // ← NEW
-                        overflowWrap: "break-word", // ← NEW
+                        minWidth: 0,
+                        wordBreak: "break-word",
+                        overflowWrap: "break-word",
                         overflowY: isLive || isLoading ? "auto" : "visible",
                         maxHeight: isLive || isLoading ? "40vh" : "none",
                         minHeight: 0,
                       }}
-                      onClickCapture={interceptCitationAnchorClick}
-                      onMouseDownCapture={interceptCitationMouseDownCapture}
-                      onPointerDownCapture={interceptCitationPointerDownCapture}
-                      onMouseUpCapture={interceptCitationMouseUpCapture}
-                      onAuxClickCapture={interceptCitationAuxClickCapture}
+                      // Scroll Props Only - Navigation handled by annotated buttons
                       onWheelCapture={(e: React.WheelEvent<HTMLDivElement>) => {
                         const el = e.currentTarget;
                         const dy = e.deltaY ?? 0;
@@ -1148,7 +648,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                         }
                       }}
                       onTouchStartCapture={(
-                        e: React.TouchEvent<HTMLDivElement>,
+                        e: React.TouchEvent<HTMLDivElement>
                       ) => {
                         e.stopPropagation();
                       }}
@@ -1163,8 +663,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                       }}
                     >
                       {(() => {
-                        // If synthesis was not requested for this turn, show a clear placeholder
-                        if (!wasSynthRequested) {
+                        if (!wasSynthRequested)
                           return (
                             <div
                               style={{
@@ -1176,10 +675,9 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                               Synthesis not enabled for this turn.
                             </div>
                           );
-                        }
                         const latest = activeSynthPid
                           ? getLatestResponse(
-                              synthesisResponses[activeSynthPid],
+                              synthesisResponses[activeSynthPid]
                             )
                           : undefined;
                         const isGenerating =
@@ -1187,7 +685,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                             (latest.status === "streaming" ||
                               latest.status === "pending")) ||
                           isSynthesisTarget;
-                        if (isGenerating) {
+                        if (isGenerating)
                           return (
                             <div
                               style={{
@@ -1204,16 +702,11 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                               <span className="streaming-dots" />
                             </div>
                           );
-                        }
                         if (activeSynthPid) {
                           const take = getLatestResponse(
-                            synthesisResponses[activeSynthPid],
-                            // Error rendering for synthesis
+                            synthesisResponses[activeSynthPid]
                           );
                           if (take && take.status === "error") {
-                            const errText = String(
-                              take.text || "Synthesis failed",
-                            );
                             return (
                               <div
                                 style={{
@@ -1231,28 +724,21 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   className="prose prose-sm max-w-none dark:prose-invert"
                                   style={{ lineHeight: 1.7, fontSize: 14 }}
                                 >
-                                  <MarkdownDisplay content={errText} />
+                                  <MarkdownDisplay
+                                    content={String(
+                                      take.text || "Synthesis failed"
+                                    )}
+                                  />
                                 </div>
                               </div>
                             );
                           }
-                          if (!take) {
+                          if (!take)
                             return (
                               <div style={{ color: "#64748b" }}>
-                                No synthesis yet for this model.
+                                No synthesis yet.
                               </div>
                             );
-                          }
-                          const handleCopy = async (e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            try {
-                              await navigator.clipboard.writeText(
-                                String(take.text || ""),
-                              );
-                            } catch (err) {
-                              console.error("Copy failed", err);
-                            }
-                          };
                           return (
                             <div>
                               <div
@@ -1269,7 +755,12 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={handleCopy}
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    await navigator.clipboard.writeText(
+                                      String(take.text || "")
+                                    );
+                                  }}
                                   style={{
                                     background: "#334155",
                                     border: "1px solid #475569",
@@ -1287,7 +778,9 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 className="prose prose-sm max-w-none dark:prose-invert"
                                 style={{ lineHeight: 1.7, fontSize: 16 }}
                               >
-                                <MarkdownDisplay content={String(take.text || "")} />
+                                <MarkdownDisplay
+                                  content={String(take.text || "")}
+                                />
                               </div>
                             </div>
                           );
@@ -1303,13 +796,11 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                               fontStyle: "italic",
                             }}
                           >
-                            Choose a model to synthesize.
+                            Choose a model.
                           </div>
                         );
                       })()}
                     </div>
-
-                    {/* Expand button for truncated content */}
                     {synthTruncated && !synthExpanded && (
                       <>
                         <div
@@ -1324,7 +815,6 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                             borderRadius: "0 0 8px 8px",
                           }}
                         />
-
                         <button
                           type="button"
                           onClick={() => setSynthExpanded(true)}
@@ -1351,7 +841,6 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                         </button>
                       </>
                     )}
-
                     {synthExpanded && synthTruncated && (
                       <button
                         type="button"
@@ -1399,55 +888,15 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                     Decision Map
                   </h4>
                   <div
-                    style={{ display: "flex", alignItems: "center", gap: 4 }}
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
                   >
                     <button
                       type="button"
-                      onClick={() => onSetMappingTab && onSetMappingTab("map")}
-                      title="Decision Map"
-                      style={{
-                        padding: 6,
-                        background:
-                          mappingTab === "map" ? "#334155" : "transparent",
-                        border: "none",
-                        borderRadius: 4,
-                        color: mappingTab === "map" ? "#e2e8f0" : "#64748b",
-                        cursor: "pointer",
-                        fontSize: 16,
-                      }}
-                    >
-                      🗺️
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onSetMappingTab && onSetMappingTab("options")
-                      }
-                      title="All Options"
-                      style={{
-                        padding: "4px 8px",
-                        background:
-                          mappingTab === "options" ? "#334155" : "transparent",
-                        border:
-                          mappingTab === "options"
-                            ? "1px solid #475569"
-                            : "1px solid transparent",
-                        borderRadius: 6,
-                        color: mappingTab === "options" ? "#e2e8f0" : "#94a3b8",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <ListIcon style={{ width: 16, height: 16 }} />
-                    </button>
-                    <button
-                      type="button"
                       onClick={async () => {
-                        // ... ✅ FIX "Copy All" logic here
+                        // Copy All Logic
                         try {
                           const ORDER = [
+                            "gemini-exp",
                             "claude",
                             "gemini-pro",
                             "qwen",
@@ -1458,42 +907,41 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                             LLM_PROVIDERS_CONFIG.map((p) => [
                               String(p.id),
                               p.name,
-                            ]),
+                            ])
                           );
                           const lines: string[] = [];
 
-                          // Synthesis section
+                          // Synthesis
                           ORDER.forEach((pid) => {
                             const take = getLatestResponse(
-                              synthesisResponses[pid] || [],
+                              synthesisResponses[pid] || []
                             );
-                            // ✅ FIXED: Get text from the 'take' object
                             const text = take?.text ? String(take.text) : "";
                             if (text && text.trim().length > 0) {
                               lines.push(
-                                `=== Synthesis • ${nameMap.get(pid) || pid} ===`,
+                                `=== Synthesis • ${nameMap.get(pid) || pid} ===`
                               );
                               lines.push(text.trim());
                               lines.push("\n---\n");
                             }
                           });
 
-                          // Mapping section
+                          // Mapping
                           ORDER.forEach((pid) => {
                             const take = getLatestResponse(
-                              mappingResponses[pid] || [],
+                              mappingResponses[pid] || []
                             );
                             const text = take?.text ? String(take.text) : "";
                             if (text && text.trim().length > 0) {
                               lines.push(
-                                `=== Mapping • ${nameMap.get(pid) || pid} ===`,
+                                `=== Mapping • ${nameMap.get(pid) || pid} ===`
                               );
                               lines.push(text.trim());
                               lines.push("\n---\n");
                             }
                           });
 
-                          // Batch source responses (original providers)
+                          // Sources
                           ORDER.forEach((pid) => {
                             const source = allSources[pid];
                             const text = source?.text
@@ -1532,7 +980,6 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                         width: 1,
                         height: 16,
                         background: "#475569",
-                        margin: "0 4px",
                       }}
                     />
                     <button
@@ -1568,7 +1015,6 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                       minHeight: 0,
                     }}
                   >
-                    {mappingTab === "map" && (
                       <ClipsCarousel
                         providers={LLM_PROVIDERS_CONFIG}
                         responsesMap={mappingResponses}
@@ -1576,7 +1022,61 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                         onClipClick={(pid) => onClipClick?.("mapping", pid)}
                         type="mapping"
                       />
-                    )}
+
+                    {/* PILL TABS */}
+                    <div
+                      style={{
+                        display: "flex",
+                        background: "#1e293b",
+                        padding: 3,
+                        borderRadius: 8,
+                        marginTop: 8,
+                        alignSelf: "flex-start",
+                        border: "1px solid #334155",
+                      }}
+                    >
+                      <button
+                        onClick={() =>
+                          onSetMappingTab && onSetMappingTab("map")
+                        }
+                        style={{
+                          padding: "4px 12px",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 500,
+                          background:
+                            mappingTab === "map" ? "#475569" : "transparent",
+                          color: mappingTab === "map" ? "#f8fafc" : "#94a3b8",
+                          border: "none",
+                          cursor: "pointer",
+                          transition: "all 0.2s ease",
+                        }}
+                      >
+                        Decision Map
+                      </button>
+                      <button
+                        onClick={() =>
+                          onSetMappingTab && onSetMappingTab("options")
+                        }
+                        style={{
+                          padding: "4px 12px",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 500,
+                          background:
+                            mappingTab === "options"
+                              ? "#475569"
+                              : "transparent",
+                          color:
+                            mappingTab === "options" ? "#f8fafc" : "#94a3b8",
+                          border: "none",
+                          cursor: "pointer",
+                          transition: "all 0.2s ease",
+                        }}
+                      >
+                        All Options
+                      </button>
+                    </div>
 
                     <div
                       className="clip-content"
@@ -1595,26 +1095,53 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                         maxHeight: isLive || isLoading ? "40vh" : "none",
                         minHeight: 0,
                       }}
-                      onClickCapture={interceptCitationAnchorClick}
-                      onMouseDownCapture={interceptCitationMouseDownCapture}
-                      onPointerDownCapture={interceptCitationPointerDownCapture}
-                      onMouseUpCapture={interceptCitationMouseUpCapture}
-                      onAuxClickCapture={interceptCitationAuxClickCapture}
+                      // Scroll Props Only
+                      onWheelCapture={(e: React.WheelEvent<HTMLDivElement>) => {
+                        const el = e.currentTarget;
+                        const dy = e.deltaY ?? 0;
+                        const canDown =
+                          el.scrollTop + el.clientHeight < el.scrollHeight;
+                        const canUp = el.scrollTop > 0;
+                        if ((dy > 0 && canDown) || (dy < 0 && canUp)) {
+                          e.stopPropagation();
+                        }
+                      }}
+                      onWheel={(e: React.WheelEvent<HTMLDivElement>) => {
+                        const el = e.currentTarget;
+                        const dy = e.deltaY ?? 0;
+                        const canDown =
+                          el.scrollTop + el.clientHeight < el.scrollHeight;
+                        const canUp = el.scrollTop > 0;
+                        if ((dy > 0 && canDown) || (dy < 0 && canUp)) {
+                          e.stopPropagation();
+                        }
+                      }}
+                      onTouchStartCapture={(
+                        e: React.TouchEvent<HTMLDivElement>
+                      ) => {
+                        e.stopPropagation();
+                      }}
+                      onTouchMove={(e: React.TouchEvent<HTMLDivElement>) => {
+                        const el = e.currentTarget;
+                        const canDown =
+                          el.scrollTop + el.clientHeight < el.scrollHeight;
+                        const canUp = el.scrollTop > 0;
+                        if (canDown || canUp) {
+                          e.stopPropagation();
+                        }
+                      }}
                     >
-                      {/* Persistently mounted tab containers to avoid unmount/mount churn */}
                       {(() => {
                         const options = getOptions();
                         const optionsInner = (() => {
-                          if (!options) {
+                          if (!options)
                             return (
                               <div style={{ color: "#64748b" }}>
                                 {!activeMappingPid
-                                  ? "Select a mapping provider to see options."
-                                  : "No options found in the mapping response."}
+                                  ? "Select a mapping provider."
+                                  : "No options found."}
                               </div>
                             );
-                          }
-                          const text = String(options || "");
                           return (
                             <div>
                               <div
@@ -1633,11 +1160,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    try {
-                                      navigator.clipboard.writeText(text);
-                                    } catch (err) {
-                                      console.error("Copy options failed", err);
-                                    }
+                                    navigator.clipboard.writeText(options);
                                   }}
                                   style={{
                                     background: "#334155",
@@ -1653,25 +1176,20 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 </button>
                               </div>
                               <div
-                                ref={optionsProseRef}
                                 className="prose prose-sm max-w-none dark:prose-invert"
                                 style={{ lineHeight: 1.7, fontSize: 14 }}
-                                onClickCapture={interceptCitationAnchorClick}
-                                onMouseDownCapture={
-                                  interceptCitationMouseDownCapture
-                                }
-                                onPointerDownCapture={
-                                  interceptCitationPointerDownCapture
-                                }
                               >
-                                <MarkdownDisplay content={transformCitations(options)} />
+                                <MarkdownDisplay
+                                  content={transformCitations(options)}
+                                  components={markdownComponents}
+                                />
                               </div>
                             </div>
                           );
                         })();
 
                         const mapInner = (() => {
-                          if (!wasMapRequested) {
+                          if (!wasMapRequested)
                             return (
                               <div
                                 style={{
@@ -1680,17 +1198,16 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   textAlign: "center",
                                 }}
                               >
-                                Mapping not enabled for this turn.
+                                Mapping not enabled.
                               </div>
                             );
-                          }
                           const latest = displayedMappingTake;
                           const isGenerating =
                             (latest &&
                               (latest.status === "streaming" ||
                                 latest.status === "pending")) ||
                             isMappingTarget;
-                          if (isGenerating) {
+                          if (isGenerating)
                             return (
                               <div
                                 style={{
@@ -1707,13 +1224,9 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 <span className="streaming-dots" />
                               </div>
                             );
-                          }
                           if (activeMappingPid) {
                             const take = displayedMappingTake;
                             if (take && take.status === "error") {
-                              const errText = String(
-                                take.text || "Mapping failed",
-                              );
                               return (
                                 <div
                                   style={{
@@ -1733,25 +1246,21 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                     className="prose prose-sm max-w-none dark:prose-invert"
                                     style={{ lineHeight: 1.7, fontSize: 14 }}
                                   >
-                                    <MarkdownDisplay content={errText} />
+                                    <MarkdownDisplay
+                                      content={String(
+                                        take.text || "Mapping failed"
+                                      )}
+                                    />
                                   </div>
                                 </div>
                               );
                             }
-                            if (!take) {
+                            if (!take)
                               return (
                                 <div style={{ color: "#64748b" }}>
-                                  No mapping yet for this model.
+                                  No mapping yet.
                                 </div>
                               );
-                            }
-
-                            const handleCopy = async (e: React.MouseEvent) => {
-                              e.stopPropagation();
-                              await navigator.clipboard.writeText(
-                                displayedMappingText,
-                              );
-                            };
                             return (
                               <div>
                                 <div
@@ -1770,7 +1279,12 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   </div>
                                   <button
                                     type="button"
-                                    onClick={handleCopy}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      await navigator.clipboard.writeText(
+                                        displayedMappingText
+                                      );
+                                    }}
                                     style={{
                                       background: "#334155",
                                       border: "1px solid #475569",
@@ -1785,18 +1299,15 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   </button>
                                 </div>
                                 <div
-                                  ref={mapProseRef}
                                   className="prose prose-sm max-w-none dark:prose-invert"
                                   style={{ lineHeight: 1.7, fontSize: 16 }}
-                                  onClickCapture={interceptCitationAnchorClick}
-                                  onMouseDownCapture={
-                                    interceptCitationMouseDownCapture
-                                  }
-                                  onPointerDownCapture={
-                                    interceptCitationPointerDownCapture
-                                  }
                                 >
-                                  <MarkdownDisplay content={transformCitations(displayedMappingText)} />
+                                  <MarkdownDisplay
+                                    content={transformCitations(
+                                      displayedMappingText
+                                    )}
+                                    components={markdownComponents}
+                                  />
                                 </div>
                               </div>
                             );
@@ -1812,7 +1323,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 fontStyle: "italic",
                               }}
                             >
-                              Choose a model to map.
+                              Choose a model.
                             </div>
                           );
                         })();
@@ -1820,44 +1331,26 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                         return (
                           <>
                             <div
-                              data-tab="options"
                               style={{
                                 display:
                                   mappingTab === "options" ? "block" : "none",
                               }}
-                              onClickCapture={interceptCitationAnchorClick}
-                              onMouseDownCapture={
-                                interceptCitationMouseDownCapture
-                              }
-                              onPointerDownCapture={
-                                interceptCitationPointerDownCapture
-                              }
                             >
                               {optionsInner}
                             </div>
                             <div
-                              data-tab="map"
                               style={{
                                 display:
                                   mappingTab === "map" ? "block" : "none",
                               }}
-                              onClickCapture={interceptCitationAnchorClick}
-                              onMouseDownCapture={
-                                interceptCitationMouseDownCapture
-                              }
-                              onPointerDownCapture={
-                                interceptCitationPointerDownCapture
-                              }
                             >
                               {mapInner}
                             </div>
                           </>
                         );
                       })()}
-                      {/* legacy conditional tab rendering removed; using persistent containers above */}
                     </div>
 
-                    {/* Expand/Collapse buttons - your logic here was already correct */}
                     {mapTruncated && !mapExpanded && mappingTab === "map" && (
                       <>
                         <div
@@ -1872,9 +1365,10 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                             borderRadius: "0 0 8px 8px",
                           }}
                         />
-                                              <button
-                                                type="button"
-                                                onClick={() => setMapExpanded(true)}                          style={{
+                        <button
+                          type="button"
+                          onClick={() => setMapExpanded(true)}
+                          style={{
                             position: "absolute",
                             bottom: 12,
                             left: "50%",
@@ -1897,11 +1391,11 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                         </button>
                       </>
                     )}
-
                     {mapExpanded && mapTruncated && (
-                                          <button
-                                            type="button"
-                                            onClick={() => setMapExpanded(false)}                        style={{
+                      <button
+                        type="button"
+                        onClick={() => setMapExpanded(false)}
+                        style={{
                           marginTop: 12,
                           padding: "6px 12px",
                           background: "#334155",
@@ -1925,6 +1419,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               </div>
             </div>
 
+            {/* Sources Section */}
             {hasSources && (
               <div
                 className="batch-filler"
@@ -1939,9 +1434,10 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                     className="sources-toggle"
                     style={{ textAlign: "center", marginBottom: 8 }}
                   >
-                                    <button
-                                      type="button"
-                                      onClick={() => onToggleSourceOutputs?.()}                      style={{
+                    <button
+                      type="button"
+                      onClick={() => onToggleSourceOutputs?.()}
+                      style={{
                         padding: "6px 12px",
                         borderRadius: 8,
                         border: "1px solid #334155",

@@ -153,10 +153,10 @@ Begin.`;
 // Track last seen text per provider/session for delta streaming
 const lastStreamState = new Map();
 
-function makeDelta(sessionId, providerId, fullText = "") {
+function makeDelta(sessionId, stepId, providerId, fullText = "") {
   if (!sessionId) return fullText || "";
 
-  const key = `${sessionId}:${providerId}`;
+  const key = `${sessionId}:${stepId}:${providerId}`;
   const prev = lastStreamState.get(key) || "";
   let delta = "";
 
@@ -323,7 +323,7 @@ export class WorkflowEngine {
     isFinal = false,
   ) {
     try {
-      const delta = makeDelta(sessionId, providerId, text);
+      const delta = makeDelta(sessionId, stepId, providerId, text);
       if (delta && delta.length > 0) {
         const chunk = isFinal
           ? { text: delta, isFinal: true }

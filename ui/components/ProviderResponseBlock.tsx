@@ -6,9 +6,9 @@ import {
   PRIMARY_STREAMING_PROVIDER_IDS,
 } from "../constants";
 import { BotIcon } from "./Icons";
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { ProviderPill } from "./ProviderPill";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { providerContextsAtom } from "../state/atoms";
 import MarkdownDisplay from "./MarkdownDisplay";
 
@@ -31,7 +31,6 @@ interface ProviderResponseBlockProps {
 
 const CopyButton = ({ text, label }: { text: string; label: string }) => {
   const [copied, setCopied] = useState(false);
-
 
   const handleCopy = useCallback(
     async (e: React.MouseEvent) => {
@@ -76,6 +75,44 @@ const ProviderResponseBlock = ({
   sessionId,
 }: ProviderResponseBlockProps) => {
   const providerContexts = useAtomValue(providerContextsAtom);
+  const lastSeenMetaRef = useRef<string>("");
+
+  const setProviderContexts = useSetAtom(providerContextsAtom);
+
+  // Effect to safely update provider contexts
+  useEffect(() => {
+    if (!providerResponses) return;
+
+    Object.keys(providerResponses).forEach((providerId) => {
+      const response = providerResponses[providerId];
+
+      if (!response?.meta) return;
+
+      // Create a stable string representation of the object
+      const metaString = JSON.stringify(response.meta);
+
+      // Only proceed if the string content has actually changed
+      if (metaString !== lastSeenMetaRef.current) {
+        lastSeenMetaRef.current = metaString;
+
+        // Use setTimeout(0) to push the state update to the next tick
+        // This prevents the "Cannot update a component while rendering a different component" React error
+        setTimeout(() => {
+          setProviderContexts((prev) => {
+            // Double check: Is the value currently in state already identical?
+            // If so, return 'prev' to prevent a re-render
+            const currentVal = prev[providerId];
+            if (JSON.stringify(currentVal) === metaString) {
+              return prev;
+            }
+
+            // Otherwise, return new state object
+            return { ...prev, [providerId]: response.meta };
+          });
+        }, 0);
+      }
+    });
+  }, [providerResponses, setProviderContexts]);
 
   // Normalize responses
   const effectiveProviderResponses = providerResponses

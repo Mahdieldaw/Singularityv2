@@ -16,22 +16,8 @@ function languageToExt(lang: string): string {
     case "jsx": return "jsx";
     case "py": case "python": return "py";
     case "json": return "json";
-    case "go": case "golang": return "go";
-    case "java": return "java";
-    case "ruby": case "rb": return "rb";
-    case "bash": case "sh": return "sh";
-    case "markdown": case "md": return "md";
-    case "yaml": case "yml": return "yml";
     case "html": return "html";
     case "css": return "css";
-    case "scss": return "scss";
-    case "c": return "c";
-    case "cpp": case "c++": return "cpp";
-    case "csharp": case "cs": return "cs";
-    case "php": return "php";
-    case "rust": case "rs": return "rs";
-    case "kotlin": case "kt": return "kt";
-    case "swift": return "swift";
     default: return "txt";
   }
 }
@@ -59,7 +45,7 @@ const PreBlock = ({ children }: any) => {
       setTimeout(() => setCopied(false), 1500);
     } catch {}
   }, [codeText]);
-  
+
   const handleDownload = useCallback(() => {
     try {
       const blob = new Blob([codeText], { type: "text/plain;charset=utf-8" });
@@ -75,7 +61,7 @@ const PreBlock = ({ children }: any) => {
 
   return (
     <div style={{ position: "relative", background: "#0b1220", border: "1px solid #334155", borderRadius: 8, margin: "12px 0", overflow: 'hidden' }}>
-      {/* Header / Language Label */}
+      {/* Language Label */}
       {language && (
         <div style={{ position: "absolute", top: 0, left: 0, padding: "2px 8px", fontSize: "10px", textTransform: "uppercase", color: "#94a3b8", background: "rgba(30, 41, 59, 0.5)", borderBottomRightRadius: "4px", pointerEvents: "none", zIndex: 1 }}>
           {language}
@@ -158,6 +144,8 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = ({ content, components =
           
           // Crash Fix: Map paragraphs to divs
           p: ({ children }) => <div style={{ marginBottom: "1em", marginTop: "0.5em" }}>{children}</div>,
+          
+          // Standard Styles
           ul: ({ children }) => <ul style={{ paddingLeft: "20px", marginBottom: "1em", listStyleType: "disc" }}>{children}</ul>,
           ol: ({ children }) => <ol style={{ paddingLeft: "20px", marginBottom: "1em", listStyleType: "decimal" }}>{children}</ol>,
           li: ({ children }) => <li style={{ marginBottom: "0.25em" }}>{children}</li>,
@@ -166,7 +154,7 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = ({ content, components =
           h3: ({children}) => <h3 style={{ fontSize: '1.1em', fontWeight: 'bold', marginTop: '0.5em', marginBottom: '0.5em', color: '#f1f5f9' }}>{children}</h3>,
           blockquote: ({children}) => <blockquote style={{ borderLeft: "4px solid #475569", paddingLeft: "1em", marginLeft: 0, color: "#94a3b8", fontStyle: "italic" }}>{children}</blockquote>,
           
-          // 4. Inject Custom Overrides (like Citation Links)
+          // Allow overrides (e.g. for citations)
           ...components, 
         }}
       >
