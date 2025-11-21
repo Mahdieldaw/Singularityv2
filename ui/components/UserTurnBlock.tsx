@@ -1,9 +1,7 @@
 import { UserTurn } from "../types";
 import { UserIcon, ChevronDownIcon, ChevronUpIcon } from "./Icons";
 import { useState, useCallback } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import CodeBlock from "./CodeBlock";
+import MarkdownDisplay from "./MarkdownDisplay";
 
 const CopyButton = ({
   text,
@@ -146,12 +144,7 @@ const UserTurnBlock = ({
                 marginBottom: "8px",
               }}
             >
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{ code: CodeBlock }}
-              >
-                {String(userTurn.text || "")}
-              </ReactMarkdown>
+              <MarkdownDisplay content={String(userTurn.text || "")} />
             </div>
             <div
               className="user-metadata"

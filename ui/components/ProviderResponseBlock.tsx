@@ -10,9 +10,7 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { ProviderPill } from "./ProviderPill";
 import { useAtomValue } from "jotai";
 import { providerContextsAtom } from "../state/atoms";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import CodeBlock from "./CodeBlock";
+import MarkdownDisplay from "./MarkdownDisplay";
 
 interface ProviderState {
   text: string;
@@ -33,6 +31,7 @@ interface ProviderResponseBlockProps {
 
 const CopyButton = ({ text, label }: { text: string; label: string }) => {
   const [copied, setCopied] = useState(false);
+
 
   const handleCopy = useCallback(
     async (e: React.MouseEvent) => {
@@ -381,105 +380,13 @@ const ProviderResponseBlock = ({
         >
           <div
             className="prose prose-sm max-w-none dark:prose-invert"
-            onClickCapture={(e) => {
-              try {
-                const target = e.target as HTMLElement | null;
-                const anchor = target
-                  ? (target.closest(
-                      'a[href^="citation:"]',
-                    ) as HTMLAnchorElement | null)
-                  : null;
-                if (anchor) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }
-              } catch {}
-            }}
-            onMouseDownCapture={(e) => {
-              try {
-                const target = e.target as HTMLElement | null;
-                const anchor = target
-                  ? (target.closest(
-                      'a[href^="citation:"]',
-                    ) as HTMLAnchorElement | null)
-                  : null;
-                const isAux = (e as any).button && (e as any).button !== 0;
-                const isMod = e.ctrlKey || (e as any).metaKey;
-                if (anchor && (isAux || isMod)) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }
-              } catch {}
-            }}
-            onPointerDownCapture={(e) => {
-              try {
-                const target = e.target as HTMLElement | null;
-                const anchor = target
-                  ? (target.closest(
-                      'a[href^="citation:"]',
-                    ) as HTMLAnchorElement | null)
-                  : null;
-                const isAux = (e as any).button && (e as any).button !== 0;
-                const isMod = e.ctrlKey || (e as any).metaKey;
-                if (anchor && (isAux || isMod)) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }
-              } catch {}
-            }}
             style={{
               fontSize: "13px",
               lineHeight: "1.5",
               color: "#e2e8f0",
             }}
           >
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                a: (props: any) => {
-                  const href = props?.href || "";
-                  const isCitation =
-                    typeof href === "string" && href.startsWith("citation:");
-                  if (!isCitation) {
-                    return (
-                      <a {...props} target="_blank" rel="noopener noreferrer" />
-                    );
-                  }
-                  const numMatch = String(href).match(/(\d+)/);
-                  const num = numMatch ? parseInt(numMatch[1], 10) : NaN;
-                  return (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation(); /* citation handled by AiTurnBlock */
-                      }}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        padding: "2px 8px",
-                        margin: "0 4px",
-                        background: "rgba(30, 64, 175, 0.35)",
-                        border: "1px solid #3b82f6",
-                        borderRadius: 9999,
-                        color: "#bfdbfe",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        userSelect: "none",
-                      }}
-                      title={isNaN(num) ? "Citation" : `Citation ${num}`}
-                    >
-                      {props.children}
-                    </span>
-                  );
-                },
-                code: CodeBlock,
-              }}
-            >
-              {String(displayText || "")}
-            </ReactMarkdown>
+            <MarkdownDisplay content={String(displayText || "")} />
             {isStreaming && <span className="streaming-dots" />}
           </div>
         </div>

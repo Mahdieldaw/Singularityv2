@@ -1,9 +1,7 @@
 // ui/components/AiTurnBlock.tsx - HYBRID COLLAPSIBLE SOLUTION
 import React from "react";
 import { AiTurn, ProviderResponse, AppStep } from "../types";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import CodeBlock from "./CodeBlock";
+import MarkdownDisplay from "./MarkdownDisplay";
 import {
   useMemo,
   useState,
@@ -1233,15 +1231,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   className="prose prose-sm max-w-none dark:prose-invert"
                                   style={{ lineHeight: 1.7, fontSize: 14 }}
                                 >
-                                  <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    components={{
-                                      a: CitationLink,
-                                      code: CodeBlock,
-                                    }}
-                                  >
-                                    {errText}
-                                  </ReactMarkdown>
+                                  <MarkdownDisplay content={errText} />
                                 </div>
                               </div>
                             );
@@ -1297,15 +1287,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 className="prose prose-sm max-w-none dark:prose-invert"
                                 style={{ lineHeight: 1.7, fontSize: 16 }}
                               >
-                                <ReactMarkdown
-                                  remarkPlugins={[remarkGfm]}
-                                  components={{
-                                    a: CitationLink,
-                                    code: CodeBlock,
-                                  }}
-                                >
-                                  {String(take.text || "")}
-                                </ReactMarkdown>
+                                <MarkdownDisplay content={String(take.text || "")} />
                               </div>
                             </div>
                           );
@@ -1682,15 +1664,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   interceptCitationPointerDownCapture
                                 }
                               >
-                                <ReactMarkdown
-                                  remarkPlugins={[remarkGfm]}
-                                  components={{
-                                    a: CitationLink,
-                                    code: CodeBlock,
-                                  }}
-                                >
-                                  {transformCitations(options)}
-                                </ReactMarkdown>
+                                <MarkdownDisplay content={transformCitations(options)} />
                               </div>
                             </div>
                           );
@@ -1759,12 +1733,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                     className="prose prose-sm max-w-none dark:prose-invert"
                                     style={{ lineHeight: 1.7, fontSize: 14 }}
                                   >
-                                    <ReactMarkdown
-                                      remarkPlugins={[remarkGfm]}
-                                      components={{ code: CodeBlock }}
-                                    >
-                                      {errText}
-                                    </ReactMarkdown>
+                                    <MarkdownDisplay content={errText} />
                                   </div>
                                 </div>
                               );
@@ -1827,15 +1796,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                     interceptCitationPointerDownCapture
                                   }
                                 >
-                                  <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    components={{
-                                      a: CitationLink,
-                                      code: CodeBlock,
-                                    }}
-                                  >
-                                    {transformCitations(displayedMappingText)}
-                                  </ReactMarkdown>
+                                  <MarkdownDisplay content={transformCitations(displayedMappingText)} />
                                 </div>
                               </div>
                             );
