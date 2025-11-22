@@ -124,7 +124,7 @@ export class ConnectionHandler {
       ) {
         this.lifecycleManager.recordActivity();
       }
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       this.lifecycleManager?.activateWorkflowMode();
@@ -157,7 +157,7 @@ export class ConnectionHandler {
             sessionId: executeRequest?.sessionId || "unknown",
             error: "Legacy ExecuteWorkflowRequest is no longer supported.",
           });
-        } catch (_) {}
+        } catch (_) { }
         return;
       }
 
@@ -258,8 +258,12 @@ export class ConnectionHandler {
               workflowRequest.context.sessionId || executeRequest.sessionId,
             userTurnId,
             aiTurnId,
+            // ✅ Include actual providers being used so UI doesn't guess from stale state
+            providers: executeRequest.providers || [],
+            synthesisProvider: executeRequest.synthesis?.providers?.[0] || null,
+            mappingProvider: executeRequest.mapping?.providers?.[0] || null,
           });
-        } catch (_) {}
+        } catch (_) { }
 
         try {
           const key = `inflight:${workflowRequest.context.sessionId}:${aiTurnId}`;
@@ -277,7 +281,7 @@ export class ConnectionHandler {
             createdAt: Date.now(),
             updatedAt: Date.now(),
           });
-        } catch (_) {}
+        } catch (_) { }
       }
 
       // NOTE: TURN_CREATED now emits from WorkflowEngine after persistence
@@ -292,7 +296,7 @@ export class ConnectionHandler {
       try {
         const key = `inflight:${workflowRequest.context.sessionId}:${workflowRequest.context.canonicalAiTurnId}`;
         await this.services.sessionManager.adapter.delete("metadata", key);
-      } catch (_) {}
+      } catch (_) { }
     } catch (error) {
       console.error("[ConnectionHandler] Workflow failed:", error);
       try {

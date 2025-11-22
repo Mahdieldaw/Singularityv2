@@ -74,7 +74,7 @@ export class QwenAdapter {
       return {
         providerId: this.id,
         ok: false,
-        text: null,
+        text: aggregatedText || null,
         errorCode,
         latencyMs: Date.now() - startTime,
         meta: {
@@ -151,7 +151,7 @@ export class QwenAdapter {
       return {
         providerId: this.id,
         ok: false,
-        text: null,
+        text: aggregatedText || null,
         errorCode,
         latencyMs: Date.now() - startTime,
         meta: {
@@ -202,7 +202,7 @@ export class QwenAdapter {
         pad(
           `[ProviderAdapter] ASK_COMPLETED provider=${this.id} ok=${res?.ok !== false} textLen=${len}`,
         );
-      } catch (_) {}
+      } catch (_) { }
       return res;
     } catch (e) {
       console.warn(

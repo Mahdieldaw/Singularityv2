@@ -7,6 +7,7 @@
  * Build-phase safe: emitted to dist/adapters/*
  */
 import { BusController } from "../core/vendor-exports.js";
+import { ProviderDNRGate } from "../core/dnr-utils.js";
 // =============================================================================
 // CLAUDE MODELS CONFIGURATION
 // =============================================================================
@@ -86,6 +87,12 @@ export class ClaudeSessionApi {
    * Fetch organization ID for the authenticated user
    */
   async fetchOrgId() {
+    // Ensure DNR rules are active for Claude before fetching orgs
+    try {
+      await ProviderDNRGate.ensureProviderDnrPrereqs("claude");
+    } catch (e) {
+      console.warn("[ClaudeProvider] Failed to ensure DNR prereqs", e);
+    }
     const apiPath = "/api/organizations";
     const response = await this._fetchAuth(apiPath);
     let data = await response.json();
@@ -147,8 +154,15 @@ export class ClaudeSessionApi {
   /**
    * Send prompt to Claude AI and handle streaming response
    */
-  async ask(prompt, options = {}, onChunk = () => {}) {
+  async ask(prompt, options = {}, onChunk = () => { }) {
     let { orgId, chatId, signal, emoji } = options;
+
+    // Ensure DNR rules are active for Claude
+    try {
+      await ProviderDNRGate.ensureProviderDnrPrereqs("claude");
+    } catch (e) {
+      console.warn("[ClaudeProvider] Failed to ensure DNR prereqs", e);
+    }
     // Get or create org ID (lazy, cached)
     if (!orgId) {
       if (!this._orgId) this._orgId = await this.fetchOrgId();
@@ -177,8 +191,6 @@ export class ClaudeSessionApi {
       headers: {
         Accept: "text/event-stream, text/event-stream",
         "Content-Type": "application/json",
-        Origin: "https://claude.ai",
-        Referer: `https://claude.ai/${chatId}`,
       },
       body: JSON.stringify({
         attachments,
@@ -195,7 +207,7 @@ export class ClaudeSessionApi {
       let parsedJson = null;
       try {
         parsedJson = await response.json();
-      } catch {}
+      } catch { }
       const code = parsedJson?.error?.code;
       if (code === "too_many_completions")
         this._throw("tooManyRequests", parsedJson);
@@ -235,6 +247,14 @@ export class ClaudeSessionApi {
       // ✅ Grace period for late error frames
       if (fullText.length > 0) {
         await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+    } catch (err) {
+      // If we have partial text, treat as soft error and return what we have
+      if (fullText.length > 0) {
+        console.warn("[Claude] Stream interrupted but partial text recovered:", err);
+        softError = { error: err };
+      } else {
+        throw err;
       }
     } finally {
       reader.releaseLock();
@@ -370,7 +390,7 @@ export class ClaudeSessionApi {
         let parsedJson = null;
         try {
           parsedJson = await response.json();
-        } catch {}
+        } catch { }
         if (parsedJson?.error?.message === "Invalid model") {
           this._throw("badModel", parsedJson);
         }
@@ -478,7 +498,7 @@ export class ClaudeProviderController {
     return await this.api.ask(
       payload.prompt,
       payload.options || {},
-      payload.onChunk || (() => {}),
+      payload.onChunk || (() => { }),
     );
   }
   async _handleSetTitleRequest(payload) {

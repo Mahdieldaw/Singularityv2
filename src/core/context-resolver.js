@@ -75,16 +75,32 @@ export class ContextResolver {
       normalized[pid] = ctx && ctx.meta ? ctx.meta : ctx;
     }
 
-    const relevantContexts = this._filterContexts(
-      normalized,
-      request.providers || [],
-    );
+    // PERMISSIVE EXTEND LOGIC:
+    // 1. Iterate over requested providers
+    // 2. If forced reset -> New Joiner
+    // 3. If context exists -> Continue
+    // 4. If no context -> New Joiner
+    const resolvedContexts = {};
+    const forcedResetSet = new Set(request.forcedContextReset || []);
+
+    for (const pid of (request.providers || [])) {
+      if (forcedResetSet.has(pid)) {
+        // Case 1: Forced Reset
+        resolvedContexts[pid] = { isNewJoiner: true };
+      } else if (normalized[pid]) {
+        // Case 2: Context Exists -> Continue
+        resolvedContexts[pid] = normalized[pid];
+      } else {
+        // Case 3: No Context -> New Joiner
+        resolvedContexts[pid] = { isNewJoiner: true };
+      }
+    }
 
     return {
       type: "extend",
       sessionId,
       lastTurnId: lastTurn.id,
-      providerContexts: relevantContexts,
+      providerContexts: resolvedContexts,
     };
   }
 

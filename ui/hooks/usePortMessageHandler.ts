@@ -21,6 +21,7 @@ import {
   applyStreamingUpdates,
   createOptimisticAiTurn,
 } from "../utils/turn-helpers";
+import { normalizeProviderId } from "../utils/provider-id-mapper";
 import api from "../services/extension-api";
 import type { TurnMessage, UserTurn, AiTurn, ProviderKey } from "../types";
 import { LLM_PROVIDERS_CONFIG } from "../constants";
@@ -109,7 +110,14 @@ export function usePortMessageHandler() {
         // SESSION_STARTED is deprecated. UI now initializes session from TURN_CREATED.
 
         case "TURN_CREATED": {
-          const { userTurnId, aiTurnId, sessionId: msgSessionId } = message;
+          const {
+            userTurnId,
+            aiTurnId,
+            sessionId: msgSessionId,
+            providers: msgProviders,
+            synthesisProvider: msgSynthesisProvider,
+            mappingProvider: msgMappingProvider
+          } = message;
 
           // Always adopt the backend sessionId for TURN_CREATED
           if (msgSessionId) {
@@ -118,10 +126,14 @@ export function usePortMessageHandler() {
             }
           }
 
-          // Compute active providers at the time of creation
-          const activeProviders = LLM_PROVIDERS_CONFIG.filter(
-            (p) => selectedModels[p.id],
-          ).map((p) => p.id as ProviderKey);
+          // ✅ CRITICAL FIX: Use providers from message (authoritative backend data)
+          // instead of reading from atoms which may be stale
+          const activeProviders = msgProviders && msgProviders.length > 0
+            ? msgProviders
+            : LLM_PROVIDERS_CONFIG.filter((p) => selectedModels[p.id]).map((p) => p.id as ProviderKey);
+
+          const effectiveSynthesisProvider = msgSynthesisProvider || synthesisProvider;
+          const effectiveMappingProvider = msgMappingProvider || mappingProvider;
 
           // Single atomic update to turnsMap ensures we read the latest user turn
           setTurnsMap((draft: Map<string, TurnMessage>) => {
@@ -151,15 +163,15 @@ export function usePortMessageHandler() {
               aiTurnId,
               ensuredUser,
               activeProviders,
-              !!synthesisProvider,
-              !!mappingEnabled && !!mappingProvider,
-              synthesisProvider || undefined,
-              mappingProvider || undefined,
+              !!effectiveSynthesisProvider,
+              !!mappingEnabled && !!effectiveMappingProvider,
+              effectiveSynthesisProvider || undefined,
+              effectiveMappingProvider || undefined,
               Date.now(),
               ensuredUser.id,
               {
-                synthesis: !!synthesisProvider,
-                mapping: !!mappingEnabled && !!mappingProvider,
+                synthesis: !!effectiveSynthesisProvider,
+                mapping: !!mappingEnabled && !!effectiveMappingProvider,
               },
             );
             draft.set(aiTurnId, aiTurn);
@@ -226,6 +238,8 @@ export function usePortMessageHandler() {
                   ...(turn.ai as AiTurn),
                   type: "ai",
                   userTurnId: turn.user?.id || existingAi.userTurnId,
+                  // Merge responses: preserve existing data while accepting backend updates
+                  // This is important for recompute scenarios where only some responses change
                   batchResponses: {
                     ...(existingAi.batchResponses || {}),
                     ...((turn.ai as AiTurn)?.batchResponses || {}),
@@ -301,6 +315,10 @@ export function usePortMessageHandler() {
             (stepType === "synthesis" || stepType === "mapping")
           ) {
             pid = extractProviderFromStepId(stepId, stepType);
+          }
+          // ✅ Normalize provider ID to canonical form
+          if (pid) {
+            pid = normalizeProviderId(pid);
           }
           if (!pid) {
             if (STREAMING_DEBUG_UI) {
@@ -387,7 +405,7 @@ export function usePortMessageHandler() {
           if (status === "completed" || status === "failed") {
             try {
               partialLoggedRef.current.delete(stepId);
-            } catch {}
+            } catch { }
           }
 
           // Do not gate by session; process updates irrespective of UI session state
@@ -416,9 +434,11 @@ export function usePortMessageHandler() {
             const _completedProviders: string[] = [];
             Object.entries(resultsMap).forEach(
               ([providerId, data]: [string, any]) => {
+                // ✅ Normalize provider ID to canonical form
+                const normalizedId = normalizeProviderId(providerId);
                 const targetId = activeAiTurnIdRef.current;
                 if (!targetId) return;
-                _completedProviders.push(providerId);
+                _completedProviders.push(normalizedId);
 
                 setTurnsMap((draft: Map<string, TurnMessage>) => {
                   const existing = draft.get(targetId);
@@ -426,7 +446,7 @@ export function usePortMessageHandler() {
                   const aiTurn = existing as AiTurn;
 
                   const completedEntry = {
-                    providerId,
+                    providerId: normalizedId,
                     text: data?.text || "",
                     status: "completed" as const,
                     createdAt: Date.now(),
@@ -436,9 +456,9 @@ export function usePortMessageHandler() {
 
                   if (stepType === "synthesis") {
                     const arr = Array.isArray(
-                      aiTurn.synthesisResponses?.[providerId],
+                      aiTurn.synthesisResponses?.[normalizedId],
                     )
-                      ? [...(aiTurn.synthesisResponses![providerId] as any[])]
+                      ? [...(aiTurn.synthesisResponses![normalizedId] as any[])]
                       : [];
                     if (arr.length > 0) {
                       arr[arr.length - 1] = {
@@ -450,13 +470,13 @@ export function usePortMessageHandler() {
                     }
                     aiTurn.synthesisResponses = {
                       ...(aiTurn.synthesisResponses || {}),
-                      [providerId]: arr as any,
+                      [normalizedId]: arr as any,
                     };
                   } else if (stepType === "mapping") {
                     const arr = Array.isArray(
-                      aiTurn.mappingResponses?.[providerId],
+                      aiTurn.mappingResponses?.[normalizedId],
                     )
-                      ? [...(aiTurn.mappingResponses![providerId] as any[])]
+                      ? [...(aiTurn.mappingResponses![normalizedId] as any[])]
                       : [];
                     if (arr.length > 0) {
                       arr[arr.length - 1] = {
@@ -468,13 +488,13 @@ export function usePortMessageHandler() {
                     }
                     aiTurn.mappingResponses = {
                       ...(aiTurn.mappingResponses || {}),
-                      [providerId]: arr as any,
+                      [normalizedId]: arr as any,
                     };
                   } else if (stepType === "batch") {
                     aiTurn.batchResponses = {
                       ...(aiTurn.batchResponses || {}),
-                      [providerId]: {
-                        providerId,
+                      [normalizedId]: {
+                        providerId: normalizedId,
                         text: data?.text || "",
                         status: "completed",
                         createdAt: Date.now(),
@@ -490,8 +510,8 @@ export function usePortMessageHandler() {
 
                 if (data?.meta) {
                   setProviderContexts((draft: Record<string, any>) => {
-                    draft[providerId] = {
-                      ...(draft[providerId] || {}),
+                    draft[normalizedId] = {
+                      ...(draft[normalizedId] || {}),
                       ...data.meta,
                     };
                   });
@@ -509,7 +529,7 @@ export function usePortMessageHandler() {
                   );
                 }
               }
-            } catch (_) {}
+            } catch (_) { }
 
             if (message.isRecompute) {
               setActiveRecomputeState(null);
@@ -526,6 +546,10 @@ export function usePortMessageHandler() {
                   (stepType === "synthesis" || stepType === "mapping")
                 ) {
                   providerId = extractProviderFromStepId(stepId, stepType);
+                }
+                // ✅ Normalize provider ID to canonical form
+                if (providerId) {
+                  providerId = normalizeProviderId(providerId);
                 }
                 const targetId =
                   activeRecomputeRef.current?.aiTurnId ||
@@ -544,10 +568,10 @@ export function usePortMessageHandler() {
                         aiTurn.synthesisResponses?.[providerId!],
                       )
                         ? [
-                            ...(aiTurn.synthesisResponses![
-                              providerId!
-                            ] as any[]),
-                          ]
+                          ...(aiTurn.synthesisResponses![
+                            providerId!
+                          ] as any[]),
+                        ]
                         : [];
                       if (arr.length > 0) {
                         const latest = arr[arr.length - 1] as any;

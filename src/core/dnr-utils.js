@@ -169,7 +169,7 @@ export class DNRUtils {
             header: headerName,
             operation:
               chrome.declarativeNetRequest.HeaderOperation[
-                operation.toUpperCase()
+              operation.toUpperCase()
               ],
             value: headerValue,
           },
@@ -565,7 +565,7 @@ export class ProviderDNRGate {
       );
     } catch (error) {
       for (const ruleId of ruleIds) {
-        await DNRUtils.removeRule(ruleId).catch(() => {});
+        await DNRUtils.removeRule(ruleId).catch(() => { });
       }
       throw error;
     }
@@ -593,11 +593,24 @@ export class ProviderDNRGate {
                     chrome.declarativeNetRequest.HeaderOperation.REMOVE,
                 },
               ],
+              requestHeaders: [
+                {
+                  header: "origin",
+                  operation: chrome.declarativeNetRequest.HeaderOperation.SET,
+                  value: "https://claude.ai",
+                },
+                {
+                  header: "referer",
+                  operation: chrome.declarativeNetRequest.HeaderOperation.SET,
+                  value: "https://claude.ai/chats",
+                },
+              ],
             },
             condition: {
               urlFilter: "*://claude.ai/*",
               resourceTypes: [
                 chrome.declarativeNetRequest.ResourceType.SUB_FRAME,
+                chrome.declarativeNetRequest.ResourceType.XMLHTTPREQUEST,
               ],
             },
           },

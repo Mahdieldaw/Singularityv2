@@ -41,7 +41,9 @@ export class PromptRefinerService {
     try {
       const prompt = this._buildRefinerPrompt(draftPrompt, turnContext);
       const modelResponse = await this._callRefinerModel(prompt);
+      console.log("[PromptRefinerService] Raw model response:", JSON.stringify(modelResponse));
       const text = this._extractPlainText(modelResponse?.text || "");
+      console.log("[PromptRefinerService] Extracted text length:", text.length);
       return this._parseRefinerResponse(text);
     } catch (e) {
       console.warn("[PromptRefinerService] Refinement failed:", e);
@@ -154,7 +156,7 @@ Begin your analysis.`;
     if (!adapter) throw new Error("No provider adapter available for refiner");
 
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 15000);
+    const timer = setTimeout(() => ac.abort(), 25000);
 
     try {
       if (typeof adapter.ask === "function") {
@@ -187,23 +189,42 @@ Begin your analysis.`;
   }
 
   private _extractPlainText(text: string): string {
-    let t = String(text || "").trim();
-    t = t.replace(/```[\s\S]*?```/g, "").trim();
-    return t;
+    // Do not strip code blocks - the user might want code in their prompt!
+    return String(text || "").trim();
   }
 
   private _parseRefinerResponse(text: string): RefinerResult | null {
     try {
+      // Relaxed regex to handle bolding (e.g. **REFINED_PROMPT:**) and case insensitivity
       const refinedMatch = text.match(
-        /REFINED_PROMPT:\s*([\s\S]*?)(?=EXPLANATION:|$)/i,
+        /(?:^|\n)\s*(?:\*\*)?REFINED_PROMPT(?:\*\*)?:?\s*([\s\S]*?)(?=(?:^|\n)\s*(?:\*\*)?EXPLANATION(?:\*\*)?:?|$)/i,
       );
-      const explanationMatch = text.match(/EXPLANATION:\s*([\s\S]*?)$/i);
+      const explanationMatch = text.match(
+        /(?:^|\n)\s*(?:\*\*)?EXPLANATION(?:\*\*)?:?\s*([\s\S]*?)$/i,
+      );
 
-      const refinedPrompt = (refinedMatch?.[1] || "").trim();
-      const explanation = (explanationMatch?.[1] || "").trim();
+      let refinedPrompt = (refinedMatch?.[1] || "").trim();
+      let explanation = (explanationMatch?.[1] || "").trim();
+
+      // ULTIMATE FALLBACK: If we have ANY text but failed to parse headers,
+      // assume the model just output the prompt directly.
+      if (!refinedPrompt && text.length > 0) {
+        // If we found an explanation but no prompt, that's weird, but let's try to salvage
+        // whatever isn't the explanation.
+        if (explanation) {
+          refinedPrompt = text.replace(explanationMatch?.[0] || "", "").trim();
+        } else {
+          refinedPrompt = text;
+        }
+
+        if (!explanation) {
+          explanation = "Refined based on context (auto-detected).";
+        }
+      }
 
       if (!refinedPrompt) {
-        console.warn("[PromptRefinerService] Could not parse refined prompt");
+        // Only fail if we truly have NO text at all
+        console.warn("[PromptRefinerService] Empty response from refiner");
         return null;
       }
 
@@ -212,7 +233,14 @@ Begin your analysis.`;
         explanation: explanation || "No changes needed.",
       };
     } catch (e) {
-      console.warn("[PromptRefinerService] Parse failed:", e);
+      console.warn("[PromptRefinerService] Parse failed, using raw text:", e);
+      // Even on error, try to return the raw text if it exists
+      if (text && text.trim().length > 0) {
+        return {
+          refinedPrompt: text,
+          explanation: "Refined based on context (fallback).",
+        };
+      }
       return null;
     }
   }

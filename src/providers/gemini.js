@@ -26,14 +26,14 @@ export const GeminiModels = {
     maxTokens: 9999,
     header: '[1,null,null,null,"61530e79959ab139",null,null,0,[4]]',
   },
-  "gemini-exp": { 
+  "gemini-exp": {
     id: "gemini-exp",
     name: "Gemini 3.0", // or "Experimental"
     description: "Latest experimental capability",
     maxTokens: 9999,
     // Signature from your 1st fetch (9d8ca3786ebdfbea)
     header: '[1,null,null,null,"9d8ca3786ebdfbea",null,null,0,[4]]',
-},
+  },
 };
 // =============================================================================
 // GEMINI ERROR TYPES
@@ -184,46 +184,53 @@ export class GeminiSessionApi {
     }
 
     // Extract payload from parsed lines (only reached if code !== 9 and code !== 7)
-    try {
+    // Strategy: First try to find a chunk with actual text.
+    // If none found, fall back to any chunk that looks like a valid payload (has t[4]),
+    // ignoring simple keep-alives.
+
+    // Pass 1: Look for text
+    for (const L of parsedLines) {
+      const found = L.find((entry) => {
+        try {
+          if (typeof entry[2] !== "string") return false;
+          const t = JSON.parse(entry[2]);
+          const text = t[0]?.[0] || t[4]?.[0]?.[1]?.[0] || "";
+
+          if (text && text.trim().length > 0) {
+            const baseCursor = Array.isArray(t?.[1]) ? t[1] : [];
+            const tail = t?.[4]?.[0]?.[0];
+            const cursor = tail !== undefined ? [...baseCursor, tail] : baseCursor;
+            u = { text, cursor };
+            return true;
+          }
+          return false;
+        } catch (e) { return false; }
+      });
+      if (found) break;
+    }
+
+    // Pass 2: Fallback (if no text found) - look for any valid payload structure
+    if (!u) {
       for (const L of parsedLines) {
         const found = L.find((entry) => {
           try {
-            // Defensive: only parse if entry[2] is a string
-            const raw = entry[2];
-            if (typeof raw !== "string") {
-              return false;
-            }
+            if (typeof entry[2] !== "string") return false;
+            const t = JSON.parse(entry[2]);
 
-            let t;
-            try {
-              t = JSON.parse(raw);
-            } catch (parseErr) {
-              // Skip malformed JSON entries silently
-              p = parseErr;
-              return false;
-            }
+            // Skip keep-alives (no t[4])
+            if (!t[4] || !Array.isArray(t[4])) return false;
 
             const text = t[0]?.[0] || t[4]?.[0]?.[1]?.[0] || "";
             const baseCursor = Array.isArray(t?.[1]) ? t[1] : [];
-            const tail =
-              t && t[4] && Array.isArray(t[4]) && t[4][0] != null
-                ? t[4][0][0]
-                : undefined;
-            const cursor =
-              tail !== undefined ? [...baseCursor, tail] : baseCursor;
+            const tail = t?.[4]?.[0]?.[0];
+            const cursor = tail !== undefined ? [...baseCursor, tail] : baseCursor;
 
-            // Accept payload even with empty text (critical for first-attempt responses)
             u = { text, cursor };
             return true;
-          } catch (err) {
-            p = err;
-            return false;
-          }
+          } catch (e) { return false; }
         });
         if (found) break;
       }
-    } catch (e) {
-      p = e;
     }
 
     if (!u) {

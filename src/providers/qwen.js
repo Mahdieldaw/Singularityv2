@@ -98,7 +98,7 @@ export class QwenSessionApi {
     }
   }
 
-  async ask(prompt, options = {}, onChunk = () => {}) {
+  async ask(prompt, options = {}, onChunk = () => { }) {
     const { sessionId, parentMsgId, signal } = options;
     const csrfToken = await this._fetchCsrfToken();
 
@@ -310,7 +310,7 @@ export class QwenSessionApi {
     } finally {
       try {
         reader.releaseLock();
-      } catch (e) {}
+      } catch (e) { }
     }
 
     return {
@@ -346,6 +346,10 @@ export class QwenSessionApi {
     if (this._logs) {
       console.error("QwenProvider:", ...args);
     }
+  }
+
+  isOwnError(e) {
+    return e instanceof QwenProviderError;
   }
 }
 

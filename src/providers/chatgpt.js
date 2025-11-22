@@ -172,7 +172,7 @@ export class ChatGPTProviderController {
     return await this.api.ask(
       payload.prompt,
       payload.options || {},
-      payload.onChunk || (() => {}),
+      payload.onChunk || (() => { }),
     );
   }
 
@@ -272,7 +272,7 @@ export class ChatGPTSessionApi {
       if (typeof window !== "undefined" && window.htos) return window.htos;
       if (typeof globalThis !== "undefined" && globalThis.htos)
         return globalThis.htos;
-    } catch (e) {}
+    } catch (e) { }
     return null;
   }
 
@@ -288,7 +288,7 @@ export class ChatGPTSessionApi {
       // Final fallback: return the controller object (may be uninitialized)
       if (typeof BusController !== "undefined" && BusController)
         return BusController;
-    } catch (e) {}
+    } catch (e) { }
     return null;
   }
 
@@ -299,7 +299,7 @@ export class ChatGPTSessionApi {
   /**
    * Ask ChatGPT with mandatory Arkose preflight and PoW.
    */
-  async ask(prompt, options = {}, onChunk = () => {}) {
+  async ask(prompt, options = {}, onChunk = () => { }) {
     const dbg = (...args) => {
       if (this._debug) console.debug(...args);
     };
@@ -362,8 +362,7 @@ export class ChatGPTSessionApi {
           } catch (innerError) {
             if (this._debug)
               console.warn(
-                `[ChatGPT Debug] Poll attempt failed, retries left: ${
-                  retries - 1
+                `[ChatGPT Debug] Poll attempt failed, retries left: ${retries - 1
                 }`,
                 innerError,
               );
@@ -431,10 +430,13 @@ export class ChatGPTSessionApi {
     await this._ensureAccessToken();
     const hasToken = !!this._accessToken;
     this._sesLog(
-      `[ChatGPT Session] Access token status: ${
-        hasToken ? "present" : "missing"
+      `[ChatGPT Session] Access token status: ${hasToken ? "present" : "missing"
       }`,
     );
+
+    if (!hasToken) {
+      this._throw("login", "Failed to retrieve access token. Please log in to ChatGPT.");
+    }
 
     // 1) Generate lightweight proof for requirements call
     const reqProof = await this._getRequirementsProofToken();
@@ -552,7 +554,7 @@ export class ChatGPTSessionApi {
       } finally {
         try {
           reader.releaseLock();
-        } catch {}
+        } catch { }
       }
       return { text: aggText, model: selectedModel };
     }
@@ -641,7 +643,7 @@ export class ChatGPTSessionApi {
         });
         return c?.value || undefined;
       }
-    } catch {}
+    } catch { }
     return undefined;
   }
 
@@ -733,7 +735,7 @@ export class ChatGPTSessionApi {
         const u = new URL(s);
         const v = u.searchParams.get(key);
         if (v) return `${key}=${v}`;
-      } catch {}
+      } catch { }
     }
     return null;
   }
@@ -778,8 +780,7 @@ export class ChatGPTSessionApi {
         lastErr = e;
         if (i < retries) {
           this._sesLog(
-            `[ChatGPTSessionApi] Retrying BusController.send ${action} (attempt ${
-              i + 2
+            `[ChatGPTSessionApi] Retrying BusController.send ${action} (attempt ${i + 2
             })`,
           );
         }
@@ -895,11 +896,29 @@ export class ChatGPTSessionApi {
       ? { Authorization: `Bearer ${this._accessToken}` }
       : undefined;
     try {
-      const res = await this.fetch(url, {
+      let res = await this.fetch(url, {
         method: "POST",
         headers,
         body: JSON.stringify(body),
       });
+
+      // Retry on 401 (Token Expired) - critical for forced context resets or long idle times
+      if (res.status === 401) {
+        this._sesLog("[ChatGPT Session] Requirements 401, refreshing token...");
+        this._accessToken = null;
+        await this._ensureAccessToken();
+
+        const newHeaders = this._accessToken
+          ? { Authorization: `Bearer ${this._accessToken}` }
+          : undefined;
+
+        res = await this.fetch(url, {
+          method: "POST",
+          headers: newHeaders,
+          body: JSON.stringify(body),
+        });
+      }
+
       if (!res.ok) {
         throw new ChatGPTProviderError(
           "requirementsFetchFailed",
@@ -908,6 +927,27 @@ export class ChatGPTSessionApi {
       }
       return await res.json();
     } catch (e) {
+      // Catch 'Failed to fetch' which often happens on opaque redirects to login (CORS)
+      if (String(e).includes("Failed to fetch")) {
+        this._sesLog("[ChatGPT Session] Requirements fetch failed (network), attempting token refresh...");
+        this._accessToken = null;
+        await this._ensureAccessToken();
+
+        if (this._accessToken) {
+          try {
+            const newHeaders = { Authorization: `Bearer ${this._accessToken}` };
+            const res = await this.fetch(url, {
+              method: "POST",
+              headers: newHeaders,
+              body: JSON.stringify(body),
+            });
+            if (res.ok) return await res.json();
+          } catch (retryErr) {
+            this._logError("requirements fetch retry failed", retryErr);
+          }
+        }
+      }
+
       this._logError("requirements fetch failed", e);
       if (e instanceof ChatGPTProviderError) {
         throw e;
@@ -1021,8 +1061,7 @@ export class ChatGPTSessionApi {
         const isTimeout = String(e).toLowerCase().includes("timeout");
         throw new ChatGPTProviderError(
           isTimeout ? "powTimeout" : "powGenerationFailed",
-          `Failed to generate PoW token${isTimeout ? " (timeout)" : ""}: ${
-            e.message || e
+          `Failed to generate PoW token${isTimeout ? " (timeout)" : ""}: ${e.message || e
           }`,
         );
       }
@@ -1059,8 +1098,7 @@ export class ChatGPTSessionApi {
         const isTimeout = String(e).toLowerCase().includes("timeout");
         throw new ChatGPTProviderError(
           isTimeout ? "arkoseTimeout" : "arkoseRetrievalFailed",
-          `Failed to retrieve Arkose token${isTimeout ? " (timeout)" : ""}: ${
-            e.message || e
+          `Failed to retrieve Arkose token${isTimeout ? " (timeout)" : ""}: ${e.message || e
           }`,
         );
       }

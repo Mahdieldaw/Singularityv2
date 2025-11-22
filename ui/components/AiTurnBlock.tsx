@@ -19,6 +19,8 @@ import {
 
 // --- Helper Functions ---
 function parseMappingResponse(response?: string | null) {
+  // NOTE: This function is SPECIFICALLY for the "Decision Map" / "Options" split.
+  // It should NOT be used on the Synthesis text, which is pure markdown.
   if (!response) return { mapping: "", options: null };
   const separator = "===ALL_AVAILABLE_OPTIONS===";
   if (response.includes(separator)) {
@@ -42,123 +44,94 @@ function parseMappingResponse(response?: string | null) {
   return { mapping: response, options: null };
 }
 
+/**
+ * Extract Claude artifacts from response text
+ * Artifacts are wrapped in <document> tags with title and identifier attributes
+ */
+function extractClaudeArtifacts(text: string | null | undefined): {
+  cleanText: string;
+  artifacts: Array<{ title: string; identifier: string; content: string }>;
+} {
+  if (!text) return { cleanText: "", artifacts: [] };
+
+  const artifacts: Array<{ title: string; identifier: string; content: string }> = [];
+
+  // Regex to match <document title="..." identifier="...">content</document>
+  const artifactRegex = /<document\s+title="([^"]+)"\s+identifier="([^"]+)"\s*>([\s\S]*?)<\/document>/gi;
+
+  let match;
+  let cleanText = text;
+
+  while ((match = artifactRegex.exec(text)) !== null) {
+    const [fullMatch, title, identifier, content] = match;
+    artifacts.push({
+      title: title || "Untitled Artifact",
+      identifier: identifier || "unknown",
+      content: content.trim(),
+    });
+
+    // Remove artifact from clean text
+    cleanText = cleanText.replace(fullMatch, "");
+  }
+
+  return {
+    cleanText: cleanText.trim(),
+    artifacts,
+  };
+}
+
 // --- Height Measurement Hook (Stabilized) ---
 const useShorterHeight = (
   hasSynthesis: boolean,
   hasMapping: boolean,
-  synthesisVersion: string | number,
+  contentVersion: string | number, // something that changes when either side's text changes
   pause: boolean
 ) => {
   const synthRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
-  const [shorterHeight, setShorterHeight] = useState<number | null>(null);
-  const [shorterSection, setShorterSection] = useState<
-    "synthesis" | "mapping" | null
-  >(null);
-  
-  // Ref to track user interaction to prevent fighting the user scroll
-  const isUserActive = useRef(false);
-  const userActiveTimer = useRef<number | null>(null);
-  
-  // Ref to store the actual measurement function to decouple dependencies
-  const measureRef = useRef<() => void>(() => {});
+  const [state, setState] = useState<{
+    shorterHeight: number | null;
+    shorterSection: "synthesis" | "mapping" | null;
+  }>({ shorterHeight: null, shorterSection: null });
 
-  const measureOnce = useCallback(() => {
+  useLayoutEffect(() => {
     if (pause) return;
+
     const s = synthRef.current;
     const m = mapRef.current;
 
     if (!hasSynthesis || !hasMapping || !s || !m) {
-      if (shorterHeight !== null) setShorterHeight(null);
-      if (shorterSection !== null) setShorterSection(null);
+      setState((prev) =>
+        prev.shorterHeight === null && prev.shorterSection === null
+          ? prev
+          : { shorterHeight: null, shorterSection: null }
+      );
       return;
     }
 
-    if (isUserActive.current) return;
-
     const synthH = s.scrollHeight;
     const mapH = m.scrollHeight;
+    const isSynthShorter = synthH <= mapH;
+    const nextHeight = isSynthShorter ? synthH : mapH;
+    const nextSection = isSynthShorter ? "synthesis" : "mapping";
 
-    // STABILITY FIX 1: Add a buffer. 
-    // If the difference is less than 5px, don't change the active section 
-    // to prevent flip-flopping loops.
-    let isSynthShorter = synthH <= mapH;
-    
-    // If they are nearly identical, stick to the existing section to prevent loop
-    if (Math.abs(synthH - mapH) < 5 && shorterSection) {
-       isSynthShorter = shorterSection === "synthesis";
-    }
-
-    const h = isSynthShorter ? synthH : mapH;
-    const sec = isSynthShorter ? "synthesis" : "mapping";
-
-    // STABILITY FIX 2: Only update state if height difference is significant (>2px)
-    setShorterHeight((prev) => {
-      if (prev === null) return h;
-      return Math.abs(prev - h) > 2 ? h : prev;
+    setState((prev) => {
+      if (
+        prev.shorterHeight === nextHeight &&
+        prev.shorterSection === nextSection
+      ) {
+        return prev; // no change, no re-render
+      }
+      return { shorterHeight: nextHeight, shorterSection: nextSection };
     });
+  }, [contentVersion, hasSynthesis, hasMapping, pause]);
 
-    setShorterSection((prev) => (prev !== sec ? sec : prev));
-  }, [hasSynthesis, hasMapping, pause, shorterHeight, shorterSection]);
-
-  // Keep ref up to date
-  useEffect(() => {
-    measureRef.current = measureOnce;
-  }, [measureOnce]);
-
-  useEffect(() => {
-    const s = synthRef.current;
-    const m = mapRef.current;
-    if (!s || !m) return;
-
-    // STABILITY FIX 3: Debounce the observer slightly
-    let rafId: number;
-    const handleResize = () => {
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => measureRef.current());
-    };
-
-    const ro = new ResizeObserver(handleResize);
-    ro.observe(s);
-    ro.observe(m);
-
-    const markUserActive = () => {
-      isUserActive.current = true;
-      if (userActiveTimer.current !== null)
-        window.clearTimeout(userActiveTimer.current);
-      userActiveTimer.current = window.setTimeout(() => {
-        isUserActive.current = false;
-        userActiveTimer.current = null;
-        handleResize(); // Measure once after user stops
-      }, 300);
-    };
-
-    const events = ["wheel", "touchstart", "pointerdown"];
-    events.forEach((evt) => {
-      s.addEventListener(evt, markUserActive, { passive: true });
-      m.addEventListener(evt, markUserActive, { passive: true });
-    });
-
-    // Initial measure
-    handleResize();
-
-    return () => {
-      ro.disconnect();
-      cancelAnimationFrame(rafId);
-      if (userActiveTimer.current) window.clearTimeout(userActiveTimer.current);
-      events.forEach((evt) => {
-        s.removeEventListener(evt, markUserActive as EventListener);
-        m.removeEventListener(evt, markUserActive as EventListener);
-      });
-    };
-  }, []); // Empty dependency array - we use refs inside
-
-  // Run on content update (synthesisVersion changes)
-  useLayoutEffect(() => {
-    measureRef.current();
-  }, [synthesisVersion, hasSynthesis, hasMapping, pause]);
-
-  return { synthRef, mapRef, shorterHeight, shorterSection };
+  return {
+    synthRef,
+    mapRef,
+    shorterHeight: state.shorterHeight,
+    shorterSection: state.shorterSection,
+  };
 };
 
 interface AiTurnBlockProps {
@@ -214,8 +187,15 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
   onSetMappingTab,
   children,
 }) => {
-  const setSynthExpanded = onSetSynthExpanded || (() => {});
-  const setMapExpanded = onSetMapExpanded || (() => {});
+  const setSynthExpanded = onSetSynthExpanded || (() => { });
+  const setMapExpanded = onSetMapExpanded || (() => { });
+
+  // State for Claude artifact overlay
+  const [selectedArtifact, setSelectedArtifact] = useState<{
+    title: string;
+    identifier: string;
+    content: string;
+  } | null>(null);
 
   // --- REFS REMOVED HERE ---
   // We do NOT define mapRef/synthRef manually here anymore.
@@ -344,10 +324,15 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
   const wasMapRequested = requestedMap === undefined ? true : !!requestedMap;
 
   // --- REFS COME FROM HERE ---
+  const contentVersion =
+    (getLatestResponse(synthesisResponses[activeSynthPid || ""] || [])?.text || "").length +
+    ":" +
+    displayedMappingText.length;
+
   const { synthRef, mapRef, shorterHeight, shorterSection } = useShorterHeight(
     hasSynthesis,
     hasMapping,
-    displayedMappingText,
+    contentVersion,
     isLive || isLoading
   );
 
@@ -428,51 +413,51 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
   // --- 2. DEFINITION: Custom Markdown Components (Depends on 1) ---
   const markdownComponents = useMemo(
     () => ({
-    a: ({ href, children, ...props }: any) => {
-      // Check for our specific hash pattern
-      if (href && href.startsWith("#cite-")) {
-        const idStr = href.replace("#cite-", "");
-        const num = parseInt(idStr, 10);
+      a: ({ href, children, ...props }: any) => {
+        // Check for our specific hash pattern
+        if (href && href.startsWith("#cite-")) {
+          const idStr = href.replace("#cite-", "");
+          const num = parseInt(idStr, 10);
 
-        return (
-          <button
-            type="button"
+          return (
+            <button
+              type="button"
               className="citation-pill" // Ensure this class is in your CSS
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleCitationClick(num);
-            }}
-            title={`View Source ${idStr}`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "0 6px",
-              margin: "0 2px",
-              backgroundColor: "#2563eb",
-              border: "1px solid #1d4ed8",
-              borderRadius: "9999px",
-              color: "#ffffff",
-              fontSize: "12px",
-              fontWeight: "700",
-              lineHeight: "1.4",
-              cursor: "pointer",
-              textDecoration: "none",
-            }}
-          >
-            {children}
-          </button>
-        );
-      }
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleCitationClick(num);
+              }}
+              title={`View Source ${idStr}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "0 6px",
+                margin: "0 2px",
+                backgroundColor: "#2563eb",
+                border: "1px solid #1d4ed8",
+                borderRadius: "9999px",
+                color: "#ffffff",
+                fontSize: "12px",
+                fontWeight: "700",
+                lineHeight: "1.4",
+                cursor: "pointer",
+                textDecoration: "none",
+              }}
+            >
+              {children}
+            </button>
+          );
+        }
 
-      // Normal links behave normally
-      return (
-        <a href={href} {...props} target="_blank" rel="noopener noreferrer">
-          {children}
-        </a>
-      );
-    },
+        // Normal links behave normally
+        return (
+          <a href={href} {...props} target="_blank" rel="noopener noreferrer">
+            {children}
+          </a>
+        );
+      },
     }),
     [handleCitationClick]
   );
@@ -677,8 +662,8 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                           );
                         const latest = activeSynthPid
                           ? getLatestResponse(
-                              synthesisResponses[activeSynthPid]
-                            )
+                            synthesisResponses[activeSynthPid]
+                          )
                           : undefined;
                         const isGenerating =
                           (latest &&
@@ -774,14 +759,198 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   📋 Copy
                                 </button>
                               </div>
-                              <div
-                                className="prose prose-sm max-w-none dark:prose-invert"
-                                style={{ lineHeight: 1.7, fontSize: 16 }}
-                              >
-                                <MarkdownDisplay
-                                  content={String(take.text || "")}
-                                />
-                              </div>
+                              {(() => {
+                                // Extract Claude artifacts
+                                const { cleanText, artifacts } = extractClaudeArtifacts(take.text);
+
+                                return (
+                                  <>
+                                    {/* Main content */}
+                                    <div
+                                      className="prose prose-sm max-w-none dark:prose-invert"
+                                      style={{ lineHeight: 1.7, fontSize: 16 }}
+                                    >
+                                      <MarkdownDisplay content={String(cleanText || take.text || "")} />
+                                    </div>
+
+                                    {/* Artifact badges */}
+                                    {artifacts.length > 0 && (
+                                      <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                        {artifacts.map((artifact, idx) => (
+                                          <button
+                                            key={idx}
+                                            onClick={() => setSelectedArtifact(artifact)}
+                                            style={{
+                                              background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                                              border: "1px solid #818cf8",
+                                              borderRadius: 8,
+                                              padding: "8px 12px",
+                                              color: "#ffffff",
+                                              fontSize: 13,
+                                              fontWeight: 500,
+                                              cursor: "pointer",
+                                              display: "flex",
+                                              alignItems: "center",
+                                              gap: 6,
+                                              transition: "all 0.2s ease",
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              e.currentTarget.style.transform = "translateY(-1px)";
+                                              e.currentTarget.style.boxShadow = "0 4px 12px rgba(99, 102, 241, 0.4)";
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.transform = "translateY(0)";
+                                              e.currentTarget.style.boxShadow = "none";
+                                            }}
+                                          >
+                                            📄 {artifact.title}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {/* Artifact Overlay Modal */}
+                                    {selectedArtifact && (
+                                      <div
+                                        style={{
+                                          position: "fixed",
+                                          top: 0,
+                                          left: 0,
+                                          right: 0,
+                                          bottom: 0,
+                                          background: "rgba(0, 0, 0, 0.85)",
+                                          zIndex: 9999,
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          padding: 20,
+                                        }}
+                                        onClick={() => setSelectedArtifact(null)}
+                                      >
+                                        <div
+                                          style={{
+                                            background: "#1e293b",
+                                            border: "1px solid #475569",
+                                            borderRadius: 12,
+                                            maxWidth: "900px",
+                                            width: "100%",
+                                            maxHeight: "90vh",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5)",
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          {/* Header */}
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "space-between",
+                                              padding: "16px 20px",
+                                              borderBottom: "1px solid #334155",
+                                            }}
+                                          >
+                                            <div>
+                                              <h3 style={{ margin: 0, fontSize: 18, color: "#f1f5f9", fontWeight: 600 }}>
+                                                📄 {selectedArtifact.title}
+                                              </h3>
+                                              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                                                {selectedArtifact.identifier}
+                                              </div>
+                                            </div>
+                                            <button
+                                              onClick={() => setSelectedArtifact(null)}
+                                              style={{
+                                                background: "transparent",
+                                                border: "none",
+                                                color: "#94a3b8",
+                                                fontSize: 24,
+                                                cursor: "pointer",
+                                                padding: "4px 8px",
+                                              }}
+                                            >
+                                              ×
+                                            </button>
+                                          </div>
+
+                                          {/* Content */}
+                                          <div
+                                            style={{
+                                              flex: 1,
+                                              overflowY: "auto",
+                                              padding: 20,
+                                              background: "#0f172a",
+                                            }}
+                                          >
+                                            <MarkdownDisplay content={selectedArtifact.content} />
+                                          </div>
+
+                                          {/* Footer Actions */}
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: 12,
+                                              padding: "16px 20px",
+                                              borderTop: "1px solid #334155",
+                                              justifyContent: "flex-end",
+                                            }}
+                                          >
+                                            <button
+                                              onClick={async () => {
+                                                await navigator.clipboard.writeText(selectedArtifact.content);
+                                              }}
+                                              style={{
+                                                background: "#334155",
+                                                border: "1px solid #475569",
+                                                borderRadius: 6,
+                                                padding: "8px 16px",
+                                                color: "#e2e8f0",
+                                                fontSize: 14,
+                                                cursor: "pointer",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 6,
+                                              }}
+                                            >
+                                              📋 Copy
+                                            </button>
+                                            <button
+                                              onClick={() => {
+                                                const blob = new Blob([selectedArtifact.content], { type: "text/plain;charset=utf-8" });
+                                                const url = URL.createObjectURL(blob);
+                                                const a = document.createElement("a");
+                                                a.href = url;
+                                                a.download = `${selectedArtifact.identifier}.md`;
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                setTimeout(() => {
+                                                  URL.revokeObjectURL(url);
+                                                  try { document.body.removeChild(a); } catch { }
+                                                }, 0);
+                                              }}
+                                              style={{
+                                                background: "#6366f1",
+                                                border: "1px solid #818cf8",
+                                                borderRadius: 6,
+                                                padding: "8px 16px",
+                                                color: "#ffffff",
+                                                fontSize: 14,
+                                                cursor: "pointer",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 6,
+                                              }}
+                                            >
+                                              ⬇️ Download
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
                           );
                         }
@@ -1015,13 +1184,13 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                       minHeight: 0,
                     }}
                   >
-                      <ClipsCarousel
-                        providers={LLM_PROVIDERS_CONFIG}
-                        responsesMap={mappingResponses}
-                        activeProviderId={activeMappingPid}
-                        onClipClick={(pid) => onClipClick?.("mapping", pid)}
-                        type="mapping"
-                      />
+                    <ClipsCarousel
+                      providers={LLM_PROVIDERS_CONFIG}
+                      responsesMap={mappingResponses}
+                      activeProviderId={activeMappingPid}
+                      onClipClick={(pid) => onClipClick?.("mapping", pid)}
+                      type="mapping"
+                    />
 
                     {/* PILL TABS */}
                     <div
@@ -1298,17 +1467,60 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                     📋 Copy
                                   </button>
                                 </div>
-                                <div
-                                  className="prose prose-sm max-w-none dark:prose-invert"
-                                  style={{ lineHeight: 1.7, fontSize: 16 }}
-                                >
-                                  <MarkdownDisplay
-                                    content={transformCitations(
-                                      displayedMappingText
-                                    )}
-                                    components={markdownComponents}
-                                  />
-                                </div>
+                                {(() => {
+                                  // Extract Claude artifacts from mapping text
+                                  const { cleanText, artifacts } = extractClaudeArtifacts(displayedMappingText);
+
+                                  return (
+                                    <>
+                                      <div
+                                        className="prose prose-sm max-w-none dark:prose-invert"
+                                        style={{ lineHeight: 1.7, fontSize: 16 }}
+                                      >
+                                        <MarkdownDisplay
+                                          content={transformCitations(cleanText || displayedMappingText)}
+                                          components={markdownComponents}
+                                        />
+                                      </div>
+
+                                      {/* Artifact badges */}
+                                      {artifacts.length > 0 && (
+                                        <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                          {artifacts.map((artifact, idx) => (
+                                            <button
+                                              key={idx}
+                                              onClick={() => setSelectedArtifact(artifact)}
+                                              style={{
+                                                background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                                                border: "1px solid #818cf8",
+                                                borderRadius: 8,
+                                                padding: "8px 12px",
+                                                color: "#ffffff",
+                                                fontSize: 13,
+                                                fontWeight: 500,
+                                                cursor: "pointer",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 6,
+                                                transition: "all 0.2s ease",
+                                              }}
+                                              onMouseEnter={(e) => {
+                                                e.currentTarget.style.transform = "translateY(-1px)";
+                                                e.currentTarget.style.boxShadow = "0 4px 12px rgba(99, 102, 241, 0.4)";
+                                              }}
+                                              onMouseLeave={(e) => {
+                                                e.currentTarget.style.transform = "translateY(0)";
+                                                e.currentTarget.style.boxShadow = "none";
+                                              }}
+                                            >
+                                              📄 {artifact.title}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             );
                           }

@@ -45,6 +45,7 @@ export interface ExtendRequest {
   sessionId: string;
   userMessage: string;
   providers: ProviderKey[];
+  forcedContextReset?: ProviderKey[]; // Optional: Explicitly force new context for specific providers
   includeMapping: boolean;
   includeSynthesis: boolean;
   synthesizer?: ProviderKey;
@@ -195,6 +196,9 @@ export interface TurnCreatedMessage {
   sessionId: string;
   userTurnId: string;
   aiTurnId: string;
+  providers?: ProviderKey[];
+  synthesisProvider?: ProviderKey | null;
+  mappingProvider?: ProviderKey | null;
 }
 
 export interface TurnFinalizedMessage {

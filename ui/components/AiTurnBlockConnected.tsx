@@ -58,6 +58,13 @@ export default function AiTurnBlockConnected({
 
   const turnClips = activeClips[aiTurn.id] || {};
 
+  // Use user-selected clip, or fall back to the provider used for generation
+  // This fixes the issue where "stale" providers are shown if the user changes selection
+  // but hasn't clicked a clip yet for the new turn.
+  const activeSynthesisClipProviderId =
+    turnClips.synthesis || aiTurn.meta?.synthesizer;
+  const activeMappingClipProviderId = turnClips.mapping || aiTurn.meta?.mapper;
+
   return (
     <AiTurnBlock
       aiTurn={aiTurn}
@@ -96,8 +103,8 @@ export default function AiTurnBlockConnected({
         (t: "map" | "options") => setMappingTab(t),
         [setMappingTab],
       )}
-      activeSynthesisClipProviderId={turnClips.synthesis}
-      activeMappingClipProviderId={turnClips.mapping}
+      activeSynthesisClipProviderId={activeSynthesisClipProviderId}
+      activeMappingClipProviderId={activeMappingClipProviderId}
       onClipClick={useCallback(
         (type: "synthesis" | "mapping", pid: string) => {
           void handleClipClick(aiTurn.id, type, pid);
@@ -105,8 +112,8 @@ export default function AiTurnBlockConnected({
         [handleClipClick, aiTurn.id],
       )}
     >
-      <ProviderResponseBlockConnected aiTurnId={aiTurn.id} 
-      expectedProviders={aiTurn.meta?.expectedProviders} // ✅ Pass metadata
+      <ProviderResponseBlockConnected aiTurnId={aiTurn.id}
+        expectedProviders={aiTurn.meta?.expectedProviders} // ✅ Pass metadata
       />
     </AiTurnBlock>
   );

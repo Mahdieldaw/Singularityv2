@@ -16,11 +16,11 @@ export class GeminiAdapter {
     this.capabilities = {
       needsDNR: false,
       needsOffscreen: false,
-      supportsStreaming: true, // Unified to support streaming (like Pro)
+      supportsStreaming: false, // Non-streaming to avoid canvas/immersive documents
       supportsContinuation: true,
       synthesis: false,
       // Only allow model selection if NOT explicitly Pro (Pro is fixed)
-      supportsModelSelection: this.id !== "gemini-pro", 
+      supportsModelSelection: this.id !== "gemini-pro",
     };
     this.controller = controller;
   }
@@ -53,7 +53,7 @@ export class GeminiAdapter {
         {
           signal,
           cursor: req.meta?.cursor,
-          model, 
+          model,
         }
       );
 
@@ -62,6 +62,15 @@ export class GeminiAdapter {
         result?.text ??
         result?.candidates?.[0]?.content ??
         (typeof result === "string" ? result : JSON.stringify(result));
+
+      // 🔍 DETECT GEMINI IMMERSIVE CONTENT
+      if (normalizedText && (normalizedText.includes('googleusercontent.com/immersive_entry_chip') || normalizedText.includes('immersive-editor'))) {
+        console.warn(`[GeminiAdapter:${this.id}] 🎨 IMMERSIVE CONTENT DETECTED in response`, {
+          textPreview: normalizedText.substring(0, 200),
+          fullLength: normalizedText.length,
+          model,
+        });
+      }
 
       // Emit streaming chunk if applicable
       try {
@@ -80,7 +89,7 @@ export class GeminiAdapter {
             },
           });
         }
-      } catch (_) {}
+      } catch (_) { }
 
       return {
         providerId: this.id,
@@ -119,7 +128,7 @@ export class GeminiAdapter {
     try {
       const meta = providerContext?.meta || providerContext || {};
       const cursor = providerContext?.cursor ?? meta.cursor;
-      
+
       let defaultModel = "gemini-flash";
       if (this.id === "gemini-pro") defaultModel = "gemini-pro";
       if (this.id === "gemini-exp") defaultModel = "gemini-exp";
@@ -146,6 +155,15 @@ export class GeminiAdapter {
         result?.candidates?.[0]?.content ??
         (typeof result === "string" ? result : JSON.stringify(result));
 
+      // 🔍 DETECT GEMINI IMMERSIVE CONTENT
+      if (normalizedText && (normalizedText.includes('googleusercontent.com/immersive_entry_chip') || normalizedText.includes('immersive-editor'))) {
+        console.warn(`[GeminiAdapter:${this.id}] 🎨 IMMERSIVE CONTENT DETECTED in continuation`, {
+          textPreview: normalizedText.substring(0, 200),
+          fullLength: normalizedText.length,
+          model,
+        });
+      }
+
       try {
         if (onChunk && normalizedText && normalizedText.length > 0) {
           onChunk({
@@ -162,7 +180,7 @@ export class GeminiAdapter {
             },
           });
         }
-      } catch (_) {}
+      } catch (_) { }
 
       return {
         providerId: this.id,
@@ -212,9 +230,9 @@ export class GeminiAdapter {
     try {
       const meta = providerContext?.meta || providerContext || {};
       const hasCursor = Boolean(meta.cursor || providerContext?.cursor);
-      
+
       pad(`[ProviderAdapter] ASK_STARTED provider=${this.id} hasContext=${hasCursor}`);
-      
+
       let res;
       if (hasCursor) {
         res = await this.sendContinuation(
@@ -231,16 +249,16 @@ export class GeminiAdapter {
           signal,
         );
       }
-      
+
       try {
-         const len = (res?.text || "").length;
-         pad(`[ProviderAdapter] ASK_COMPLETED provider=${this.id} ok=${res?.ok !== false} textLen=${len}`);
-      } catch(_) {}
+        const len = (res?.text || "").length;
+        pad(`[ProviderAdapter] ASK_COMPLETED provider=${this.id} ok=${res?.ok !== false} textLen=${len}`);
+      } catch (_) { }
 
       return res;
     } catch (e) {
-       console.warn(`[ProviderAdapter] ASK_FAILED provider=${this.id}:`, e?.message || String(e));
-       throw e;
+      console.warn(`[ProviderAdapter] ASK_FAILED provider=${this.id}:`, e?.message || String(e));
+      throw e;
     }
   }
 }

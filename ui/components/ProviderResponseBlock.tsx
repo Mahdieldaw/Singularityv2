@@ -1,4 +1,4 @@
-// ProviderResponseBlock.tsx - COMPLETE FIXED VERSION
+// ProviderResponseBlock.tsx - DERIVED STATE VERSION
 import React from "react";
 import { LLMProvider, AppStep, ProviderResponse } from "../types";
 import {
@@ -6,11 +6,45 @@ import {
   PRIMARY_STREAMING_PROVIDER_IDS,
 } from "../constants";
 import { BotIcon } from "./Icons";
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { ProviderPill } from "./ProviderPill";
 import { useAtomValue, useSetAtom } from "jotai";
 import { providerContextsAtom } from "../state/atoms";
 import MarkdownDisplay from "./MarkdownDisplay";
+import { normalizeProviderId } from "../utils/provider-id-mapper";
+
+// Import Claude artifact extraction helper
+function extractClaudeArtifacts(text: string | null | undefined): {
+  cleanText: string;
+  artifacts: Array<{ title: string; identifier: string; content: string }>;
+} {
+  if (!text) return { cleanText: "", artifacts: [] };
+
+  const artifacts: Array<{ title: string; identifier: string; content: string }> = [];
+
+  // Regex to match <document title="..." identifier="...">content</document>
+  const artifactRegex = /<document\s+title="([^"]+)"\s+identifier="([^"]+)"\s*>([\s\S]*?)<\/document>/gi;
+
+  let match;
+  let cleanText = text;
+
+  while ((match = artifactRegex.exec(text)) !== null) {
+    const [fullMatch, title, identifier, content] = match;
+    artifacts.push({
+      title: title || "Untitled Artifact",
+      identifier: identifier || "unknown",
+      content: content.trim(),
+    });
+
+    // Remove artifact from clean text
+    cleanText = cleanText.replace(fullMatch, "");
+  }
+
+  return {
+    cleanText: cleanText.trim(),
+    artifacts,
+  };
+}
 
 interface ProviderState {
   text: string;
@@ -27,6 +61,8 @@ interface ProviderResponseBlockProps {
   isReducedMotion?: boolean;
   aiTurnId?: string;
   sessionId?: string;
+  onRetryProvider?: (providerId: string) => void;
+  userTurnId?: string;
 }
 
 const CopyButton = ({ text, label }: { text: string; label: string }) => {
@@ -73,56 +109,38 @@ const ProviderResponseBlock = ({
   isReducedMotion = false,
   aiTurnId,
   sessionId,
+  onRetryProvider,
+  userTurnId,
 }: ProviderResponseBlockProps) => {
   const providerContexts = useAtomValue(providerContextsAtom);
-  const lastSeenMetaRef = useRef<string>("");
+
+  // State for Claude artifact overlay
+  const [selectedArtifact, setSelectedArtifact] = useState<{
+    title: string;
+    identifier: string;
+    content: string;
+  } | null>(null);
 
   const setProviderContexts = useSetAtom(providerContextsAtom);
 
-  // Effect to safely update provider contexts
-  useEffect(() => {
-    if (!providerResponses) return;
-
-    Object.keys(providerResponses).forEach((providerId) => {
-      const response = providerResponses[providerId];
-
-      if (!response?.meta) return;
-
-      // Create a stable string representation of the object
-      const metaString = JSON.stringify(response.meta);
-
-      // Only proceed if the string content has actually changed
-      if (metaString !== lastSeenMetaRef.current) {
-        lastSeenMetaRef.current = metaString;
-
-        // Use setTimeout(0) to push the state update to the next tick
-        // This prevents the "Cannot update a component while rendering a different component" React error
-        setTimeout(() => {
-          setProviderContexts((prev) => {
-            // Double check: Is the value currently in state already identical?
-            // If so, return 'prev' to prevent a re-render
-            const currentVal = prev[providerId];
-            if (JSON.stringify(currentVal) === metaString) {
-              return prev;
-            }
-
-            // Otherwise, return new state object
-            return { ...prev, [providerId]: response.meta };
-          });
-        }, 0);
-      }
-    });
-  }, [providerResponses, setProviderContexts]);
-
   // Normalize responses
-  const effectiveProviderResponses = providerResponses
-    ? { ...providerResponses }
+  // Normalize provider IDs to canonical form before processing
+  const normalizedResponses = providerResponses
+    ? Object.entries(providerResponses).reduce((acc, [id, resp]) => {
+      const normId = normalizeProviderId(id);
+      acc[normId] = resp;
+      return acc;
+    }, {} as Record<string, ProviderResponse>)
+    : {};
+
+  const effectiveProviderResponses = Object.keys(normalizedResponses).length
+    ? normalizedResponses
     : Object.fromEntries(
-        Object.entries(providerStates || {}).map(([id, s]) => [
-          id,
-          { text: s.text, status: s.status, meta: undefined },
-        ]),
-      );
+      Object.entries(providerStates || {}).map(([id, s]) => [
+        id,
+        { text: s.text, status: s.status, meta: undefined },
+      ]),
+    );
 
   const effectiveProviderStates = Object.entries(
     effectiveProviderResponses,
@@ -139,79 +157,67 @@ const ProviderResponseBlock = ({
     () =>
       LLM_PROVIDERS_CONFIG.map((p) => p.id).filter(
         (id) => id !== "system" && Object.prototype.hasOwnProperty.call(effectiveProviderResponses, id),
-
       ),
     [effectiveProviderResponses],
   );
 
-  const [visibleSlots, setVisibleSlots] = useState<string[]>(() => {
-    if (allProviderIds.length >= 4) {
-      const primaryStreaming = PRIMARY_STREAMING_PROVIDER_IDS.filter((id) =>
-        allProviderIds.includes(id),
-      );
-      let slots = primaryStreaming.slice(0, 3);
-      if (slots.length < 3) {
-        const remaining = allProviderIds.filter((id) => !slots.includes(id));
-        const nonDemoted = remaining.filter((id) => id !== "chatgpt");
-        const demoted = remaining.filter((id) => id === "chatgpt");
-        slots = slots.concat(
-          [...nonDemoted, ...demoted].slice(0, 3 - slots.length),
-        );
-      }
-      return slots;
+  // --- SLOT MANAGEMENT (DERIVED STATE) ---
+  const [manualVisibleSlots, setManualVisibleSlots] = useState<string[]>([]);
+  const [rotationIndex, setRotationIndex] = useState(0);
+
+  // Calculate visible slots during render
+  const visibleSlots = useMemo(() => {
+    // 1. Filter manual slots to only valid ones (present in current response set)
+    const validManual = manualVisibleSlots.filter(id => allProviderIds.includes(id));
+
+    // 2. If we have enough manual slots to fill the view (3), use them
+    if (validManual.length >= 3) {
+      return validManual.slice(0, 3);
     }
-    return allProviderIds.slice(0, Math.min(3, allProviderIds.length));
-  });
 
-  const [rotationIndex, setRotationIndex] = useState<number>(0);
+    // 3. Otherwise, fill remaining slots with available providers
+    const needed = 3 - validManual.length;
+    const used = new Set(validManual);
 
-  const initialOrderedHidden = useMemo(() => {
-    const hidden = allProviderIds.filter((id) => !visibleSlots.includes(id));
-    const chatgptHidden = hidden.filter((id) => id === "chatgpt");
-    const geminiHidden = hidden.filter(
-      (id) => id === "gemini" || id === "gemini-pro" || id === "gemini-exp",
-    );
-    const othersHidden = hidden.filter(
-      (id) => id !== "chatgpt" && id !== "gemini" && id !== "gemini-pro" && id !== "gemini-exp",
-    );
-    return [...chatgptHidden, ...geminiHidden, ...othersHidden];
+    // Prioritize primary streaming providers for default slots if not already used
+    const available = allProviderIds.filter(id => !used.has(id));
+
+    // Simple fill strategy: take the first available ones
+    // (allProviderIds is already sorted by config order)
+    const filled = [...validManual, ...available.slice(0, needed)];
+
+    return filled;
+  }, [manualVisibleSlots, allProviderIds]);
+
+  // Derive hidden providers
+  const hiddenProviders = useMemo(() => {
+    return allProviderIds.filter(id => !visibleSlots.includes(id));
   }, [allProviderIds, visibleSlots]);
 
-  const [hiddenOrder, setHiddenOrder] = useState<string[]>(initialOrderedHidden);
-
-  useEffect(() => {
-    setHiddenOrder(initialOrderedHidden);
-  }, [initialOrderedHidden]);
-
-  const hiddenLeft = useMemo(() => hiddenOrder.slice(0, 2), [hiddenOrder]);
-  const hiddenRight = useMemo(() => hiddenOrder.slice(2, 3), [hiddenOrder]);
+  // Split hidden into left/right for the UI
+  const hiddenLeft = useMemo(() => hiddenProviders.slice(0, 2), [hiddenProviders]);
+  const hiddenRight = useMemo(() => hiddenProviders.slice(2), [hiddenProviders]);
 
   const getProviderConfig = (providerId: string): LLMProvider | undefined => {
     return LLM_PROVIDERS_CONFIG.find((p) => p.id === providerId);
   };
 
-  const swapProviderIn = useCallback((hiddenProviderId: string) => {
-    setVisibleSlots((prev) => {
-      const replaceIndex = rotationIndex % (prev.length || 1);
-      const displaced = prev[replaceIndex];
-      const nextSlots = [...prev];
-      nextSlots[replaceIndex] = hiddenProviderId;
-      setHiddenOrder((curr) => {
-        const withoutClicked = curr.filter((id) => id !== hiddenProviderId);
-        const appended = [...withoutClicked, displaced].filter(
-          (id) => allProviderIds.includes(id) && !nextSlots.includes(id),
-        );
-        return appended;
-      });
-      return nextSlots;
-    });
-    setRotationIndex((i) => (i + 1) % 3);
-  }, [rotationIndex, allProviderIds]);
+  const swapProviderIn = useCallback((providerId: string) => {
+    // Use the *current* visible slots as the base for modification
+    const nextSlots = [...visibleSlots];
+
+    // Replace the slot at the current rotation index
+    nextSlots[rotationIndex] = providerId;
+
+    setManualVisibleSlots(nextSlots);
+    setRotationIndex((prev) => (prev + 1) % 3);
+  }, [visibleSlots, rotationIndex]);
 
   // Highlight target provider on citation click and scroll into view
   const [highlightedProviderId, setHighlightedProviderId] = useState<
     string | null
   >(null);
+
   useEffect(() => {
     const handler = (evt: Event) => {
       try {
@@ -222,9 +228,15 @@ const ProviderResponseBlock = ({
         if (aiTurnId && targetTurnId && targetTurnId !== aiTurnId) return;
 
         // Ensure target provider is brought into view
-        setVisibleSlots((prev) => {
-          if (prev.includes(targetProviderId)) return prev;
-          const next = [...prev];
+        // We do this by forcing it into the first slot manually
+        setManualVisibleSlots(prev => {
+          // If already visible, don't change layout, just highlight
+          if (visibleSlots.includes(targetProviderId)) return prev;
+
+          // Otherwise, force it into slot 0
+          // We need to construct a new valid manual list.
+          // Best bet: take current visible, replace index 0.
+          const next = [...visibleSlots];
           next[0] = targetProviderId;
           return next;
         });
@@ -254,16 +266,16 @@ const ProviderResponseBlock = ({
         "htos:scrollToProvider",
         handler as EventListener,
       );
-  }, [aiTurnId]);
+  }, [aiTurnId, visibleSlots]); // Added visibleSlots dependency to ensure we have fresh state
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, hasText: boolean = true) => {
     switch (status) {
       case "pending":
         return "#f59e0b";
       case "streaming":
         return "#f59e0b";
       case "completed":
-        return "#10b981";
+        return hasText ? "#10b981" : "#f59e0b";
       case "error":
         return "#ef4444";
       default:
@@ -297,10 +309,11 @@ const ProviderResponseBlock = ({
     const isStreaming = state?.status === "streaming";
     const isError = state?.status === "error";
     const isHighlighted = highlightedProviderId === providerId;
+    const hasText = !!state?.text?.trim();
 
     const displayText = isError
       ? context?.errorMessage || state?.text || "Provider error"
-      : state?.text || getStatusText(state?.status);
+      : state?.text || (state?.status === "completed" ? "Empty Response" : getStatusText(state?.status));
 
     return (
       <div
@@ -362,11 +375,11 @@ const ProviderResponseBlock = ({
               width: "8px",
               height: "8px",
               borderRadius: "50%",
-              background: getStatusColor(state?.status),
+              background: getStatusColor(state?.status, hasText),
               ...(isStreaming &&
                 !isReducedMotion && {
-                  animation: "pulse 1.5s ease-in-out infinite",
-                }),
+                animation: "pulse 1.5s ease-in-out infinite",
+              }),
             }}
           />
         </div>
@@ -415,17 +428,62 @@ const ProviderResponseBlock = ({
             minHeight: 0,
           }}
         >
-          <div
-            className="prose prose-sm max-w-none dark:prose-invert"
-            style={{
-              fontSize: "13px",
-              lineHeight: "1.5",
-              color: "#e2e8f0",
-            }}
-          >
-            <MarkdownDisplay content={String(displayText || "")} />
-            {isStreaming && <span className="streaming-dots" />}
-          </div>
+          {(() => {
+            // Extract Claude artifacts
+            const { cleanText, artifacts } = extractClaudeArtifacts(displayText);
+
+            return (
+              <>
+                <div
+                  className="prose prose-sm max-w-none dark:prose-invert"
+                  style={{
+                    fontSize: "13px",
+                    lineHeight: "1.5",
+                    color: "#e2e8f0",
+                  }}
+                >
+                  <MarkdownDisplay content={String(cleanText || displayText || "")} />
+                  {isStreaming && <span className="streaming-dots" />}
+                </div>
+
+                {/* Artifact badges */}
+                {artifacts.length > 0 && (
+                  <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {artifacts.map((artifact, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedArtifact(artifact)}
+                        style={{
+                          background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                          border: "1px solid #818cf8",
+                          borderRadius: 8,
+                          padding: "8px 12px",
+                          color: "#ffffff",
+                          fontSize: 13,
+                          fontWeight: 500,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "translateY(-1px)";
+                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(99, 102, 241, 0.4)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.boxShadow = "none";
+                        }}
+                      >
+                        📄 {artifact.title}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Fixed Footer with actions */}
@@ -439,6 +497,27 @@ const ProviderResponseBlock = ({
             height: "32px",
           }}
         >
+          {/* Retry Button - Only show for failed or empty completed responses */}
+          {(isError || (state?.status === "completed" && !state?.text?.trim())) && onRetryProvider && (
+            <button
+              onClick={() => onRetryProvider(providerId)}
+              title="Retry this provider"
+              style={{
+                background: "#dc2626",
+                border: "1px solid #b91c1c",
+                borderRadius: "6px",
+                padding: "4px 8px",
+                color: "#fef2f2",
+                fontSize: "12px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              🔄 Retry
+            </button>
+          )}
           <CopyButton
             text={state?.text}
             label={`Copy ${provider?.name || providerId}`}
@@ -466,7 +545,7 @@ const ProviderResponseBlock = ({
         key={providerId}
         onClick={() => swapProviderIn(providerId)}
         title={`Click to view ${provider?.name || providerId}`}
-        disabled={isStreaming}
+        // disabled={isStreaming} // Allow swapping even if streaming
         style={{
           display: "flex",
           flexDirection: "column",
@@ -478,23 +557,19 @@ const ProviderResponseBlock = ({
           borderRadius: "12px",
           background: bgColor,
           border: `1px solid ${borderColor}`,
-          cursor: isStreaming ? "not-allowed" : "pointer",
+          cursor: "pointer",
           flexShrink: 0,
           transition: isReducedMotion ? "none" : "all 0.2s ease",
-          opacity: isStreaming ? 0.7 : 1,
+          opacity: 1,
           boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
         }}
         onMouseEnter={(e) => {
-          if (!isStreaming) {
-            e.currentTarget.style.transform = "translateY(-2px)";
-            e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
-          }
+          e.currentTarget.style.transform = "translateY(-2px)";
+          e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
         }}
         onMouseLeave={(e) => {
-          if (!isStreaming) {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.2)";
-          }
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.2)";
         }}
       >
         {/* Provider Logo */}
@@ -533,7 +608,7 @@ const ProviderResponseBlock = ({
               width: "6px",
               height: "6px",
               borderRadius: "50%",
-              background: getStatusColor(state?.status),
+              background: getStatusColor(state?.status, !!state?.text),
               animation: isReducedMotion
                 ? "none"
                 : "pulse 1.5s ease-in-out infinite",
@@ -625,6 +700,146 @@ const ProviderResponseBlock = ({
             ))}
           </div>
         </div>
+
+        {/* Artifact Overlay Modal */}
+        {selectedArtifact && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0, 0, 0, 0.85)",
+              zIndex: 9999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
+            }}
+            onClick={() => setSelectedArtifact(null)}
+          >
+            <div
+              style={{
+                background: "#1e293b",
+                border: "1px solid #475569",
+                borderRadius: 12,
+                maxWidth: "900px",
+                width: "100%",
+                maxHeight: "90vh",
+                display: "flex",
+                flexDirection: "column",
+                boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "16px 20px",
+                  borderBottom: "1px solid #334155",
+                }}
+              >
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18, color: "#f1f5f9", fontWeight: 600 }}>
+                    📄 {selectedArtifact.title}
+                  </h3>
+                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                    {selectedArtifact.identifier}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedArtifact(null)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#94a3b8",
+                    fontSize: 24,
+                    cursor: "pointer",
+                    padding: "4px 8px",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Content */}
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  padding: 20,
+                  background: "#0f172a",
+                }}
+              >
+                <MarkdownDisplay content={selectedArtifact.content} />
+              </div>
+
+              {/* Footer Actions */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  padding: "16px 20px",
+                  borderTop: "1px solid #334155",
+                  justifyContent: "flex-end",
+                }}
+              >
+                <button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(selectedArtifact.content);
+                  }}
+                  style={{
+                    background: "#334155",
+                    border: "1px solid #475569",
+                    borderRadius: 6,
+                    padding: "8px 16px",
+                    color: "#e2e8f0",
+                    fontSize: 14,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  📋 Copy
+                </button>
+                <button
+                  onClick={() => {
+                    const blob = new Blob([selectedArtifact.content], { type: "text/plain;charset=utf-8" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `${selectedArtifact.identifier}.md`;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                      URL.revokeObjectURL(url);
+                      try { document.body.removeChild(a); } catch { }
+                    }, 0);
+                  }}
+                  style={{
+                    background: "#6366f1",
+                    border: "1px solid #818cf8",
+                    borderRadius: 6,
+                    padding: "8px 16px",
+                    color: "#ffffff",
+                    fontSize: 14,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  ⬇️ Download
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

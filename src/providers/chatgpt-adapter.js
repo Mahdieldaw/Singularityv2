@@ -66,7 +66,7 @@ export class ChatGPTAdapter {
         pad(
           `[ProviderAdapter] ASK_COMPLETED provider=${this.id} ok=${res?.ok !== false} textLen=${len}`,
         );
-      } catch (_) {}
+      } catch (_) { }
       return res;
     } catch (e) {
       console.warn(
@@ -124,6 +124,8 @@ export class ChatGPTAdapter {
     // Confirmation-only log: do not print prompt contents to console to avoid clogging logs or exposing data.
     pad(`[ChatGPT Adapter] sendPrompt started (provider=${this.id})`);
 
+    let aggregated = ""; // Lifted scope to capture partials
+
     try {
       // If Thinking mode requested, route to thinkAsk backend which streams NDJSON
       const useThinking = Boolean(req?.meta?.useThinking);
@@ -131,7 +133,6 @@ export class ChatGPTAdapter {
         let conversationId = null;
         let lastMessageId = null;
         let observedModel = req.meta?.model || null;
-        let aggregated = "";
 
         const forwardOnChunk = (chunk) => {
           try {
@@ -139,11 +140,12 @@ export class ChatGPTAdapter {
             if (chunk?.chatId && !conversationId) conversationId = chunk.chatId;
             if (chunk?.id) lastMessageId = chunk.id;
             if (chunk?.model) observedModel = chunk.model;
-          } catch (_) {}
+            if (chunk?.text) aggregated = chunk.text; // Update aggregated
+          } catch (_) { }
           if (onChunk) {
             try {
               onChunk(chunk);
-            } catch (_) {}
+            } catch (_) { }
           }
         };
 
@@ -199,11 +201,12 @@ export class ChatGPTAdapter {
           if (chunk?.chatId && !conversationId) conversationId = chunk.chatId;
           if (chunk?.id) lastMessageId = chunk.id;
           if (chunk?.model) observedModel = chunk.model;
-        } catch (_) {}
+          if (chunk?.text) aggregated = chunk.text; // Update aggregated
+        } catch (_) { }
         if (onChunk) {
           try {
             onChunk(chunk);
-          } catch (_) {}
+          } catch (_) { }
         }
       };
 
@@ -259,7 +262,7 @@ export class ChatGPTAdapter {
       return {
         providerId: this.id,
         ok: false,
-        text: null,
+        text: aggregated || null, // Return partial text
         errorCode,
         latencyMs: Date.now() - startTime,
         meta: {
@@ -299,7 +302,7 @@ export class ChatGPTAdapter {
         providerId: this.id,
         ok: false,
         text: null,
-        errorCode: "context_missing", 
+        errorCode: "context_missing",
         meta: {
           error: "Continuity lost: Missing conversationId.",
         },
@@ -307,6 +310,7 @@ export class ChatGPTAdapter {
     }
 
     const startTime = Date.now();
+    let aggregated = ""; // Lifted scope
 
     try {
       // Capture conversation/message identifiers from streaming chunks
@@ -319,11 +323,12 @@ export class ChatGPTAdapter {
           if (chunk?.chatId && !conversationId) conversationId = chunk.chatId;
           if (chunk?.id) lastMessageId = chunk.id;
           if (chunk?.model) observedModel = chunk.model;
-        } catch (_) {}
+          if (chunk?.text) aggregated = chunk.text; // Update aggregated
+        } catch (_) { }
         if (onChunk) {
           try {
             onChunk(chunk);
-          } catch (_) {}
+          } catch (_) { }
         }
       };
 
@@ -365,7 +370,7 @@ export class ChatGPTAdapter {
       return {
         providerId: this.id,
         ok: false,
-        text: null,
+        text: aggregated || null, // Return partial text
         errorCode: (error && error.type) || "continuation_error",
         latencyMs: duration,
         meta: {
