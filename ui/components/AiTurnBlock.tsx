@@ -327,7 +327,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
   const contentVersion =
     (getLatestResponse(synthesisResponses[activeSynthPid || ""] || [])?.text || "").length +
     ":" +
-    displayedMappingText.length;
+    (mappingTab === "options" ? optionsText.length : displayedMappingText.length);
 
   const { synthRef, mapRef, shorterHeight, shorterSection } = useShorterHeight(
     hasSynthesis,
@@ -1563,7 +1563,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                       })()}
                     </div>
 
-                    {mapTruncated && !mapExpanded && mappingTab === "map" && (
+                    {mapTruncated && !mapExpanded && (
                       <>
                         <div
                           style={{
