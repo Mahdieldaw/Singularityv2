@@ -9,57 +9,64 @@ module.exports = {
     theme: {
         extend: {
             colors: {
-                // Primary brand (Indigo based on current UI usage)
+                // Keep brand as your purple/indigo accent
                 brand: {
                     50: '#eef2ff',
                     100: '#e0e7ff',
                     200: '#c7d2fe',
                     300: '#a5b4fc',
                     400: '#818cf8',
-                    500: '#6366f1', // Indigo-500 (Current active state)
+                    500: '#6366f1',
                     600: '#4f46e5',
                     700: '#4338ca',
                 },
-                // Dark layered surfaces
+
+                // Futuristic black surfaces
                 surface: {
-                    DEFAULT: '#0f0f23', // App bg start
-                    soft: '#1a1a3a',    // App bg end
-                    raised: 'rgba(255, 255, 255, 0.08)', // Glass effect (Tray)
-                    highest: 'rgba(3, 7, 18, 0.72)',     // Dropdowns / Popovers
-                    highlight: 'rgba(255, 255, 255, 0.1)', // Hover state
-                    overlay: 'rgba(0, 0, 0, 0.2)', // Dark overlay for content areas
-                    code: '#0b1220',      // Code block background (MarkdownDisplay)
-                    modal: '#1e293b',     // Modal panel background (RenameDialog)
+                    DEFAULT: '#020617',                  // main app background (near black)
+                    soft: '#020617',                  // chat area
+                    raised: '#020819',                  // cards / panels
+                    highest: '#020617',                  // trays / header / popovers
+                    highlight: 'rgba(148,163,184,0.16)', // subtle grey hover
+                    overlay: 'rgba(0,0,0,0.75)',        // dark overlay for content areas
+                    code: '#020617',                 // code blocks
+                    modal: '#020617',                 // modal panels
                 },
+
                 // Inputs / bars
                 input: {
-                    DEFAULT: 'rgba(255, 255, 255, 0.08)', // Matches tray
-                    subtle: 'rgba(0, 0, 0, 0.2)',
+                    DEFAULT: '#020617',                  // chat input bg
+                    subtle: '#020617',                  // compact tray / small bars
                 },
-                // Overlays and modals
+
+                // Single overlay base color; use /70, /80 in classes for opacity
                 overlay: {
-                    backdrop: '#0f172a', // Solid color - use with /70, /80 opacity utilities
+                    backdrop: '#020617',                 // use bg-overlay-backdrop/70 etc.
                 },
-                // Text system
+
+                // Text system (cool greys)
                 text: {
-                    primary: '#f1f5f9',   // Slate-100
-                    secondary: '#e2e8f0', // Slate-200
-                    muted: '#94a3b8',     // Slate-400
-                    brand: '#a5b4fc',     // Indigo-300
+                    primary: '#e5e7eb',                // light grey
+                    secondary: '#9ca3af',                // mid grey
+                    muted: '#6b7280',                // dimmer labels
+                    brand: '#a5b4fc',                // purple-tinted headings / highlights
                 },
-                // Borders
+
+                // Borders (grey on black)
                 border: {
-                    subtle: 'rgba(255, 255, 255, 0.1)',
-                    strong: 'rgba(255, 255, 255, 0.2)',
+                    subtle: 'rgba(148,163,184,0.28)',    // soft outlines
+                    strong: 'rgba(148,163,184,0.45)',    // dividers / emphasis
                     brand: '#6366f1',
                 },
+
                 // Chips / model pills / badges
                 chip: {
-                    DEFAULT: 'rgba(255, 255, 255, 0.05)',
-                    active: 'rgba(99, 102, 241, 0.3)', // Indigo-500 with opacity
-                    soft: 'rgba(148, 163, 184, 0.18)',
+                    DEFAULT: 'rgba(15,23,42,0.85)',      // inactive pill
+                    active: 'rgba(99,102,241,0.45)',    // purple‑tinted active pill
+                    soft: 'rgba(15,23,42,0.6)',       // subtle labels / controls
                 },
-                // Status / intent colors
+
+                // Status / intent colors (keep as-is)
                 intent: {
                     success: '#22c55e',
                     warning: '#fbbf24',
@@ -67,22 +74,35 @@ module.exports = {
                     info: '#3498db',
                 },
             },
+
             borderRadius: {
                 '2xl': '12px',
                 '3xl': '1.5rem',
-                'pill': '9999px',
+                pill: '9999px',
             },
+
             boxShadow: {
-                elevated: '0 8px 24px rgba(2,6,23,0.6)',
-                'card-sm': '0 2px 8px rgba(0, 0, 0, 0.2)', // Small card shadow
-                'glow-brand': '0 0 0 2px rgba(99, 102, 241, 0.6), 0 10px 30px rgba(59, 130, 246, 0.25)', // Brand highlight glow
-                'glow-brand-soft': '0 4px 12px rgba(99, 102, 241, 0.4)', // Softer brand glow
-                overlay: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', // Modal shadow (RenameDialog)
+                elevated: '0 20px 40px rgba(0,0,0,0.85)',           // deep modal/tray
+                'card-sm': '0 2px 8px rgba(0,0,0,0.3)',              // small cards
+                'glow-brand': '0 0 30px rgba(129,140,248,0.75)',        // strong brand glow
+                'glow-brand-soft': '0 0 18px rgba(129,140,248,0.5)',         // softer glow
+                overlay: '0 20px 25px -5px rgba(0,0,0,0.7), 0 10px 10px -5px rgba(0,0,0,0.6)',
             },
+
             backgroundImage: {
-                'app-gradient': 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 100%)',
-                'gradient-brand-icon': 'linear-gradient(45deg, #6366f1, #8b5cf6)', // Welcome screen icon
+                // Main app background: mostly flat black with a very subtle top glow
+                'app-gradient':
+                    'radial-gradient(circle at top, rgba(129,140,248,0.22), transparent 55%), linear-gradient(180deg, #020617, #020617)',
+
+                // Icon gradient for welcome screen (kept, now sits on black)
+                'gradient-brand-icon':
+                    'radial-gradient(circle at top, rgba(129,140,248,0.4), transparent 60%), linear-gradient(135deg, #0b1120, #020617)',
+
+                // Optional: header gradient, see below
+                'header-gradient':
+                    'linear-gradient(90deg, #020617 0%, #111827 50%, #020617 100%)',
             },
+
             keyframes: {
                 'slide-up': {
                     '0%': { opacity: '0', transform: 'translateY(12px)' },

@@ -26,7 +26,7 @@ export default function Header() {
   const setIsSettingsOpen = useSetAtom(isSettingsOpenAtom);
 
   return (
-    <header className="flex items-center justify-between px-4 py-2.5 bg-surface-soft backdrop-blur-lg border-b border-border-subtle shrink-0 text-text-secondary">
+    <header className="flex items-center justify-between px-4 py-2.5 bg-header-gradient backdrop-blur-lg border-b border-border-subtle shrink-0 text-text-secondary">
       <div className="flex items-center gap-3">
         <button
           onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
