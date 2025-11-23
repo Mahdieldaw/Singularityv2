@@ -13,7 +13,7 @@ function MessageRow({ turnId }: { turnId: string }) {
 
   if (!message) {
     return (
-      <div style={{ padding: "8px", color: "#ef4444" }}>
+      <div className="p-2 text-intent-danger">
         Error: Missing turn {turnId}
       </div>
     );

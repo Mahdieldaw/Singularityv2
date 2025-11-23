@@ -28,6 +28,8 @@ module.exports = {
                     highest: 'rgba(3, 7, 18, 0.72)',     // Dropdowns / Popovers
                     highlight: 'rgba(255, 255, 255, 0.1)', // Hover state
                     overlay: 'rgba(0, 0, 0, 0.2)', // Dark overlay for content areas
+                    code: '#0b1220',      // Code block background (MarkdownDisplay)
+                    modal: '#1e293b',     // Modal panel background (RenameDialog)
                 },
                 // Inputs / bars
                 input: {
@@ -36,7 +38,7 @@ module.exports = {
                 },
                 // Overlays and modals
                 overlay: {
-                    backdrop: 'rgba(0, 0, 0, 0.85)', // Modal backdrop
+                    backdrop: '#0f172a', // Solid color - use with /70, /80 opacity utilities
                 },
                 // Text system
                 text: {
@@ -57,10 +59,6 @@ module.exports = {
                     active: 'rgba(99, 102, 241, 0.3)', // Indigo-500 with opacity
                     soft: 'rgba(148, 163, 184, 0.18)',
                 },
-                // Overlay / backdrop
-                overlay: {
-                    backdrop: 'rgba(15, 23, 42, 0.5)', // Dark semi-transparent overlay
-                },
                 // Status / intent colors
                 intent: {
                     success: '#22c55e',
@@ -79,10 +77,21 @@ module.exports = {
                 'card-sm': '0 2px 8px rgba(0, 0, 0, 0.2)', // Small card shadow
                 'glow-brand': '0 0 0 2px rgba(99, 102, 241, 0.6), 0 10px 30px rgba(59, 130, 246, 0.25)', // Brand highlight glow
                 'glow-brand-soft': '0 4px 12px rgba(99, 102, 241, 0.4)', // Softer brand glow
+                overlay: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', // Modal shadow (RenameDialog)
             },
             backgroundImage: {
                 'app-gradient': 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 100%)',
-            }
+                'gradient-brand-icon': 'linear-gradient(45deg, #6366f1, #8b5cf6)', // Welcome screen icon
+            },
+            keyframes: {
+                'slide-up': {
+                    '0%': { opacity: '0', transform: 'translateY(12px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+            },
+            animation: {
+                'slide-up': 'slide-up 0.3s ease-out',
+            },
         },
     },
     plugins: [],

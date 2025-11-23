@@ -26,45 +26,13 @@ class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
-            padding: "40px",
-            textAlign: "center",
-            background: "linear-gradient(135deg, #0f0f23 0%, #1a1a3a 100%)",
-            color: "#e2e8f0",
-          }}
-        >
-          <div
-            style={{
-              background: "rgba(239, 68, 68, 0.1)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-              borderRadius: "12px",
-              padding: "32px",
-              maxWidth: "600px",
-            }}
-          >
-            <div style={{ fontSize: "48px", marginBottom: "16px" }}>⚠️</div>
-            <h2
-              style={{
-                fontSize: "24px",
-                marginBottom: "12px",
-                color: "#fca5a5",
-              }}
-            >
+        <div className="flex flex-col items-center justify-center h-full p-10 text-center bg-app-gradient text-text-primary">
+          <div className="bg-intent-danger/10 border border-intent-danger/40 rounded-2xl p-8 max-w-[600px]">
+            <div className="text-5xl mb-4">⚠️</div>
+            <h2 className="text-2xl mb-3 text-intent-danger">
               Something went wrong
             </h2>
-            <p
-              style={{
-                fontSize: "14px",
-                color: "#94a3b8",
-                marginBottom: "24px",
-              }}
-            >
+            <p className="text-sm text-text-muted mb-6">
               {this.state.error?.message || "An unexpected error occurred"}
             </p>
             <button
@@ -72,17 +40,10 @@ class ErrorBoundary extends Component<Props, State> {
                 this.setState({ hasError: false, error: null });
                 window.location.reload();
               }}
-              style={{
-                padding: "12px 24px",
-                background: "#6366f1",
-                border: "none",
-                borderRadius: "8px",
-                color: "white",
-                fontSize: "14px",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-              }}
+              className="px-6 py-3 bg-brand-500 hover:bg-brand-400
+                         border border-brand-500 rounded-lg
+                         text-white text-sm font-semibold
+                         cursor-pointer transition-all duration-200"
             >
               Reload App
             </button>

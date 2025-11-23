@@ -49,57 +49,20 @@ export const RenameDialog: React.FC<RenameDialogProps> = ({
 
   return (
     <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-      }}
+      className="fixed inset-0 bg-overlay-backdrop/70 flex items-center justify-center z-[1000]"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
         }
       }}
     >
-      <div
-        style={{
-          background: "#1e293b",
-          border: "1px solid #334155",
-          borderRadius: "12px",
-          padding: "24px",
-          minWidth: "400px",
-          maxWidth: "500px",
-          boxShadow:
-            "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-        }}
-      >
-        <h3
-          style={{
-            margin: "0 0 16px 0",
-            fontSize: "18px",
-            fontWeight: 600,
-            color: "#e2e8f0",
-          }}
-        >
+      <div className="bg-surface-modal border border-border-subtle rounded-2xl p-6 min-w-[400px] max-w-[500px] shadow-overlay">
+        <h3 className="m-0 mb-4 text-lg font-semibold text-text-primary">
           Rename Chat
         </h3>
 
-        <div style={{ marginBottom: "20px" }}>
-          <label
-            style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: 500,
-              color: "#cbd5e1",
-              marginBottom: "8px",
-            }}
-          >
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-text-secondary mb-2">
             Chat Title
           </label>
           <input
@@ -110,107 +73,38 @@ export const RenameDialog: React.FC<RenameDialogProps> = ({
             onKeyDown={handleKeyDown}
             placeholder="Enter chat title..."
             autoFocus
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: "#0f172a",
-              border: "1px solid #334155",
-              borderRadius: "8px",
-              color: "#e2e8f0",
-              fontSize: "14px",
-              outline: "none",
-              boxSizing: "border-box",
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = "#8b5cf6";
-              // Also select all text for quick replacement
-              e.currentTarget.selectionStart = 0;
-              e.currentTarget.selectionEnd = e.currentTarget.value.length;
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = "#334155";
-            }}
+            className="w-full p-3 bg-surface-soft border border-border-subtle rounded-lg
+                       text-text-primary text-sm outline-none box-border
+                       focus:border-border-brand transition-colors"
           />
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            gap: "12px",
-            justifyContent: "flex-end",
-          }}
-        >
+        <div className="flex gap-3 justify-end">
           <button
             onClick={onClose}
             disabled={isRenaming}
-            style={{
-              padding: "10px 20px",
-              background: "transparent",
-              border: "1px solid #475569",
-              borderRadius: "8px",
-              color: "#94a3b8",
-              fontSize: "14px",
-              fontWeight: 500,
-              cursor: isRenaming ? "not-allowed" : "pointer",
-              opacity: isRenaming ? 0.6 : 1,
-            }}
+            className="px-5 py-2.5 bg-transparent border border-border-subtle rounded-lg
+                       text-text-muted text-sm font-medium
+                       cursor-pointer disabled:cursor-not-allowed disabled:opacity-60
+                       transition-all"
           >
             Cancel
           </button>
           <button
             onClick={handleRename}
             disabled={!title.trim() || isRenaming}
-            style={{
-              padding: "10px 20px",
-              background: title.trim() && !isRenaming ? "#10b981" : "#334155",
-              border: "1px solid",
-              borderColor: title.trim() && !isRenaming ? "#10b981" : "#475569",
-              borderRadius: "8px",
-              color: title.trim() && !isRenaming ? "#fff" : "#64748b",
-              fontSize: "14px",
-              fontWeight: 500,
-              cursor: title.trim() && !isRenaming ? "pointer" : "not-allowed",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              transition: "all 0.15s ease",
-              transform: "scale(1)",
-            }}
-            onMouseDown={(e) => {
-              if (title.trim() && !isRenaming) {
-                e.currentTarget.style.transform = "scale(0.95)";
-              }
-            }}
-            onMouseUp={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-            }}
+            className="px-5 py-2.5 border rounded-lg text-sm font-medium
+                       flex items-center gap-2 transition-all active:scale-95
+                       enabled:bg-intent-success enabled:border-intent-success enabled:text-white enabled:cursor-pointer
+                       disabled:bg-surface-highest/60 disabled:border-border-subtle disabled:text-text-muted disabled:cursor-not-allowed"
           >
             {isRenaming && (
-              <div
-                style={{
-                  width: "16px",
-                  height: "16px",
-                  border: "2px solid transparent",
-                  borderTop: "2px solid currentColor",
-                  borderRadius: "50%",
-                  animation: "spin 1s linear infinite",
-                }}
-              />
+              <div className="w-4 h-4 border-2 border-transparent border-t-current rounded-full animate-spin" />
             )}
             {isRenaming ? "Renaming…" : "Rename"}
           </button>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 };

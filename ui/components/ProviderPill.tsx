@@ -15,19 +15,9 @@ export const ProviderPill = ({ id }: { id: string }) => {
 
   return (
     <span
-      className="provider-pill"
-      style={{
-        fontSize: "10px",
-        backgroundColor: "rgba(15, 23, 42, 0.5)", // overlay-backdrop
-        padding: "2px 6px",
-        borderRadius: "4px",
-        color: "#e2e8f0",
-        fontWeight: "500",
-        lineHeight: "1.2",
-        marginLeft: "auto",
-        alignSelf: "flex-end",
-        marginTop: "8px",
-      }}
+      className="ml-auto self-end mt-2 text-[10px]
+                 bg-overlay-backdrop/80 px-1.5 py-0.5
+                 rounded text-text-secondary font-medium leading-[1.2]"
     >
       {emoji} {name}
     </span>

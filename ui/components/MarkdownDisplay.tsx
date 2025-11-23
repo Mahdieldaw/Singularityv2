@@ -76,28 +76,39 @@ const PreBlock = ({ children }: any) => {
   }, [codeText, language]);
 
   return (
-    <div style={{ position: "relative", background: "#0b1220", border: "1px solid #334155", borderRadius: 8, margin: "12px 0", overflow: 'hidden' }}>
+    <div className="relative bg-surface-code border border-border-subtle rounded-lg my-3 overflow-hidden">
       {/* Header / Language Label */}
       {language && (
-        <div style={{ position: "absolute", top: 0, left: 0, padding: "2px 8px", fontSize: "10px", textTransform: "uppercase", color: "#94a3b8", background: "rgba(30, 41, 59, 0.5)", borderBottomRightRadius: "4px", pointerEvents: "none", zIndex: 1 }}>
+        <div className="absolute top-0 left-0 px-2 py-0.5 text-[10px] uppercase text-text-muted bg-surface-modal/50 rounded-br pointer-events-none z-[1]">
           {language}
         </div>
       )}
 
       {/* Code Content */}
-      <div style={{ margin: 0, overflowX: "auto", padding: "28px 12px 12px 12px" }}>
+      <div className="m-0 overflow-x-auto pt-7 px-3 pb-3">
         {/* We render children (the <code> tag) directly here */}
-        <pre style={{ margin: 0, fontFamily: 'inherit', background: 'transparent' }}>
+        <pre className="m-0 font-[inherit] bg-transparent">
           {children}
         </pre>
       </div>
 
       {/* Action Buttons */}
-      <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 6, zIndex: 2 }}>
-        <button onClick={handleCopy} title="Copy" style={{ background: "#334155", border: "1px solid #475569", borderRadius: 6, padding: "4px 8px", color: copied ? "#4ade80" : "#94a3b8", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", transition: "all 0.2s" }}>
+      <div className="absolute top-1.5 right-1.5 flex gap-1.5 z-[2]">
+        <button
+          onClick={handleCopy}
+          title="Copy"
+          className={`bg-border-subtle border border-border-subtle rounded-md px-2 py-1
+                      text-xs cursor-pointer flex items-center transition-all
+                      ${copied ? 'text-intent-success' : 'text-text-muted'}`}
+        >
           {copied ? "✓" : "📋"}
         </button>
-        <button onClick={handleDownload} title="Download" style={{ background: "#334155", border: "1px solid #475569", borderRadius: 6, padding: "4px 8px", color: "#94a3b8", fontSize: 12, cursor: "pointer" }}>
+        <button
+          onClick={handleDownload}
+          title="Download"
+          className="bg-border-subtle border border-border-subtle rounded-md px-2 py-1
+                     text-text-muted text-xs cursor-pointer"
+        >
           ⬇️
         </button>
       </div>
@@ -111,19 +122,8 @@ const CodeText = ({ inline, className, children, ...props }: any) => {
   if (inline) {
     return (
       <code
-        className={className}
-        style={{
-          background: "rgba(30, 41, 59, 0.6)",
-          color: "#e2e8f0",
-          borderRadius: "4px",
-          padding: "2px 5px",
-          fontFamily: "monospace",
-          fontSize: "0.9em",
-          border: "1px solid rgba(71, 85, 105, 0.4)",
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
-          display: "inline", // Force inline display
-        }}
+        className="bg-chip-soft text-text-primary rounded border border-border-subtle
+                   px-1 py-0.5 font-mono text-[0.9em] whitespace-pre-wrap break-words inline"
         {...props}
       >
         {children}
@@ -134,8 +134,7 @@ const CodeText = ({ inline, className, children, ...props }: any) => {
   // IF BLOCK (Inside Pre): Just render clean text logic, parent <PreBlock> handles the box
   return (
     <code
-      className={className}
-      style={{ fontSize: 13, lineHeight: '1.5', display: 'block', fontFamily: 'monospace', whiteSpace: 'pre' }}
+      className="text-[13px] leading-relaxed block font-mono whitespace-pre"
       {...props}
     >
       {children}
@@ -151,7 +150,7 @@ interface MarkdownDisplayProps {
 
 const MarkdownDisplay: React.FC<MarkdownDisplayProps> = ({ content, components = {} }) => {
   return (
-    <div className="markdown-body" style={{ fontSize: "14px", lineHeight: "1.6", color: "#e2e8f0" }}>
+    <div className="markdown-body text-sm leading-normal text-text-primary">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -165,48 +164,48 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = ({ content, components =
             if (inList) {
               // Force inline rendering for list items to prevent vertical stacking
               return (
-                <span style={{ display: 'inline', margin: 0 }}>
+                <span className="inline m-0">
                   {children}
-                  <span style={{ display: 'inline-block', width: '0.3em' }}></span>
+                  <span className="inline-block w-[0.3em]"></span>
                 </span>
               );
             }
             return (
-              <div style={{ marginBottom: "1em", marginTop: "0.5em" }}>
+              <div className="mb-4 mt-2">
                 {children}
               </div>
             );
           },
-          ul: ({ children }) => <ul style={{ paddingLeft: "20px", marginBottom: "1em", listStyleType: "disc" }}>{children}</ul>,
-          ol: ({ children }) => <ol style={{ paddingLeft: "20px", marginBottom: "1em", listStyleType: "decimal" }}>{children}</ol>,
+          ul: ({ children }) => <ul className="pl-5 mb-4 list-disc">{children}</ul>,
+          ol: ({ children }) => <ol className="pl-5 mb-4 list-decimal">{children}</ol>,
           li: ({ children }) => (
             <ListContext.Provider value={true}>
-              <li style={{ marginBottom: "0.25em" }}>{children}</li>
+              <li className="mb-1">{children}</li>
             </ListContext.Provider>
           ),
-          h1: ({ children }) => <h1 style={{ fontSize: '1.5em', fontWeight: 'bold', marginTop: '0.5em', marginBottom: '0.5em', color: '#f1f5f9' }}>{children}</h1>,
-          h2: ({ children }) => <h2 style={{ fontSize: '1.3em', fontWeight: 'bold', marginTop: '0.5em', marginBottom: '0.5em', color: '#f1f5f9' }}>{children}</h2>,
-          h3: ({ children }) => <h3 style={{ fontSize: '1.1em', fontWeight: 'bold', marginTop: '0.5em', marginBottom: '0.5em', color: '#f1f5f9' }}>{children}</h3>,
-          blockquote: ({ children }) => <blockquote style={{ borderLeft: "4px solid #475569", paddingLeft: "1em", marginLeft: 0, color: "#94a3b8", fontStyle: "italic" }}>{children}</blockquote>,
+          h1: ({ children }) => <h1 className="text-2xl font-bold mt-2 mb-2 text-text-primary">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-xl font-bold mt-2 mb-2 text-text-primary">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-lg font-bold mt-2 mb-2 text-text-primary">{children}</h3>,
+          blockquote: ({ children }) => <blockquote className="border-l-4 border-border-subtle pl-4 ml-0 text-text-muted italic">{children}</blockquote>,
 
           // --- TABLE STYLING (Restored) ---
           table: ({ children }) => (
-            <div style={{ overflowX: 'auto', margin: '1em 0' }}>
-              <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '13px' }}>
+            <div className="overflow-x-auto my-4">
+              <table className="border-collapse w-full text-[13px]">
                 {children}
               </table>
             </div>
           ),
-          thead: ({ children }) => <thead style={{ background: 'rgba(255,255,255,0.05)' }}>{children}</thead>,
+          thead: ({ children }) => <thead className="bg-chip-soft">{children}</thead>,
           tbody: ({ children }) => <tbody>{children}</tbody>,
-          tr: ({ children }) => <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{children}</tr>,
+          tr: ({ children }) => <tr className="border-b border-border-subtle/40">{children}</tr>,
           th: ({ children }) => (
-            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#f1f5f9' }}>
+            <th className="px-3 py-2 text-left font-semibold text-text-primary">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td style={{ padding: '8px 12px', color: '#e2e8f0' }}>
+            <td className="px-3 py-2 text-text-primary">
               {children}
             </td>
           ),

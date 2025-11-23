@@ -28,59 +28,27 @@ export default function RefinerBlock({ showAudit = false, showVariants = false, 
     };
 
     return (
-        <div
-            style={{
-                width: "100%",
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-                animation: "slideUp 0.3s ease-out",
-            }}
-        >
+        <div className="w-full overflow-hidden flex flex-col animate-slide-up">
             {/* Collapsible Sections */}
             {(showAudit || showVariants || showExplanation) && (
-                <div
-                    style={{
-                        backgroundColor: "rgba(15, 17, 23, 0.6)", // Darker background for contrast
-                        padding: "16px 20px",
-                        fontSize: "14px",
-                    }}
-                >
+                <div className="bg-surface-soft/60 p-4 px-5 text-sm">
                     {showExplanation && refinerData.explanation && (
-                        <div style={{ marginBottom: (showAudit || showVariants) ? "16px" : "0" }}>
-                            <div
-                                style={{
-                                    color: "#3b82f6",
-                                    fontWeight: 600,
-                                    marginBottom: "6px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                }}
-                            >
+                        <div className="mb-4 last:mb-0">
+                            <div className="text-brand-500 font-semibold mb-1.5 flex items-center gap-1.5">
                                 <span>🧠</span> Explanation
                             </div>
-                            <div style={{ color: "#cbd5e1", lineHeight: "1.5", whiteSpace: "pre-wrap" }}>
+                            <div className="text-text-secondary leading-relaxed whitespace-pre-wrap">
                                 {refinerData.explanation}
                             </div>
                         </div>
                     )}
 
                     {showAudit && refinerData.audit && (
-                        <div style={{ marginBottom: showVariants ? "16px" : "0" }}>
-                            <div
-                                style={{
-                                    color: "#f59e0b",
-                                    fontWeight: 600,
-                                    marginBottom: "6px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                }}
-                            >
+                        <div className="mb-4 last:mb-0">
+                            <div className="text-intent-warning font-semibold mb-1.5 flex items-center gap-1.5">
                                 <span>🧐</span> Audit
                             </div>
-                            <div style={{ color: "#cbd5e1", lineHeight: "1.5" }}>
+                            <div className="text-text-secondary leading-relaxed">
                                 {refinerData.audit}
                             </div>
                         </div>
@@ -88,43 +56,18 @@ export default function RefinerBlock({ showAudit = false, showVariants = false, 
 
                     {showVariants && refinerData.variants && refinerData.variants.length > 0 && (
                         <div>
-                            <div
-                                style={{
-                                    color: "#8b5cf6",
-                                    fontWeight: 600,
-                                    marginBottom: "8px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                }}
-                            >
+                            <div className="text-text-brand font-semibold mb-2 flex items-center gap-1.5">
                                 <span>🔀</span> Variants
                             </div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            <div className="flex flex-col gap-2">
                                 {refinerData.variants.map((variant, idx) => (
                                     <button
                                         key={idx}
                                         onClick={() => handleVariantClick(variant)}
-                                        style={{
-                                            textAlign: "left",
-                                            padding: "10px 12px",
-                                            backgroundColor: "rgba(255, 255, 255, 0.05)",
-                                            border: "1px solid rgba(255, 255, 255, 0.1)",
-                                            borderRadius: "8px",
-                                            color: "#e2e8f0",
-                                            cursor: "pointer",
-                                            fontSize: "14px",
-                                            lineHeight: "1.4",
-                                            transition: "all 0.2s",
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.1)";
-                                            e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.4)";
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
-                                            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                                        }}
+                                        className="text-left px-3 py-2.5 bg-chip-soft border border-border-subtle rounded-lg
+                                                   text-text-primary cursor-pointer text-sm leading-snug
+                                                   transition-all duration-200
+                                                   hover:bg-surface-highlight hover:border-brand-400"
                                     >
                                         {variant}
                                     </button>

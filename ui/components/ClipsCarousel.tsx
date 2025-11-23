@@ -39,23 +39,12 @@ const ClipsCarousel: React.FC<ClipsCarouselProps> = ({
   };
 
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <div className="flex gap-2 flex-wrap">
       {providers.map((p) => {
         const state = getProviderState(String(p.id));
         const isSelected = activeProviderId === p.id;
-        const isDisabled = state === "loading"; // ← ONLY disable when loading
+        const isDisabled = state === "loading";
         const isNeverRun = state === "never-run";
-
-        const baseBg = isNeverRun ? "#0f172a" : "rgba(255,255,255,0.06)";
-        const borderColor = isSelected
-          ? p.color
-          : isNeverRun
-            ? "#334155"
-            : "#475569";
-        const textColor = isNeverRun ? "#64748b" : "#e2e8f0";
-        const cursor = isDisabled
-          ? ("not-allowed" as const)
-          : ("pointer" as const);
 
         return (
           <button
@@ -70,19 +59,20 @@ const ClipsCarousel: React.FC<ClipsCarouselProps> = ({
                   ? `${p.name} (${type} running...)`
                   : `View ${p.name} ${type}`
             }
+            className={`
+              inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full
+              border text-xs transition-all
+              ${isDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}
+              ${isNeverRun
+                ? 'bg-surface-soft text-text-muted border-border-subtle'
+                : 'bg-chip-soft text-text-secondary border-border-subtle'
+              }
+            `}
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 10px",
-              borderRadius: 999,
-              border: `1px solid ${borderColor}`,
-              background: baseBg,
-              color: textColor,
-              opacity: isDisabled ? 0.7 : 1,
-              fontSize: 12,
-              cursor,
-              boxShadow: isSelected ? `0 0 0 2px ${p.color}20` : undefined,
+              ...(isSelected && p.color ? {
+                borderColor: p.color,
+                boxShadow: `0 0 0 2px ${p.color}20`
+              } : {})
             }}
           >
             {state === "loading"
