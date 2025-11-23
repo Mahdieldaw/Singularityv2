@@ -52,20 +52,20 @@ async function checkProviderLoginStatus() {
   const status = {};
   // Default all to true first (optimistic), then overwrite with explicit false if check fails
   // This ensures providers not in AUTH_COOKIES (like Qwen) remain enabled
-  
+
   await Promise.all(AUTH_COOKIES.map(async (config) => {
     try {
       const cookie = await chrome.cookies.get({ url: config.url, name: config.name });
       status[config.provider] = !!cookie;
     } catch (e) {
       console.warn(`[Auth] Failed to check ${config.provider}`, e);
-      status[config.provider] = false; 
+      status[config.provider] = false;
     }
   }));
 
   const { provider_auth_status: current = {} } = await chrome.storage.local.get("provider_auth_status");
   const newState = { ...current, ...status };
-  
+
   await chrome.storage.local.set({ provider_auth_status: newState });
   return newState;
 }
@@ -74,7 +74,7 @@ async function checkProviderLoginStatus() {
 chrome.cookies.onChanged.addListener((changeInfo) => {
   const { cookie, removed } = changeInfo;
   const match = AUTH_COOKIES.find(c => cookie.domain.includes(c.domain) && cookie.name === c.name);
-  
+
   if (match) {
     chrome.storage.local.get(['provider_auth_status'], (result) => {
       const current = result.provider_auth_status || {};
@@ -116,7 +116,7 @@ try {
   if (typeof fetch === "function" && typeof globalThis !== "undefined") {
     globalThis.fetch = fetch.bind(globalThis);
   }
-} catch (_) {}
+} catch (_) { }
 
 // Initialize BusController globally
 self.BusController = BusController;
@@ -160,7 +160,7 @@ async function initializePersistence() {
     throw handledError;
   }
 }
-  
+
 // ============================================================================
 // SESSION MANAGER INITIALIZATION
 // ============================================================================
@@ -262,8 +262,8 @@ class FaultTolerantOrchestrator {
   async executeParallelFanout(prompt, providers, options = {}) {
     const {
       sessionId = `req-${Date.now()}`,
-      onPartial = () => {},
-      onAllComplete = () => {},
+      onPartial = () => { },
+      onAllComplete = () => { },
       useThinking = false,
       providerContexts = {},
       providerMeta = {},
@@ -299,8 +299,8 @@ class FaultTolerantOrchestrator {
         try {
           const metaKeys = Object.keys(
             providerContexts[providerId]?.meta ||
-              providerContexts[providerId] ||
-              {},
+            providerContexts[providerId] ||
+            {},
           );
           const modelOverride =
             (providerMeta?.[providerId] || {}).model ||
@@ -310,7 +310,7 @@ class FaultTolerantOrchestrator {
           console.log(
             `[Fanout] DISPATCH_STARTED provider=${providerId} sessionId=${sessionId} useThinking=${useThinking ? "true" : "false"} model=${modelOverride} contextKeys=${metaKeys.join("|")}`,
           );
-        } catch (_) {}
+        } catch (_) { }
 
         // If we have a provider-specific context, attempt a continuation.
         // Each adapter's sendContinuation will gracefully fall back to sendPrompt
@@ -344,7 +344,7 @@ class FaultTolerantOrchestrator {
                 console.log(
                   `[Fanout] FIRST_PARTIAL provider=${providerId} t=${firstPartialAt - startTime}ms preview=${JSON.stringify(preview)}`,
                 );
-              } catch (_) {}
+              } catch (_) { }
             }
             onPartial(
               providerId,
@@ -381,7 +381,7 @@ class FaultTolerantOrchestrator {
             console.log(
               `[Fanout] PROVIDER_COMPLETE provider=${providerId} ok=${ok} latencyMs=${latency} textLen=${len}`,
             );
-          } catch (_) {}
+          } catch (_) { }
 
           return { providerId, status: "fulfilled", value: result };
         } catch (error) {
@@ -390,7 +390,7 @@ class FaultTolerantOrchestrator {
               `[Fanout] PROVIDER_ERROR provider=${providerId}`,
               error?.message || String(error),
             );
-          } catch (_) {}
+          } catch (_) { }
           if (aggregatedText) {
             return {
               providerId,
@@ -439,14 +439,14 @@ class FaultTolerantOrchestrator {
 // ============================================================================
 // GLOBAL INFRASTRUCTURE INITIALIZATION
 // ============================================================================
-  async function initializeGlobalInfrastructure() {
+async function initializeGlobalInfrastructure() {
   console.log("[SW] Initializing global infrastructure...");
   try {
-  await NetRulesManager.init();
+    await NetRulesManager.init();
     CSPController.init();
     await UserAgentController.init();
-  await ArkoseController.init();
-  await DNRUtils.initialize();
+    await ArkoseController.init();
+    await DNRUtils.initialize();
     await OffscreenController.init();
     await BusController.init();
     self.bus = BusController;
@@ -667,9 +667,9 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
             turns = await sm.adapter.getTurnsBySessionId(sessionId);
             turns = Array.isArray(turns)
               ? turns.sort(
-                  (a, b) =>
-                    (a.sequence ?? a.createdAt) - (b.sequence ?? b.createdAt),
-                )
+                (a, b) =>
+                  (a.sequence ?? a.createdAt) - (b.sequence ?? b.createdAt),
+              )
               : [];
 
             // Provider responses: prefer single session-scoped indexed lookup; fallback to full-scan
@@ -681,9 +681,9 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
           try {
             const sortedTurns = Array.isArray(turns)
               ? turns.sort(
-                  (a, b) =>
-                    (a.sequence ?? a.createdAt) - (b.sequence ?? b.createdAt),
-                )
+                (a, b) =>
+                  (a.sequence ?? a.createdAt) - (b.sequence ?? b.createdAt),
+              )
               : [];
 
             const rounds = [];
@@ -934,7 +934,7 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
                         : fetchedContext.userPrompt,
                     synthesisText:
                       turnContext?.synthesisText &&
-                      turnContext.synthesisText.trim()
+                        turnContext.synthesisText.trim()
                         ? turnContext.synthesisText
                         : fetchedContext.synthesisText,
                     mappingText:
@@ -960,9 +960,14 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
             refinerModel: desiredModel,
           });
 
-          const result = await promptRefinerService.refinePrompt(
+          const authorModel = incomingContext.authorModel || desiredModel;
+          const analystModel = incomingContext.analystModel || desiredModel;
+
+          const result = await promptRefinerService.refineWithAuthorAnalyst(
             draftPrompt,
             turnContext,
+            authorModel,
+            analystModel
           );
 
           if (!result) {
@@ -976,9 +981,12 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
           sendResponse({
             success: true,
             data: {
-              refinedPrompt: result.refinedPrompt,
-              explanation: result.explanation,
+              refinedPrompt: result.authored,
+              explanation: result.audit, // Backward compatibility
+              audit: result.audit,
+              variants: result.variants,
               originalPrompt: draftPrompt,
+              raw: result.raw,
             },
           });
         } catch (e) {
@@ -1142,7 +1150,7 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
               sm.sessions[sessionId].title = newTitle;
               sm.sessions[sessionId].updatedAt = record.updatedAt;
             }
-          } catch (_) {}
+          } catch (_) { }
 
           sendResponse({
             success: true,
@@ -1210,7 +1218,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       ) {
         self.lifecycleManager.recordActivity();
       }
-    } catch (e) {}
+    } catch (e) { }
     sendResponse({ success: true });
     return true;
   }
@@ -1249,7 +1257,7 @@ chrome.runtime.onConnect.addListener(async (port) => {
     ) {
       self.lifecycleManager.recordActivity();
     }
-  } catch (e) {}
+  } catch (e) { }
 
   console.log("[SW] New connection received, initializing handler...");
 
@@ -1262,7 +1270,7 @@ chrome.runtime.onConnect.addListener(async (port) => {
     console.error("[SW] Failed to initialize connection handler:", error);
     try {
       port.postMessage({ type: "INITIALIZATION_FAILED", error: error.message });
-    } catch (_) {}
+    } catch (_) { }
   }
 });
 
@@ -1322,7 +1330,7 @@ function getHealthStatus() {
   let providers = [];
   try {
     providers = providerRegistry.listProviders();
-  } catch (_) {}
+  } catch (_) { }
   const ps = sm?.getPersistenceStatus?.() || {};
 
   return {
@@ -1376,7 +1384,7 @@ globalThis.__HTOS_SW = {
     try {
       await NetRulesManager.init();
       await ArkoseController.init();
-    } catch (_) {}
+    } catch (_) { }
     const INIT_TIMEOUT_MS = 30000; // 30s timeout for global initialization
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(
@@ -1489,12 +1497,12 @@ async function resumeInflightWorkflows(services) {
             if (rec.key) {
               try {
                 await sessionManager.adapter.delete("metadata", rec.key);
-              } catch (_) {}
+              } catch (_) { }
             }
             continue;
           }
         }
-      } catch (_) {}
+      } catch (_) { }
 
       const primitive = {
         type: "extend",
@@ -1535,9 +1543,9 @@ async function resumeInflightWorkflows(services) {
         });
         workflowRequest.context = workflowRequest.context || {};
         workflowRequest.context.resumeFromTextByProvider = normalized;
-      } catch (_) {}
+      } catch (_) { }
 
-      const nullPort = { postMessage: () => {} };
+      const nullPort = { postMessage: () => { } };
       const engine = new (
         await import("./core/workflow-engine.js")
       ).WorkflowEngine(orchestrator, sessionManager, nullPort);
@@ -1553,12 +1561,12 @@ async function resumeInflightWorkflows(services) {
           sessionRecord.updatedAt = Date.now();
           await sessionManager.adapter.put("sessions", sessionRecord);
         }
-      } catch (_) {}
+      } catch (_) { }
 
       if (rec.key) {
         try {
           await sessionManager.adapter.delete("metadata", rec.key);
-        } catch (_) {}
+        } catch (_) { }
       }
     } catch (e) {
       console.warn("[SW] Inflight resume for record failed:", e);

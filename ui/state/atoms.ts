@@ -228,14 +228,33 @@ export const isFirstTurnAtom = atom((get) => {
 export const refinerDataAtom = atom<{
   refinedPrompt: string;
   explanation: string;
+  audit?: string;
+  variants?: string[];
+  originalPrompt?: string;
 } | null>(null);
 export const isRefinerOpenAtom = atom<boolean>(false);
 export const isRefiningAtom = atom<boolean>(false);
 export const refineModelAtom = atomWithStorage<string>(
   "htos_refine_model",
   "auto",
+  undefined,
+  { getOnInit: true }
+);
+export const authorModelAtom = atomWithStorage<string>(
+  "htos_author_model",
+  "gemini",
+  undefined,
+  { getOnInit: true }
+);
+export const analystModelAtom = atomWithStorage<string>(
+  "htos_analyst_model",
+  "gemini",
+  undefined,
+  { getOnInit: true }
 );
 export const chatInputValueAtom = atomWithStorage<string>(
   "htos_chat_input_value",
   "",
+  undefined,
+  { getOnInit: true }
 );

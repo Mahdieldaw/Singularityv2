@@ -30,6 +30,10 @@ interface CompactModelTrayProps {
   onSetRefineModel: (model: string) => void;
   isHistoryPanelOpen?: boolean;
   providerStatus?: Record<string, boolean>;
+  authorModel?: string;
+  onSetAuthorModel?: (model: string) => void;
+  analystModel?: string;
+  onSetAnalystModel?: (model: string) => void;
 }
 
 const CompactModelTray = ({
@@ -54,12 +58,16 @@ const CompactModelTray = ({
   onSetRefineModel,
   isHistoryPanelOpen = false,
   providerStatus = {}, // Default empty
+  authorModel = "gemini",
+  onSetAuthorModel,
+  analystModel = "gemini",
+  onSetAnalystModel,
 }: CompactModelTrayProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showModelsDropdown, setShowModelsDropdown] = useState(false);
   const [showMapDropdown, setShowMapDropdown] = useState(false);
   const [showUnifyDropdown, setShowUnifyDropdown] = useState(false);
-  const [showRefineDropdown, setShowRefineDropdown] = useState(false); // New state for refine dropdown
+  const [showDraftDropdown, setShowDraftDropdown] = useState(false); // Replaces Refine dropdown
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Calculate active models count and names
@@ -75,7 +83,7 @@ const CompactModelTray = ({
   const unifyProviderId = synthesisProvider || "";
   const isMapEnabled = !!mappingEnabled;
   const isUnifyEnabled = !!unifyProviderId;
-  
+
 
   // Prefer user's last-used providers across turns/sessions when props are empty/null
   useEffect(() => {
@@ -126,7 +134,7 @@ const CompactModelTray = ({
             onSetMappingProvider(val);
             try {
               onToggleMapping?.(true);
-            } catch (_) {}
+            } catch (_) { }
             break;
           }
         }
@@ -164,8 +172,13 @@ const CompactModelTray = ({
       if (savedRefineModel) {
         onSetRefineModel(savedRefineModel);
       }
+      // Restore Author/Analyst models
+      const savedAuthor = localStorage.getItem("htos_author_model");
+      if (savedAuthor && onSetAuthorModel) onSetAuthorModel(savedAuthor);
+      const savedAnalyst = localStorage.getItem("htos_analyst_model");
+      if (savedAnalyst && onSetAnalystModel) onSetAnalystModel(savedAnalyst);
     } catch (err) {
-      console.warn("[CompactModelTray] failed to restore refine model", err);
+      console.warn("[CompactModelTray] failed to restore refine/draft models", err);
     }
     // run only once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -203,9 +216,10 @@ const CompactModelTray = ({
     return `[Unify: ${name || "None"}${hint}]`;
   };
 
-  const getRefineLabel = () => {
-    const name = getProviderName(refineModel);
-    return `[Refine: ${name || "Auto"}]`;
+  const getDraftLabel = () => {
+    const authorName = getProviderName(authorModel);
+    const analystName = getProviderName(analystModel);
+    return `[Draft: ${authorName}/${analystName}]`;
   };
 
   // Handle outside clicks for closing expanded and dropdowns
@@ -215,7 +229,7 @@ const CompactModelTray = ({
       showModelsDropdown ||
       showMapDropdown ||
       showUnifyDropdown ||
-      showRefineDropdown;
+      showDraftDropdown;
     const handleClickOutside = (event: MouseEvent) => {
       if (
         containerRef.current &&
@@ -225,7 +239,7 @@ const CompactModelTray = ({
         setShowModelsDropdown(false);
         setShowMapDropdown(false);
         setShowUnifyDropdown(false);
-        setShowRefineDropdown(false);
+        setShowDraftDropdown(false);
       }
     };
     if (shouldListen) {
@@ -238,7 +252,7 @@ const CompactModelTray = ({
     showModelsDropdown,
     showMapDropdown,
     showUnifyDropdown,
-    showRefineDropdown,
+    showDraftDropdown,
   ]);
 
   // Acknowledge first load if needed (but don't render special UI)
@@ -254,43 +268,18 @@ const CompactModelTray = ({
   return (
     <div
       ref={containerRef}
+      className={`fixed left-1/2 -translate-x-1/2 w-[min(800px,calc(100%-32px))] max-h-[calc(100vh-120px)] transition-[bottom] duration-200 ease-out ${isHistoryPanelOpen ? 'z-[900] pointer-events-none' : 'z-[2000] pointer-events-auto'}`}
       style={{
-        position: "fixed",
-        bottom: `${chatInputHeight + 24}px`, // FIX: slightly larger offset so tray lifts above expanded input
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "min(800px, calc(100% - 32px))",
-        maxHeight: "calc(100vh - 120px)", // Prevent overlap
-        zIndex: isHistoryPanelOpen ? 900 : 2000,
-        pointerEvents: isHistoryPanelOpen ? 'none' : 'auto',
-        transition: "bottom 0.2s ease-out",
+        bottom: `${chatInputHeight + 24}px`, // Dynamic inline style for height
       }}
     >
       {/* Collapsed State */}
       {!isExpanded && (
-        <div
-          style={{
-            background: "rgba(255, 255, 255, 0.08)",
-            backdropFilter: "blur(20px)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-            borderRadius: "12px",
-            padding: "8px 16px",
-            display: "flex",
-            alignItems: "center",
-            gap: "16px", // Spaced out slightly
-            fontSize: "13px",
-            color: "#e2e8f0",
-            position: "relative",
-          }}
-        >
+        <div className="bg-surface-raised backdrop-blur-md border border-border-subtle rounded-2xl p-2 px-4 flex items-center gap-4 text-[13px] text-text-secondary relative">
           {/* Models Label with Dropdown Arrow */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              cursor: "pointer",
-            }}
+          <button
+            type="button"
+            className="relative flex items-center gap-1 cursor-pointer bg-input-subtle rounded-full px-3 py-1 hover:bg-white/10 transition-colors duration-200"
             onClick={() => {
               const opening = !showModelsDropdown;
               setShowModelsDropdown(opening);
@@ -298,290 +287,204 @@ const CompactModelTray = ({
                 // ensure only one dropdown is open at a time
                 setShowMapDropdown(false);
                 setShowUnifyDropdown(false);
+                setShowDraftDropdown(false);
               }
             }}
           >
             <span>{getWitnessLabel()}</span>
-            <span style={{ fontSize: "10px", color: "#94a3b8" }}>▼</span>
-          </div>
-          {showModelsDropdown && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: "100%",
-                left: 0,
-                background: "rgba(255, 255, 255, 0.08)",
-                backdropFilter: "blur(20px)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
-                borderRadius: "8px",
-                padding: "8px",
-                minWidth: "200px",
-                zIndex: 1000,
-              }}
-              role="menu"
-              aria-label="Model selection"
-            >
-              {LLM_PROVIDERS_CONFIG.map((provider) => {
-                const isSelected = selectedModels[provider.id];
-                const isAuth = isProviderAvailable(provider.id);
-                return (
-                  <label
-                    key={provider.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      padding: "4px 8px",
-                      cursor: isAuth ? "pointer" : "not-allowed",
-                      borderRadius: "4px",
-                      background: isSelected
-                        ? "rgba(99, 102, 241, 0.3)"
-                        : "transparent",
-                      transition: "all 0.2s ease",
-                       opacity: isAuth ? 1 : 0.5
-                    }}
-                    onMouseEnter={(e) => {
-                      if (isSelected)
-                        e.currentTarget.style.boxShadow =
-                          "0 0 8px rgba(99, 102, 241, 0.5)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.boxShadow = "none";
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => !isLoading && isAuth && onToggleModel(provider.id)}
-                      disabled={isLoading || !isAuth}
-                      style={{ width: "14px", height: "14px", accentColor: "#6366f1" }}
-                    />
-                    <span style={{ fontSize: "12px", color: isSelected ? "#a5b4fc" : "#94a3b8" }}>
-                      {provider.name}
-                      {!isAuth && " (Login)"}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
+            <span className="text-[10px] text-text-muted">▼</span>
+            {showModelsDropdown && (
+              <div
+                className="absolute bottom-full left-0 mb-2 bg-surface-highest backdrop-blur-md border border-border-subtle rounded-lg p-2 min-w-[160px] z-[1000] shadow-elevated cursor-default text-left"
+                role="menu"
+                aria-label="Model selection"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {LLM_PROVIDERS_CONFIG.map((provider) => {
+                  const isSelected = selectedModels[provider.id];
+                  const isAuth = isProviderAvailable(provider.id);
+                  return (
+                    <label
+                      key={provider.id}
+                      className={`flex items-center gap-2 p-1 px-2 rounded transition-all duration-200 ${isAuth ? 'cursor-pointer opacity-100' : 'cursor-not-allowed opacity-50'} ${isSelected ? 'bg-brand-500/30' : 'bg-transparent hover:bg-brand-500/10'}`}
+                      onMouseEnter={(e) => {
+                        if (isSelected)
+                          e.currentTarget.style.boxShadow =
+                            "0 0 8px rgba(99, 102, 241, 0.5)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => !isLoading && isAuth && onToggleModel(provider.id)}
+                        disabled={isLoading || !isAuth}
+                        className="w-3.5 h-3.5 accent-brand-500"
+                      />
+                      <span className={`text-[13px] ${isSelected ? 'text-text-brand' : 'text-text-muted'}`}>
+                        {provider.name}
+                        {!isAuth && " (Login)"}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </button>
 
-          <span style={{ color: "#64748b" }}>•</span>
+          <span className="text-text-muted/50">•</span>
 
           {/* Map Label with Dropdown Arrow */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              cursor: canRefine ? "pointer" : "default",
-              opacity: canRefine ? 1 : 0.5,
-            }}
+          <button
+            type="button"
+            className={`relative flex items-center gap-1 bg-input-subtle rounded-full px-3 py-1 transition-colors duration-200 ${canRefine ? 'cursor-pointer opacity-100 hover:bg-white/10' : 'cursor-default opacity-50'}`}
             onClick={
               canRefine
                 ? () => {
-                    const opening = !showMapDropdown;
-                    setShowMapDropdown(opening);
-                    if (opening) {
-                      setShowModelsDropdown(false);
-                      setShowUnifyDropdown(false);
-                    }
+                  const opening = !showMapDropdown;
+                  setShowMapDropdown(opening);
+                  if (opening) {
+                    setShowModelsDropdown(false);
+                    setShowUnifyDropdown(false);
+                    setShowDraftDropdown(false);
                   }
+                }
                 : undefined
             }
           >
             <span>{getMapLabel()}</span>
-            <span style={{ fontSize: "10px", color: "#94a3b8" }}>▼</span>
-          </div>
-          {showMapDropdown && canRefine && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: "100%",
-                right: "65%", // move further left so dropdown aligns better with the Map label
-                background: "rgba(3, 7, 18, 0.72)", // darker backdrop for readability
-                color: "#e2e8f0",
-                border: "1px solid rgba(255, 255, 255, 0.06)",
-                borderRadius: "8px",
-                padding: "8px",
-                minWidth: "170px",
-                zIndex: 1000,
-                boxShadow: "0 8px 24px rgba(2,6,23,0.6)",
-              }}
-              role="menu"
-              aria-label="Map provider selection"
-            >
-              {LLM_PROVIDERS_CONFIG.map((provider) => {
-                const isSelected = mapProviderId === provider.id;
-                return (
-                  <button
-                    key={provider.id}
-                    onClick={() => {
-                      if (isLoading) return;
+            <span className="text-[10px] text-text-muted">▼</span>
+            {showMapDropdown && canRefine && (
+              <div
+                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-surface-highest text-text-secondary border border-border-subtle rounded-lg p-2 min-w-[170px] z-[1000] shadow-elevated cursor-default text-left"
+                role="menu"
+                aria-label="Map provider selection"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {LLM_PROVIDERS_CONFIG.map((provider) => {
+                  const isSelected = mapProviderId === provider.id;
+                  return (
+                    <button
+                      key={provider.id}
+                      onClick={() => {
+                        if (isLoading) return;
 
-                      const clickedId = provider.id;
-                      // If selecting the same as Unify, auto-switch Unify to a fallback (do not block selection)
-                      if (unifyProviderId && unifyProviderId === clickedId) {
-                        const selectedIds = LLM_PROVIDERS_CONFIG.map(
-                          (p) => p.id,
-                        ).filter((id) => selectedModels[id]);
-                        const prefer =
-                          clickedId === "gemini"
-                            ? ["qwen"]
-                            : clickedId === "qwen"
-                              ? ["gemini"]
-                              : ["qwen", "gemini"];
-                        let fallback: string | null = null;
-                        for (const cand of prefer) {
-                          if (
-                            cand !== clickedId &&
-                            selectedIds.includes(cand)
-                          ) {
-                            fallback = cand;
-                            break;
+                        const clickedId = provider.id;
+                        // If selecting the same as Unify, auto-switch Unify to a fallback (do not block selection)
+                        if (unifyProviderId && unifyProviderId === clickedId) {
+                          const selectedIds = LLM_PROVIDERS_CONFIG.map(
+                            (p) => p.id,
+                          ).filter((id) => selectedModels[id]);
+                          const prefer =
+                            clickedId === "gemini"
+                              ? ["qwen"]
+                              : clickedId === "qwen"
+                                ? ["gemini"]
+                                : ["qwen", "gemini"];
+                          let fallback: string | null = null;
+                          for (const cand of prefer) {
+                            if (
+                              cand !== clickedId &&
+                              selectedIds.includes(cand)
+                            ) {
+                              fallback = cand;
+                              break;
+                            }
                           }
+                          if (!fallback) {
+                            const anyOther =
+                              selectedIds.find((id) => id !== clickedId) || null;
+                            fallback = anyOther;
+                          }
+                          // Apply fallback for Unify first to maintain constraint
+                          onSetSynthesisProvider?.(fallback);
+                          try {
+                            if (fallback)
+                              localStorage.setItem(
+                                "htos_synthesis_provider",
+                                fallback,
+                              );
+                          } catch { }
                         }
-                        if (!fallback) {
-                          const anyOther =
-                            selectedIds.find((id) => id !== clickedId) || null;
-                          fallback = anyOther;
-                        }
-                        // Apply fallback for Unify first to maintain constraint
-                        onSetSynthesisProvider?.(fallback);
-                        try {
-                          if (fallback)
+
+                        if (mapProviderId === clickedId) {
+                          // Toggle off Map when clicking the already selected provider
+                          onSetMappingProvider?.(null);
+                          onToggleMapping?.(false);
+                          try {
+                            localStorage.removeItem("htos_mapping_provider");
                             localStorage.setItem(
-                              "htos_synthesis_provider",
-                              fallback,
+                              "htos_mapping_enabled",
+                              JSON.stringify(false),
                             );
-                        } catch {}
-                      }
+                          } catch (_) { }
+                        } else {
+                          onSetMappingProvider?.(clickedId);
+                          onToggleMapping?.(true);
+                          try {
+                            localStorage.setItem(
+                              "htos_mapping_provider",
+                              clickedId,
+                            );
+                            localStorage.setItem(
+                              "htos_mapping_enabled",
+                              JSON.stringify(true),
+                            );
+                          } catch (_) { }
+                        }
+                        setShowMapDropdown(false);
+                      }}
+                      disabled={isLoading}
+                      className={`block w-full text-left px-2.5 py-1.5 rounded transition-all duration-150 text-[13px] ${isSelected ? 'bg-intent-success/10 text-intent-success' : 'bg-transparent text-text-secondary hover:bg-white/5'}`}
+                    >
+                      {provider.name}
+                      {isSelected && " ✓"}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </button>
 
-                      if (mapProviderId === clickedId) {
-                        // Toggle off Map when clicking the already selected provider
-                        onSetMappingProvider?.(null);
-                        onToggleMapping?.(false);
-                        try {
-                          localStorage.removeItem("htos_mapping_provider");
-                          localStorage.setItem(
-                            "htos_mapping_enabled",
-                            JSON.stringify(false),
-                          );
-                        } catch (_) {}
-                      } else {
-                        onSetMappingProvider?.(clickedId);
-                        onToggleMapping?.(true);
-                        try {
-                          localStorage.setItem(
-                            "htos_mapping_provider",
-                            clickedId,
-                          );
-                          localStorage.setItem(
-                            "htos_mapping_enabled",
-                            JSON.stringify(true),
-                          );
-                        } catch (_) {}
-                      }
-                      setShowMapDropdown(false);
-                    }}
-                    disabled={isLoading}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      textAlign: "left",
-                      padding: "6px 10px",
-                      background: isSelected
-                        ? "rgba(34, 197, 94, 0.12)"
-                        : "transparent",
-                      color: isSelected ? "#22c55e" : "#e2e8f0",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      transition: "all 0.12s ease",
-                      fontSize: "12px", // increased to match model selector
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background =
-                        "rgba(255,255,255,0.02)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = isSelected
-                        ? "rgba(34, 197, 94, 0.12)"
-                        : "transparent";
-                    }}
-                  >
-                    {provider.name}
-                    {isSelected && " ✓"}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <span style={{ color: "#64748b" }}>•</span>
+          <span className="text-text-muted/50">•</span>
 
           {/* Unify Label with Dropdown Arrow */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              cursor: canRefine ? "pointer" : "default",
-              opacity: canRefine ? 1 : 0.5,
-            }}
+          <button
+            type="button"
+            className={`relative flex items-center gap-1 bg-input-subtle rounded-full px-3 py-1 transition-colors duration-200 ${canRefine ? 'cursor-pointer opacity-100 hover:bg-white/10' : 'cursor-default opacity-50'}`}
             onClick={
               canRefine
                 ? () => {
-                    const opening = !showUnifyDropdown;
-                    setShowUnifyDropdown(opening);
-                    if (opening) {
-                      setShowModelsDropdown(false);
-                      setShowMapDropdown(false);
-                    }
+                  const opening = !showUnifyDropdown;
+                  setShowUnifyDropdown(opening);
+                  if (opening) {
+                    setShowModelsDropdown(false);
+                    setShowMapDropdown(false);
+                    setShowDraftDropdown(false);
                   }
+                }
                 : undefined
             }
           >
             <span>{getUnifyLabel()}</span>
-            <span style={{ fontSize: "10px", color: "#94a3b8" }}>▼</span>
-          </div>
-          {showUnifyDropdown && canRefine && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: "100%",
-                right: "55%", // move left so unify dropdown centers better under the Unify label
-                background: "rgba(3, 7, 18, 0.72)",
-                color: "#e2e8f0",
-                border: "1px solid rgba(255, 255, 255, 0.06)",
-                borderRadius: "8px",
-                padding: "8px",
-                minWidth: "170px",
-                zIndex: 1000,
-                boxShadow: "0 8px 24px rgba(2,6,23,0.6)",
-              }}
-              role="menu"
-              aria-label="Unify provider selection"
-            >
-              {powerUserMode
-                ? // Multi-select for power user
+            <span className="text-[10px] text-text-muted">▼</span>
+            {showUnifyDropdown && canRefine && (
+              <div
+                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-surface-highest text-text-secondary border border-border-subtle rounded-lg p-2 min-w-[170px] z-[1000] shadow-elevated cursor-default text-left"
+                role="menu"
+                aria-label="Unify provider selection"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {powerUserMode
+                  ? // Multi-select for power user
                   LLM_PROVIDERS_CONFIG.map((provider) => {
                     const isSelected = synthesisProviders.includes(provider.id);
                     return (
                       <label
                         key={provider.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          padding: "6px 8px",
-                          cursor: "pointer",
-                          borderRadius: "4px",
-                          background: isSelected
-                            ? "rgba(251, 191, 36, 0.12)"
-                            : "transparent",
-                          transition: "all 0.12s ease",
-                        }}
+                        className={`flex items-center gap-2 p-1.5 px-2 cursor-pointer rounded transition-all duration-150 ${isSelected ? 'bg-intent-warning/10' : 'bg-transparent hover:bg-white/5'}`}
                         onMouseEnter={(e) => {
                           if (isSelected)
                             e.currentTarget.style.boxShadow =
@@ -637,30 +540,21 @@ const CompactModelTray = ({
                                     "htos_mapping_provider",
                                   );
                                 }
-                              } catch {}
+                              } catch { }
                             }
 
                             onToggleSynthesisProvider?.(clickedId);
                           }}
                           disabled={isLoading}
-                          style={{
-                            width: "14px",
-                            height: "14px",
-                            accentColor: "#fbbf24",
-                          }}
+                          className="w-3.5 h-3.5 accent-intent-warning"
                         />
-                        <span
-                          style={{
-                            fontSize: "12px",
-                            color: isSelected ? "#fbbf24" : "#94a3b8",
-                          }}
-                        >
+                        <span className={`text-[13px] ${isSelected ? 'text-intent-warning' : 'text-text-muted'}`}>
                           {provider.name}
                         </span>
                       </label>
                     );
                   })
-                : // Single select
+                  : // Single select
                   LLM_PROVIDERS_CONFIG.map((provider) => {
                     const isSelected = unifyProviderId === provider.id;
                     return (
@@ -728,7 +622,7 @@ const CompactModelTray = ({
                                   JSON.stringify(false),
                                 );
                               }
-                            } catch {}
+                            } catch { }
                           }
 
                           onSetSynthesisProvider?.(newUnifyProvider);
@@ -740,60 +634,34 @@ const CompactModelTray = ({
                               );
                             } else {
                               localStorage.removeItem(
-                                "htos_synthesis_provider",
+                                "htos_synthesis_provider"
                               );
                             }
-                          } catch {}
+                          } catch { }
 
                           setShowUnifyDropdown(false);
                         }}
                         disabled={isLoading}
-                        style={{
-                          display: "block",
-                          width: "100%",
-                          textAlign: "left",
-                          padding: "6px 10px",
-                          background: isSelected
-                            ? "rgba(251, 191, 36, 0.12)"
-                            : "transparent",
-                          color: isSelected ? "#fbbf24" : "#e2e8f0",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          transition: "all 0.12s ease",
-                          fontSize: "12px", // increased to match model selector
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background =
-                            "rgba(255,255,255,0.02)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = isSelected
-                            ? "rgba(251, 191, 36, 0.12)"
-                            : "transparent";
-                        }}
+                        className={`block w-full text-left px-2.5 py-1.5 rounded transition-all duration-150 text-[13px] ${isSelected ? 'bg-intent-warning/10 text-intent-warning' : 'bg-transparent text-text-secondary hover:bg-white/5'}`}
                       >
                         {provider.name}
                         {isSelected && " ✓"}
                       </button>
                     );
                   })}
-            </div>
-          )}
+              </div>
+            )}
+          </button>
 
-          <span style={{ color: "#64748b" }}>•</span>
+          <span className="text-text-muted/50">•</span>
 
-          {/* Refine Label with Dropdown Arrow */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              cursor: "pointer",
-            }}
+          {/* Draft Label with Dropdown Arrow */}
+          <button
+            type="button"
+            className="relative flex items-center gap-1 cursor-pointer bg-input-subtle rounded-full px-3 py-1 hover:bg-white/10 transition-colors duration-200"
             onClick={() => {
-              const opening = !showRefineDropdown;
-              setShowRefineDropdown(opening);
+              const opening = !showDraftDropdown;
+              setShowDraftDropdown(opening);
               if (opening) {
                 setShowModelsDropdown(false);
                 setShowMapDropdown(false);
@@ -801,114 +669,62 @@ const CompactModelTray = ({
               }
             }}
           >
-            <span>{getRefineLabel()}</span>
-            <span style={{ fontSize: "10px", color: "#94a3b8" }}>▼</span>
-          </div>
-          {showRefineDropdown && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: "100%",
-                right: "0%", // Align to the right
-                background: "rgba(3, 7, 18, 0.72)",
-                color: "#e2e8f0",
-                border: "1px solid rgba(255, 255, 255, 0.06)",
-                borderRadius: "8px",
-                padding: "8px",
-                minWidth: "170px",
-                zIndex: 1000,
-                boxShadow: "0 8px 24px rgba(2,6,23,0.6)",
-              }}
-              role="menu"
-              aria-label="Refine provider selection"
-            >
-              <button
-                key="auto"
-                onClick={() => {
-                  if (isLoading) return;
-                  onSetRefineModel('auto');
-                  try {
-                    localStorage.setItem('htos_refine_model', 'auto');
-                  } catch {}
-                  setShowRefineDropdown(false);
-                }}
-                disabled={isLoading}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "6px 10px",
-                  background:
-                    refineModel === "auto"
-                      ? "rgba(99, 102, 241, 0.12)"
-                      : "transparent",
-                  color: refineModel === "auto" ? "#6366f1" : "#e2e8f0",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  transition: "all 0.12s ease",
-                  fontSize: "12px",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "rgba(255,255,255,0.02)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background =
-                    refineModel === "auto"
-                      ? "rgba(99, 102, 241, 0.12)"
-                      : "transparent";
-                }}
+            <span>{getDraftLabel()}</span>
+            <span className="text-[10px] text-text-muted">▼</span>
+            {showDraftDropdown && (
+              <div
+                className="absolute bottom-full right-0 mb-2 bg-surface-highest text-text-secondary border border-border-subtle rounded-lg p-3 min-w-[240px] z-[1000] shadow-elevated flex flex-col gap-3 animate-[slideUp_0.2s_ease-out] cursor-default text-left"
+                role="menu"
+                aria-label="Draft model selection"
+                onClick={(e) => e.stopPropagation()}
               >
-                Auto
-                {refineModel === "auto" && " ✓"}
-              </button>
-              {LLM_PROVIDERS_CONFIG.map((provider) => {
-                const isSelected = refineModel === provider.id;
-                return (
-                  <button
-                    key={provider.id}
-                    onClick={() => {
-                      if (isLoading) return;
-                      onSetRefineModel(provider.id);
-                      try {
-                        localStorage.setItem('htos_refine_model', provider.id);
-                      } catch {}
-                      setShowRefineDropdown(false);
-                    }}
-                    disabled={isLoading}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      textAlign: "left",
-                      padding: "6px 10px",
-                      background: isSelected
-                        ? "rgba(99, 102, 241, 0.12)"
-                        : "transparent",
-                      color: isSelected ? "#6366f1" : "#e2e8f0",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      transition: "all 0.12s ease",
-                      fontSize: "12px",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background =
-                        "rgba(255,255,255,0.02)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = isSelected
-                        ? "rgba(99, 102, 241, 0.12)"
-                        : "transparent";
-                    }}
-                  >
-                    {provider.name}
-                    {isSelected && " ✓"}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                {/* Author Section */}
+                <div>
+                  <div className="text-[11px] font-semibold text-text-muted mb-1.5 uppercase">
+                    Author Model
+                  </div>
+                  {LLM_PROVIDERS_CONFIG.map((provider) => {
+                    const isSelected = authorModel === provider.id;
+                    return (
+                      <button
+                        key={`author-${provider.id}`}
+                        onClick={() => {
+                          if (onSetAuthorModel) onSetAuthorModel(provider.id);
+                        }}
+                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-[13px] ${isSelected ? 'bg-brand-500/10 text-brand-400' : 'bg-transparent text-text-secondary hover:bg-white/5'}`}
+                      >
+                        {provider.name}
+                        {isSelected && " ✓"}
+                      </button>
+                    );
+                  })}
+                </div>
 
+                {/* Analyst Section */}
+                <div>
+                  <div className="text-[11px] font-semibold text-text-muted mb-1.5 uppercase">
+                    Analyst Model
+                  </div>
+                  {LLM_PROVIDERS_CONFIG.map((provider) => {
+                    const isSelected = analystModel === provider.id;
+                    return (
+                      <button
+                        key={`analyst-${provider.id}`}
+                        onClick={() => {
+                          if (onSetAnalystModel) onSetAnalystModel(provider.id);
+                        }}
+                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-[13px] ${isSelected ? 'bg-intent-warning/10 text-intent-warning' : 'bg-transparent text-text-secondary hover:bg-white/5'}`}
+                      >
+                        {provider.name}
+                        {isSelected && " ✓"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </button>
+          {/* Settings Button */}
           <button
             onClick={() => {
               setIsExpanded(true);
@@ -916,27 +732,11 @@ const CompactModelTray = ({
               setShowModelsDropdown(false);
               setShowMapDropdown(false);
               setShowUnifyDropdown(false);
-              setShowRefineDropdown(false);
+              setShowDraftDropdown(false);
             }}
             aria-expanded={isExpanded}
             aria-label="Open full settings"
-            style={{
-              marginLeft: "auto",
-              background: "none",
-              border: "none",
-              color: "#94a3b8",
-              cursor: "pointer",
-              fontSize: "16px",
-              padding: "4px",
-              borderRadius: "4px",
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "none";
-            }}
+            className="ml-auto bg-none border-none text-text-muted cursor-pointer text-base p-1 rounded transition-all duration-200 hover:bg-white/10"
           >
             ⚙️
           </button>
@@ -945,77 +745,24 @@ const CompactModelTray = ({
 
       {/* Expanded State */}
       {isExpanded && (
-        <div
-          style={{
-            background: "rgba(255, 255, 255, 0.08)",
-            backdropFilter: "blur(20px)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-            borderRadius: "16px",
-            padding: "16px 20px",
-            maxHeight: "calc(100vh - 160px)", // Ensure no overlap
-            overflowY: "auto",
-          }}
-        >
+        <div className="bg-surface-raised backdrop-blur-md border border-border-subtle rounded-2xl p-4 px-5 max-h-[calc(100vh-160px)] overflow-y-auto">
           {/* Header */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "16px",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "14px",
-                color: "#e2e8f0",
-                fontWeight: 500,
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm text-text-secondary font-medium flex items-center gap-2">
               ⚙️ Configuration
             </span>
             <button
               onClick={() => setIsExpanded(false)}
               aria-label="Close settings"
-              style={{
-                background: "none",
-                border: "none",
-                color: "#64748b",
-                cursor: "pointer",
-                fontSize: "18px",
-                padding: "4px",
-                borderRadius: "4px",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
-                e.currentTarget.style.color = "#e2e8f0";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "none";
-                e.currentTarget.style.color = "#64748b";
-              }}
+              className="bg-none border-none text-text-muted cursor-pointer text-lg p-1 rounded transition-all duration-200 hover:bg-white/10 hover:text-text-secondary"
             >
               ×
             </button>
           </div>
 
           {/* Witness Section */}
-          <div style={{ marginBottom: "16px" }}>
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#94a3b8",
-                fontWeight: 500,
-                marginBottom: "8px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
+          <div className="mb-4">
+            <div className="text-xs text-text-muted font-medium mb-2 flex items-center gap-2">
               <span>Witness</span>
               <button
                 onClick={() => {
@@ -1031,61 +778,28 @@ const CompactModelTray = ({
                   });
                 }}
                 disabled={isLoading}
-                style={{
-                  marginLeft: "auto",
-                  padding: "2px 8px",
-                  fontSize: "10px",
-                  background: "rgba(255, 255, 255, 0.1)",
-                  border: "1px solid rgba(255, 255, 255, 0.2)",
-                  borderRadius: "4px",
-                  color: "#94a3b8",
-                  cursor: isLoading ? "not-allowed" : "pointer",
-                  transition: "all 0.2s ease",
-                  opacity: isLoading ? 0.5 : 1,
-                }}
+                className={`ml-auto px-2 py-0.5 text-[10px] bg-white/10 border border-white/20 rounded text-text-muted transition-all duration-200 ${isLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-white/20'}`}
               >
                 [All]
               </button>
             </div>
 
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <div className="flex gap-2 flex-wrap">
               {LLM_PROVIDERS_CONFIG.map((provider: LLMProvider) => {
                 const isSelected = selectedModels[provider.id];
                 return (
                   <label
                     key={provider.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      cursor: "pointer",
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      background: isSelected
-                        ? "rgba(99, 102, 241, 0.2)"
-                        : "rgba(255, 255, 255, 0.05)",
-                      border: `1px solid ${isSelected ? "rgba(99, 102, 241, 0.4)" : "rgba(255, 255, 255, 0.1)"}`,
-                      transition: "all 0.2s ease",
-                    }}
+                    className={`flex items-center gap-1.5 cursor-pointer px-2 py-1 rounded-md transition-all duration-200 border ${isSelected ? 'bg-brand-500/20 border-brand-500/40' : 'bg-white/5 border-white/10'}`}
                   >
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => !isLoading && onToggleModel(provider.id)}
                       disabled={isLoading}
-                      style={{
-                        width: "14px",
-                        height: "14px",
-                        accentColor: "#6366f1",
-                      }}
+                      className="w-3.5 h-3.5 accent-brand-500"
                     />
-                    <span
-                      style={{
-                        fontSize: "12px",
-                        color: isSelected ? "#a5b4fc" : "#94a3b8",
-                        fontWeight: 500,
-                      }}
-                    >
+                    <span className={`text-xs font-medium ${isSelected ? 'text-text-brand' : 'text-text-muted'}`}>
                       {provider.name}
                     </span>
                   </label>
@@ -1095,38 +809,16 @@ const CompactModelTray = ({
           </div>
 
           {/* Refine Section */}
-          <div style={{ marginBottom: "16px" }}>
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#94a3b8",
-                fontWeight: 500,
-                marginBottom: "8px",
-              }}
-            >
+          <div className="mb-4">
+            <div className="text-xs text-text-muted font-medium mb-2">
               Refine
             </div>
 
-            <div
-              style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}
-            >
+            <div className="flex gap-4 items-start">
               {/* Map (Mapping) */}
-              <div style={{ opacity: canRefine ? 1 : 0.5 }}>
-                <label
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "4px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
+              <div className={canRefine ? 'opacity-100' : 'opacity-50'}>
+                <label className="flex flex-col gap-1 cursor-pointer">
+                  <div className="flex items-center gap-1.5">
                     <input
                       type="checkbox"
                       checked={!!mappingEnabled}
@@ -1140,33 +832,29 @@ const CompactModelTray = ({
                             "htos_mapping_enabled",
                             JSON.stringify(checked),
                           );
-                        } catch (_) {}
+                        } catch (_) { }
                         if (!checked) {
                           // Clear selected mapping provider when disabling mapping
                           onSetMappingProvider?.(null);
                           try {
                             localStorage.removeItem("htos_mapping_provider");
-                          } catch (_) {}
+                          } catch (_) { }
                         } else {
-                            if (!mapProviderId) {
-                              const selectedIds = LLM_PROVIDERS_CONFIG.map(p => p.id).filter(id => selectedModels[id]);
-                              const avoid = unifyProviderId || '';
-                              const fallback = selectedIds.find(id => id && id !== avoid) || null;
-                              onSetMappingProvider?.(fallback);
-                              try {
-                                if (fallback) localStorage.setItem('htos_mapping_provider', fallback);
-                              } catch {}
-                            }
+                          if (!mapProviderId) {
+                            const selectedIds = LLM_PROVIDERS_CONFIG.map(p => p.id).filter(id => selectedModels[id]);
+                            const avoid = unifyProviderId || '';
+                            const fallback = selectedIds.find(id => id && id !== avoid) || null;
+                            onSetMappingProvider?.(fallback);
+                            try {
+                              if (fallback) localStorage.setItem('htos_mapping_provider', fallback);
+                            } catch { }
+                          }
                         }
                       }}
                       disabled={!canRefine || isLoading}
-                      style={{
-                        width: "14px",
-                        height: "14px",
-                        accentColor: "#6366f1",
-                      }}
+                      className="w-3.5 h-3.5 accent-brand-500"
                     />
-                    <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                    <span className="text-xs text-text-muted">
                       Map
                     </span>
                   </div>
@@ -1204,7 +892,7 @@ const CompactModelTray = ({
                               "htos_synthesis_provider",
                               fallback,
                             );
-                        } catch {}
+                        } catch { }
                       }
                       onSetMappingProvider?.(val);
                       try {
@@ -1224,18 +912,10 @@ const CompactModelTray = ({
                             JSON.stringify(false),
                           );
                         }
-                      } catch (_) {}
+                      } catch (_) { }
                     }}
                     disabled={!mappingEnabled || !canRefine || isLoading}
-                    style={{
-                      background: "rgba(255, 255, 255, 0.1)",
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      borderRadius: "4px",
-                      color: "#e2e8f0",
-                      fontSize: "12px",
-                      padding: "2px 6px",
-                      opacity: mappingEnabled && canRefine ? 1 : 0.5,
-                    }}
+                    className={`bg-white/10 border border-white/20 rounded text-text-secondary text-xs px-1.5 py-0.5 ${mappingEnabled && canRefine ? 'opacity-100' : 'opacity-50'}`}
                   >
                     <option value="">Select...</option>
                     {selectedProviders.map((provider) => (
@@ -1246,35 +926,16 @@ const CompactModelTray = ({
                   </select>
                 </label>
                 {!canRefine && (
-                  <div
-                    style={{
-                      fontSize: "10px",
-                      color: "#64748b",
-                      marginTop: "4px",
-                    }}
-                  >
+                  <div className="text-[10px] text-text-muted mt-1">
                     Select 2+ models to enable.
                   </div>
                 )}
               </div>
 
               {/* Unify (Synthesis) */}
-              <div style={{ opacity: canRefine ? 1 : 0.5 }}>
-                <label
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "4px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
+              <div className={canRefine ? 'opacity-100' : 'opacity-50'}>
+                <label className="flex flex-col gap-1 cursor-pointer">
+                  <div className="flex items-center gap-1.5">
                     <input
                       type="checkbox"
                       checked={isUnifyEnabled}
@@ -1311,27 +972,15 @@ const CompactModelTray = ({
                         }
                       }}
                       disabled={!canRefine || isLoading}
-                      style={{
-                        width: "14px",
-                        height: "14px",
-                        accentColor: "#6366f1",
-                      }}
+                      className="w-3.5 h-3.5 accent-brand-500"
                     />
-                    <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                    <span className="text-xs text-text-muted">
                       Unify
                     </span>
                   </div>
                   {powerUserMode ? (
                     // Multi-select checkboxes for power user
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "4px",
-                        maxHeight: "100px",
-                        overflowY: "auto",
-                      }}
-                    >
+                    <div className="flex flex-col gap-1 max-h-[100px] overflow-y-auto">
                       {selectedProviders.map((provider) => {
                         const isSelected = synthesisProviders.includes(
                           provider.id,
@@ -1339,18 +988,7 @@ const CompactModelTray = ({
                         return (
                           <label
                             key={provider.id}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              padding: "4px",
-                              borderRadius: "4px",
-                              background: isSelected
-                                ? "rgba(251, 191, 36, 0.2)"
-                                : "transparent",
-                              cursor: "pointer",
-                              transition: "all 0.2s ease",
-                            }}
+                            className={`flex items-center gap-1.5 p-1 rounded cursor-pointer transition-all duration-200 ${isSelected ? 'bg-intent-warning/20' : 'bg-transparent'}`}
                           >
                             <input
                               type="checkbox"
@@ -1401,23 +1039,14 @@ const CompactModelTray = ({
                                         "htos_mapping_provider",
                                       );
                                     }
-                                  } catch {}
+                                  } catch { }
                                 }
                                 onToggleSynthesisProvider?.(clickedId);
                               }}
                               disabled={isLoading}
-                              style={{
-                                width: "14px",
-                                height: "14px",
-                                accentColor: "#fbbf24",
-                              }}
+                              className="w-3.5 h-3.5 accent-intent-warning"
                             />
-                            <span
-                              style={{
-                                fontSize: "12px",
-                                color: isSelected ? "#fbbf24" : "#94a3b8",
-                              }}
-                            >
+                            <span className={`text-xs ${isSelected ? 'text-intent-warning' : 'text-text-muted'}`}>
                               {provider.name}
                             </span>
                           </label>
@@ -1426,7 +1055,7 @@ const CompactModelTray = ({
                     </div>
                   ) : (
                     <select
-                    value={unifyProviderId || ''}
+                      value={unifyProviderId || ''}
                       onChange={(e) => {
                         const val = e.target.value || null;
                         // If choosing same as map, auto-switch map to fallback
@@ -1459,20 +1088,12 @@ const CompactModelTray = ({
                                 "htos_mapping_provider",
                                 fallback,
                               );
-                          } catch {}
+                          } catch { }
                         }
                         onSetSynthesisProvider?.(val);
                       }}
                       disabled={!isUnifyEnabled || !canRefine || isLoading}
-                      style={{
-                        background: "rgba(255, 255, 255, 0.1)",
-                        border: "1px solid rgba(255, 255, 255, 0.2)",
-                        borderRadius: "4px",
-                        color: "#e2e8f0",
-                        fontSize: "12px",
-                        padding: "2px 6px",
-                        opacity: isUnifyEnabled && canRefine ? 1 : 0.5,
-                      }}
+                      className={`bg-white/10 border border-white/20 rounded text-text-secondary text-xs px-1.5 py-0.5 ${isUnifyEnabled && canRefine ? 'opacity-100' : 'opacity-50'}`}
                     >
                       <option value="">Select...</option>
                       {selectedProviders.map((provider) => (
@@ -1484,13 +1105,7 @@ const CompactModelTray = ({
                   )}
                 </label>
                 {!canRefine && (
-                  <div
-                    style={{
-                      fontSize: "10px",
-                      color: "#64748b",
-                      marginTop: "4px",
-                    }}
-                  >
+                  <div className="text-[10px] text-text-muted mt-1">
                     Select 2+ models to enable.
                   </div>
                 )}
@@ -1498,22 +1113,9 @@ const CompactModelTray = ({
 
               {/* Refine Model */}
               <div>
-                <label
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "4px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                <label className="flex flex-col gap-1 cursor-pointer">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-text-muted">
                       Refine Model
                     </span>
                   </div>
@@ -1522,20 +1124,12 @@ const CompactModelTray = ({
                     onChange={(e) => {
                       const model = e.target.value;
                       onSetRefineModel(model);
-                      setShowRefineDropdown(false);
                       try {
                         localStorage.setItem("htos_refine_model", model);
-                      } catch (_) {}
+                      } catch (_) { }
                     }}
                     disabled={isLoading}
-                    style={{
-                      background: "rgba(255, 255, 255, 0.1)",
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      borderRadius: "4px",
-                      color: "#e2e8f0",
-                      fontSize: "12px",
-                      padding: "2px 6px",
-                    }}
+                    className="bg-white/10 border border-white/20 rounded text-text-secondary text-xs px-1.5 py-0.5"
                   >
                     <option value="auto">Auto</option>
                     {LLM_PROVIDERS_CONFIG.map((provider) => (
@@ -1550,13 +1144,7 @@ const CompactModelTray = ({
           </div>
 
           {/* Parley Button - No Apply, just Parley */}
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              justifyContent: "flex-end",
-            }}
-          >
+          <div className="flex gap-2 justify-end">
             <button
               onClick={() => {
                 // Enable all models and all refine options (Parley) - but pick different providers if possible
@@ -1579,18 +1167,7 @@ const CompactModelTray = ({
                 setIsExpanded(false);
               }}
               disabled={isLoading}
-              style={{
-                padding: "6px 12px",
-                fontSize: "12px",
-                background: "rgba(34, 197, 94, 0.2)",
-                border: "1px solid rgba(34, 197, 94, 0.4)",
-                borderRadius: "6px",
-                color: "#22c55e",
-                cursor: isLoading ? "not-allowed" : "pointer",
-                fontWeight: 500,
-                transition: "all 0.2s ease",
-                opacity: isLoading ? 0.5 : 1,
-              }}
+              className={`px-3 py-1.5 text-xs bg-intent-success/20 border border-intent-success/40 rounded-md text-intent-success font-medium transition-all duration-200 ${isLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
             >
               Parley
             </button>
@@ -1598,51 +1175,29 @@ const CompactModelTray = ({
 
           {/* Think Toggle - Only show when ChatGPT is selected */}
           {selectedModels.chatgpt && (
-            <div
-              style={{
-                marginTop: "12px",
-                paddingTop: "12px",
-                borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-              }}
-            >
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                }}
-              >
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={thinkOnChatGPT}
                   onChange={() => !isLoading && onToggleThinkChatGPT?.()}
                   disabled={isLoading}
-                  style={{
-                    width: "14px",
-                    height: "14px",
-                    accentColor: "#6366f1",
-                  }}
+                  className="w-3.5 h-3.5 accent-brand-500"
                 />
-                <span style={{ fontSize: "14px" }}>🤔</span>
-                <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                <span className="text-sm">🤔</span>
+                <span className="text-xs text-text-muted">
                   Think mode for ChatGPT
                 </span>
-                <span
-                  style={{
-                    fontSize: "10px",
-                    color: thinkOnChatGPT ? "#22c55e" : "#64748b",
-                    fontWeight: 500,
-                  }}
-                >
+                <span className={`text-[10px] font-medium ${thinkOnChatGPT ? 'text-intent-success' : 'text-text-muted'}`}>
                   {thinkOnChatGPT ? "ON" : "OFF"}
                 </span>
               </label>
             </div>
           )}
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 };
 

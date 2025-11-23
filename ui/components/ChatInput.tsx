@@ -6,7 +6,6 @@ import { LLM_PROVIDERS_CONFIG } from "../constants";
 interface ChatInputProps {
   onSendPrompt: (prompt: string) => void;
   onContinuation: (prompt: string) => void;
-  onRefinePrompt?: (prompt: string) => void; // Modified signature
   // Abort/Stop current workflow
   onAbort?: () => void;
   isLoading: boolean;
@@ -22,12 +21,21 @@ interface ChatInputProps {
   mappingActive?: boolean; // disable input and toggles while active
   onHeightChange?: (height: number) => void; // Callback for height changes
   isHistoryPanelOpen?: boolean;
+  // Refiner Props
+  isRefinerOpen?: boolean;
+  onUndoRefinement?: () => void;
+  onToggleAudit?: () => void;
+  onToggleVariants?: () => void;
+  onToggleExplanation?: () => void;
+  showAudit?: boolean;
+  showVariants?: boolean;
+  showExplanation?: boolean;
+  refinerContent?: React.ReactNode;
 }
 
 const ChatInput = ({
   onSendPrompt,
   onContinuation,
-  onRefinePrompt,
   onAbort,
   isLoading,
   isRefining, // Destructure new prop
@@ -41,6 +49,15 @@ const ChatInput = ({
   mappingActive = false,
   onHeightChange,
   isHistoryPanelOpen = false,
+  isRefinerOpen = false,
+  onUndoRefinement,
+  onToggleAudit,
+  onToggleVariants,
+  onToggleExplanation,
+  showAudit = false,
+  showVariants = false,
+  showExplanation = false,
+  refinerContent,
 }: ChatInputProps) => {
   const CHAT_INPUT_STORAGE_KEY = "htos_chat_input_value";
   const [prompt, setPrompt] = useAtom(chatInputValueAtom);
@@ -54,12 +71,14 @@ const ChatInput = ({
       const newHeight = Math.min(scrollHeight, 120); // Max height 120px
       textareaRef.current.style.height = `${newHeight}px`;
 
-      // Calculate total input area height (textarea + padding + borders)
-      const totalHeight = newHeight + 24 + 2; // 12px padding top/bottom + 1px border top/bottom
+      // Calculate total input area height (textarea + padding + borders + refiner content)
+      // Note: refinerContent height is dynamic, so this might not be perfect, 
+      // but onHeightChange is mostly for padding the chat history.
+      const totalHeight = newHeight + 24 + 2 + (isRefinerOpen ? 40 : 0);
       onHeightChange?.(totalHeight);
-      
+
     }
-  }, [prompt, onHeightChange]);
+  }, [prompt, onHeightChange, isRefinerOpen]);
 
   const handleSubmit = (e?: React.FormEvent | React.KeyboardEvent) => {
     if (e) e.preventDefault();
@@ -71,12 +90,17 @@ const ChatInput = ({
     } else {
       onSendPrompt(trimmed);
     }
-    setPrompt("");
+    // Only clear prompt if NOT refining (Launch clears it via parent)
+    // Actually, parent handles clearing usually.
+    // If isRefinerOpen, we are Launching.
+    if (!isRefinerOpen) {
+      setPrompt("");
+    }
   };
 
-  const buttonText = isContinuationMode ? "Continue" : "Send";
+  const buttonText = isRefinerOpen ? "Launch" : (isContinuationMode ? "Continue" : "Draft");
   const isDisabled = isLoading || mappingActive || !prompt.trim();
-  const showMappingBtn = canShowMapping && !!prompt.trim();
+  const showMappingBtn = canShowMapping && !!prompt.trim() && !isRefinerOpen;
   const showAbortBtn = !!onAbort && isLoading;
 
   // Status color for system pill
@@ -96,6 +120,8 @@ const ChatInput = ({
         pointerEvents: isHistoryPanelOpen ? "none" : "auto",
         display: "flex",
         justifyContent: "center",
+        flexDirection: "column",
+        alignItems: "center",
       }}
     >
       <div
@@ -113,12 +139,12 @@ const ChatInput = ({
           border: "1px solid rgba(255, 255, 255, 0.1)",
           borderRadius: "24px",
           boxSizing: "border-box",
-          
+          flexWrap: "wrap",
         }}
       >
         <div
           className="input-wrapper"
-          style={{ flex: 1, position: "relative" }}
+          style={{ flex: 1, position: "relative", minWidth: "200px" }}
         >
           <textarea
             ref={textareaRef}
@@ -196,47 +222,7 @@ const ChatInput = ({
           <span>• {activeProviderCount}</span>
         </div>
 
-        {/* Refine Button */}
-        {onRefinePrompt && (
-          <div style={{ position: "relative" }}>
-            <button
-              type="button"
-              onClick={() => onRefinePrompt?.(prompt)} // Modified onClick
-              disabled={isDisabled || isRefining} // Disabled when refining
-              className="action-button"
-              style={{
-                padding: "0px 14px",
-                height: "38px",
-                background: "rgba(255, 255, 255, 0.1)",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                borderRadius: "16px",
-                color: "#e2e8f0",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: isReducedMotion ? undefined : "all 0.2s ease",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                minWidth: "90px",
-                justifyContent: "center",
-                opacity: isDisabled || isRefining ? 0.5 : 1,
-              }}
-            >
-              {isRefining ? ( // Show spinner when refining
-                <div className="loading-spinner"></div>
-              ) : (
-                <>
-                  <span className="magic-icon" style={{ fontSize: "16px" }}>
-                    🪄
-                  </span>
-                  <span>Refine</span>
-                </>
-              )}
-            </button>
-          </div>
-        )}
-
-        {/* Send Button */}
+        {/* Send/Draft/Launch Button */}
         <button
           type="button"
           onClick={handleSubmit}
@@ -245,7 +231,9 @@ const ChatInput = ({
           style={{
             padding: "0px 14px",
             height: "38px",
-            background: "linear-gradient(45deg, #6366f1, #8b5cf6)",
+            background: isRefinerOpen
+              ? "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)"
+              : "linear-gradient(45deg, #6366f1, #8b5cf6)",
             border: "none",
             borderRadius: "16px",
             color: "white",
@@ -258,6 +246,7 @@ const ChatInput = ({
             minWidth: "90px",
             justifyContent: "center",
             opacity: isDisabled ? 0.5 : 1,
+            boxShadow: isRefinerOpen ? "0 4px 12px rgba(99, 102, 241, 0.3)" : "none",
           }}
         >
           {isLoading ? (
@@ -265,7 +254,7 @@ const ChatInput = ({
           ) : (
             <>
               <span className="magic-icon" style={{ fontSize: "16px" }}>
-                {isContinuationMode ? "💬" : "✨"}
+                {isRefinerOpen ? "🚀" : (isContinuationMode ? "💬" : "✨")}
               </span>
               <span>{buttonText}</span>
             </>
@@ -310,7 +299,7 @@ const ChatInput = ({
               setPrompt("");
               try {
                 localStorage.removeItem(CHAT_INPUT_STORAGE_KEY);
-              } catch {}
+              } catch { }
             }}
             disabled={isLoading || mappingActive}
             title={mappingTooltip || "Mapping with selected models"}
@@ -335,6 +324,121 @@ const ChatInput = ({
             <span style={{ fontSize: "16px" }}>🧩</span>
             <span>Mapping</span>
           </button>
+        )}
+
+        {/* Refiner Controls Toolbar */}
+        {isRefinerOpen && (
+          <div
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingTop: "12px",
+              marginTop: "4px",
+              borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+              animation: "fadeIn 0.3s ease-out",
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                onClick={onUndoRefinement}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#ef4444", // Red for Reject
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.1)")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+              >
+                <span>❌</span> Reject
+              </button>
+
+              <button
+                onClick={onToggleExplanation}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: showExplanation ? "#3b82f6" : "#94a3b8",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.05)")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+              >
+                <span style={{ transform: showExplanation ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▸</span> Explanation
+              </button>
+            </div>
+
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                onClick={onToggleAudit}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: showAudit ? "#f59e0b" : "#94a3b8",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.05)")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+              >
+                <span style={{ transform: showAudit ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▸</span> Audit
+              </button>
+              <button
+                onClick={onToggleVariants}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: showVariants ? "#8b5cf6" : "#94a3b8",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.05)")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+              >
+                <span style={{ transform: showVariants ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▸</span> Variants
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Refiner Content (Audit/Variants) */}
+        {isRefinerOpen && refinerContent && (
+          <div style={{ width: "100%", marginTop: "12px" }}>
+            {refinerContent}
+          </div>
         )}
       </div>
     </div>

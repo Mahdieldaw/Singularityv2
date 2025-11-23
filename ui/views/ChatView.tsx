@@ -14,7 +14,6 @@ import WelcomeScreen from "../components/WelcomeScreen";
 import { useScrollPersistence } from "../hooks/useScrollPersistence";
 import CompactModelTrayConnected from "../components/CompactModelTrayConnected";
 import { useChat } from "../hooks/useChat";
-import RefinerOverlay from "../components/RefinerOverlay";
 
 export default function ChatView() {
   const [turnIds] = useAtom(turnIdsAtom as any) as [string[], any];
@@ -182,7 +181,6 @@ export default function ChatView() {
         minHeight: 0,
       }}
     >
-      <RefinerOverlay />
       {showWelcome ? (
         <WelcomeScreen />
       ) : (

@@ -23,6 +23,9 @@ import {
   isRefinerOpenAtom,
   isRefiningAtom, // Import new atom
   refineModelAtom, // Import new atom
+  authorModelAtom,
+  analystModelAtom,
+  chatInputValueAtom,
 } from "../state/atoms";
 // Optimistic AI turn creation is now handled upon TURN_CREATED from backend
 import type {
@@ -151,45 +154,45 @@ export function useChat() {
         // Build NEW primitive request shape
         const primitive: PrimitiveWorkflowRequest = isInitialize
           ? {
-              type: "initialize",
-              sessionId: null, // backend is authoritative; do not generate in UI
-              userMessage: prompt,
-              providers: activeProviders,
-              includeMapping: shouldUseMapping,
-              includeSynthesis: shouldUseSynthesis,
-              synthesizer: shouldUseSynthesis
-                ? (synthesisProvider as ProviderKey)
-                : undefined,
-              mapper: shouldUseMapping
-                ? (effectiveMappingProvider as ProviderKey)
-                : undefined,
-              useThinking: computeThinkFlag({
-                modeThinkButtonOn: thinkOnChatGPT,
-                input: prompt,
-              }),
-              providerMeta: {},
-              clientUserTurnId: userTurnId,
-            }
+            type: "initialize",
+            sessionId: null, // backend is authoritative; do not generate in UI
+            userMessage: prompt,
+            providers: activeProviders,
+            includeMapping: shouldUseMapping,
+            includeSynthesis: shouldUseSynthesis,
+            synthesizer: shouldUseSynthesis
+              ? (synthesisProvider as ProviderKey)
+              : undefined,
+            mapper: shouldUseMapping
+              ? (effectiveMappingProvider as ProviderKey)
+              : undefined,
+            useThinking: computeThinkFlag({
+              modeThinkButtonOn: thinkOnChatGPT,
+              input: prompt,
+            }),
+            providerMeta: {},
+            clientUserTurnId: userTurnId,
+          }
           : {
-              type: "extend",
-              sessionId: currentSessionId as string,
-              userMessage: prompt,
-              providers: activeProviders,
-              includeMapping: shouldUseMapping,
-              includeSynthesis: shouldUseSynthesis,
-              synthesizer: shouldUseSynthesis
-                ? (synthesisProvider as ProviderKey)
-                : undefined,
-              mapper: shouldUseMapping
-                ? (effectiveMappingProvider as ProviderKey)
-                : undefined,
-              useThinking: computeThinkFlag({
-                modeThinkButtonOn: thinkOnChatGPT,
-                input: prompt,
-              }),
-              providerMeta: {},
-              clientUserTurnId: userTurnId,
-            };
+            type: "extend",
+            sessionId: currentSessionId as string,
+            userMessage: prompt,
+            providers: activeProviders,
+            includeMapping: shouldUseMapping,
+            includeSynthesis: shouldUseSynthesis,
+            synthesizer: shouldUseSynthesis
+              ? (synthesisProvider as ProviderKey)
+              : undefined,
+            mapper: shouldUseMapping
+              ? (effectiveMappingProvider as ProviderKey)
+              : undefined,
+            useThinking: computeThinkFlag({
+              modeThinkButtonOn: thinkOnChatGPT,
+              input: prompt,
+            }),
+            providerMeta: {},
+            clientUserTurnId: userTurnId,
+          };
 
         // AI turn will be created upon TURN_CREATED from backend
         // Port is already ensured above for extend; for initialize, executeWorkflow ensures port
@@ -415,6 +418,11 @@ export function useChat() {
 
   const turnsMap = useAtomValue(turnsMapAtom);
 
+  const authorModel = useAtomValue(authorModelAtom);
+  const analystModel = useAtomValue(analystModelAtom);
+
+  const setChatInputValue = useSetAtom(chatInputValueAtom);
+
   const refinePrompt = useCallback(
     async (draftPrompt: string) => {
       if (!draftPrompt || !draftPrompt.trim()) return;
@@ -423,44 +431,56 @@ export function useChat() {
 
       try {
         const lastTurnId = turnIds[turnIds.length - 1];
-        if (!lastTurnId) return;
+        // Allow refinement even if no previous turn (start of session)
+        // if (!lastTurnId) return; 
 
-        const lastTurn = turnsMap.get(lastTurnId);
+        let userPrompt = "";
+        let synthesisText = "";
+        let mappingText = "";
+        let batchText = "";
 
-        if (!lastTurn || lastTurn.type !== "ai") return;
+        if (lastTurnId) {
+          const lastTurn = turnsMap.get(lastTurnId);
+          if (lastTurn && lastTurn.type === "ai") {
+            const aiTurn = lastTurn as AiTurn;
+            const userTurn = turnsMap.get(aiTurn.userTurnId);
+            userPrompt = userTurn?.type === "user" ? userTurn.text : "";
 
-        const aiTurn = lastTurn as AiTurn;
+            synthesisText = Object.values(aiTurn.synthesisResponses || {})
+              .flat()
+              .map((r) => r.text)
+              .join("\n\n");
 
-        const userTurn = turnsMap.get(aiTurn.userTurnId);
-        const userPrompt = userTurn?.type === "user" ? userTurn.text : "";
+            mappingText = Object.values(aiTurn.mappingResponses || {})
+              .flat()
+              .map((r) => r.text)
+              .join("\n\n");
 
-        const synthesisText = Object.values(aiTurn.synthesisResponses || {})
-          .flat()
-          .map((r) => r.text)
-          .join("\n\n");
-
-        const mappingText = Object.values(aiTurn.mappingResponses || {})
-          .flat()
-          .map((r) => r.text)
-          .join("\n\n");
-
-        const batchText = Object.values(aiTurn.batchResponses || {})
-          .map((r) => `[${r.providerId}]: ${r.text}`)
-          .join("\n\n");
+            batchText = Object.values(aiTurn.batchResponses || {})
+              .map((r) => `[${r.providerId}]: ${r.text}`)
+              .join("\n\n");
+          }
+        }
 
         const result = await api.refinePrompt(draftPrompt, {
           userPrompt,
           synthesisText,
           mappingText,
           batchText,
-          model: refineModel === "auto" ? null : refineModel, // Use model from atom
+          model: refineModel === "auto" ? null : refineModel, // Legacy/Fallback
+          authorModel,
+          analystModel,
           sessionId: currentSessionId || null,
         });
         if (result && result.refinedPrompt) {
           setRefinerData({
             refinedPrompt: result.refinedPrompt,
             explanation: result.explanation || "",
+            audit: result.audit,
+            variants: result.variants,
+            originalPrompt: draftPrompt,
           });
+          setChatInputValue(result.refinedPrompt); // Replace input with refined prompt
           setIsRefinerOpen(true);
         }
       } catch (err) {
@@ -476,7 +496,10 @@ export function useChat() {
       setIsRefinerOpen,
       setIsRefining,
       refineModel,
+      authorModel,
+      analystModel,
       currentSessionId,
+      setChatInputValue,
     ],
   );
 

@@ -48,10 +48,10 @@ class ExtensionAPI {
   private disconnectAll() {
     try {
       this.portHealthManager?.disconnect();
-    } catch {}
+    } catch { }
     try {
       this.port?.disconnect();
-    } catch {}
+    } catch { }
     this.port = null;
   }
 
@@ -280,8 +280,8 @@ class ExtensionAPI {
   refinePrompt(
     draftPrompt: string,
     context: any,
-  ): Promise<{ refinedPrompt: string; explanation: string }> {
-    return this.queryBackend<{ refinedPrompt: string; explanation: string }>({
+  ): Promise<{ refinedPrompt: string; explanation: string; audit?: string; variants?: string[]; originalPrompt?: string }> {
+    return this.queryBackend<{ refinedPrompt: string; explanation: string; audit?: string; variants?: string[]; originalPrompt?: string }>({
       type: REFINE_PROMPT,
       payload: { draftPrompt, context },
     });

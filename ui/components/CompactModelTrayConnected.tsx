@@ -14,6 +14,8 @@ import {
   isLoadingAtom,
   refineModelAtom,
   isHistoryPanelOpenAtom,
+  authorModelAtom, // Import
+  analystModelAtom, // Import
 } from "../state/atoms";
 // NEW: Import the hook
 import { useProviderStatus } from "../hooks/useProviderStatus";
@@ -34,6 +36,8 @@ const CompactModelTrayConnected = () => {
   const [isLoading] = useAtom(isLoadingAtom);
   const [refineModel, setRefineModel] = useAtom(refineModelAtom);
   const [isHistoryOpen] = useAtom(isHistoryPanelOpenAtom);
+  const [authorModel, setAuthorModel] = useAtom(authorModelAtom); // Use atom
+  const [analystModel, setAnalystModel] = useAtom(analystModelAtom); // Use atom
 
   const handleToggleModel = (providerId: string) => {
     setSelectedModels((prev) => ({
@@ -46,7 +50,7 @@ const CompactModelTrayConnected = () => {
     setMappingEnabled(enabled);
     try {
       localStorage.setItem("htos_mapping_enabled", JSON.stringify(enabled));
-    } catch {}
+    } catch { }
   };
 
   const handleSetMappingProvider = (providerId: string | null) => {
@@ -57,7 +61,7 @@ const CompactModelTrayConnected = () => {
       } else {
         localStorage.removeItem("htos_mapping_provider");
       }
-    } catch {}
+    } catch { }
   };
 
   const handleSetSynthesisProvider = (providerId: string | null) => {
@@ -68,7 +72,7 @@ const CompactModelTrayConnected = () => {
       } else {
         localStorage.removeItem("htos_synthesis_provider");
       }
-    } catch {}
+    } catch { }
   };
 
   const handleToggleSynthesisProvider = (providerId: string) => {
@@ -89,7 +93,21 @@ const CompactModelTrayConnected = () => {
     setRefineModel(model);
     try {
       localStorage.setItem('htos_refine_model', model);
-    } catch {}
+    } catch { }
+  };
+
+  const handleSetAuthorModel = (model: string) => {
+    setAuthorModel(model);
+    try {
+      localStorage.setItem('htos_author_model', model);
+    } catch { }
+  };
+
+  const handleSetAnalystModel = (model: string) => {
+    setAnalystModel(model);
+    try {
+      localStorage.setItem('htos_analyst_model', model);
+    } catch { }
   };
 
   return (
@@ -112,14 +130,17 @@ const CompactModelTrayConnected = () => {
       onAcknowledgeFirstLoad={() => {
         try {
           localStorage.setItem("htos_has_used", "true");
-        } catch {}
+        } catch { }
       }}
       chatInputHeight={chatInputHeight}
       refineModel={refineModel}
       onSetRefineModel={handleSetRefineModel}
       isHistoryPanelOpen={!!isHistoryOpen}
-      // NEW: Pass status
       providerStatus={providerStatus}
+      authorModel={authorModel}
+      onSetAuthorModel={handleSetAuthorModel}
+      analystModel={analystModel}
+      onSetAnalystModel={handleSetAnalystModel}
     />
   );
 };
