@@ -107,45 +107,9 @@ const ChatInput = ({
   const statusColor = isLoading ? "#f59e0b" : "#10b981";
 
   return (
-    <div
-      className="input-area"
-      style={{
-        position: "sticky",
-        bottom: 0,
-        left: 0,
-        width: "100%",
-        padding: "8px 12px",
-        boxSizing: "border-box",
-        zIndex: isHistoryPanelOpen ? 900 : 2001,
-        pointerEvents: isHistoryPanelOpen ? "none" : "auto",
-        display: "flex",
-        justifyContent: "center",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <div
-        className="input-container"
-        style={{
-          display: "flex",
-          gap: "10px",
-          alignItems: "center",
-          position: "relative",
-          width: "100%",
-          maxWidth: "min(800px, calc(100% - 32px))",
-          padding: "12px 16px",
-          background: "rgba(255, 255, 255, 0.08)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-          borderRadius: "24px",
-          boxSizing: "border-box",
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          className="input-wrapper"
-          style={{ flex: 1, position: "relative", minWidth: "200px" }}
-        >
+    <div className="w-full flex justify-center flex-col items-center pointer-events-auto">
+      <div className="flex gap-2.5 items-center relative w-full max-w-[min(800px,calc(100%-32px))] p-3 bg-input backdrop-blur-xl border border-border-subtle rounded-3xl flex-wrap">
+        <div className="flex-1 relative min-w-[200px]">
           <textarea
             ref={textareaRef}
             value={prompt}
@@ -158,21 +122,7 @@ const ChatInput = ({
                 : "Ask anything... Singularity will orchestrate multiple AI models for you."
             }
             rows={1}
-            className="prompt-textarea"
-            style={{
-              width: "100%",
-              minHeight: "38px",
-              padding: "8px 12px",
-              background: "transparent",
-              border: "none",
-              color: "#e2e8f0",
-              fontSize: "15px",
-              fontFamily: "inherit",
-              resize: "none",
-              outline: "none",
-              transition: isReducedMotion ? undefined : "all 0.2s ease",
-              overflowY: "auto",
-            }}
+            className={`w-full min-h-[38px] px-3 py-2 bg-transparent border-none text-text-primary text-[15px] font-inherit resize-none outline-none overflow-y-auto ${isReducedMotion ? '' : 'transition-all duration-200 ease-out'} placeholder:text-text-muted`}
             onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
               if (e.key === "Enter" && !e.shiftKey && prompt.trim()) {
                 e.preventDefault();
@@ -183,42 +133,18 @@ const ChatInput = ({
           />
         </div>
 
-        {/* System status pill (minimal) to the right of the input */}
         <div
-          className="system-pill"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-chip-soft border border-border-subtle rounded-full text-text-secondary text-xs whitespace-nowrap opacity-90 cursor-default"
           role="status"
           aria-live="polite"
           title={`System: ${isLoading ? "Working…" : "Ready"} • Providers: ${activeProviderCount} • Mode: ${isVisibleMode ? "Visible" : "Headless"}`}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "6px 10px",
-            background: "rgba(255, 255, 255, 0.06)",
-            border: "1px solid rgba(255, 255, 255, 0.12)",
-            borderRadius: "999px",
-            color: "#cbd5e1",
-            fontSize: "12px",
-            whiteSpace: "nowrap",
-            opacity: 0.9,
-            cursor: "default",
-          }}
         >
           <span
             aria-hidden="true"
-            style={{
-              display: "inline-block",
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              background: statusColor,
-              animation:
-                isLoading || !isReducedMotion
-                  ? "pulse 1.5s ease-in-out infinite"
-                  : undefined,
-            }}
+            className={`inline-block w-2 h-2 rounded-full ${isLoading || !isReducedMotion ? 'animate-pulse' : ''}`}
+            style={{ backgroundColor: statusColor }}
           />
-          <span style={{ color: "#94a3b8" }}>System</span>
+          <span className="text-text-muted">System</span>
           <span>• {activeProviderCount}</span>
         </div>
 
@@ -227,33 +153,13 @@ const ChatInput = ({
           type="button"
           onClick={handleSubmit}
           disabled={isDisabled}
-          className="action-button"
-          style={{
-            padding: "0px 14px",
-            height: "38px",
-            background: isRefinerOpen
-              ? "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)"
-              : "linear-gradient(45deg, #6366f1, #8b5cf6)",
-            border: "none",
-            borderRadius: "16px",
-            color: "white",
-            fontWeight: 600,
-            cursor: "pointer",
-            transition: isReducedMotion ? undefined : "all 0.2s ease",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            minWidth: "90px",
-            justifyContent: "center",
-            opacity: isDisabled ? 0.5 : 1,
-            boxShadow: isRefinerOpen ? "0 4px 12px rgba(99, 102, 241, 0.3)" : "none",
-          }}
+          className={`px-3.5 h-[38px] rounded-2xl text-white font-semibold cursor-pointer flex items-center gap-2 min-w-[90px] justify-center ${isDisabled ? 'opacity-50' : 'opacity-100'} ${isRefinerOpen ? 'bg-gradient-to-br from-brand-500 to-brand-400 shadow-card' : 'bg-gradient-to-r from-brand-500 to-brand-400'} ${isReducedMotion ? '' : 'transition-all duration-200 ease-out'}`}
         >
           {isLoading ? (
             <div className="loading-spinner"></div>
           ) : (
             <>
-              <span className="magic-icon" style={{ fontSize: "16px" }}>
+              <span className="text-base">
                 {isRefinerOpen ? "🚀" : (isContinuationMode ? "💬" : "✨")}
               </span>
               <span>{buttonText}</span>
@@ -267,25 +173,9 @@ const ChatInput = ({
             type="button"
             onClick={() => onAbort?.()}
             title="Stop current workflow"
-            className="stop-button"
-            style={{
-              padding: "0px 12px",
-              height: "38px",
-              background: "rgba(239, 68, 68, 0.15)",
-              border: "1px solid rgba(239, 68, 68, 0.45)",
-              borderRadius: "16px",
-              color: "#fecaca",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: isReducedMotion ? undefined : "all 0.2s ease",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              minWidth: "90px",
-              justifyContent: "center",
-            }}
+            className={`px-3 h-[38px] bg-intent-danger/15 border border-intent-danger/45 rounded-2xl text-intent-danger font-semibold cursor-pointer flex items-center gap-2 min-w-[90px] justify-center ${isReducedMotion ? '' : 'transition-all duration-200 ease-out'}`}
           >
-            <span style={{ fontSize: "16px" }}>⏹️</span>
+            <span className="text-base">⏹️</span>
             <span>Stop</span>
           </button>
         )}
@@ -303,140 +193,51 @@ const ChatInput = ({
             }}
             disabled={isLoading || mappingActive}
             title={mappingTooltip || "Mapping with selected models"}
-            style={{
-              padding: "0px 12px",
-              height: "38px",
-              background: "rgba(255, 255, 255, 0.08)",
-              border: "1px solid rgba(255, 255, 255, 0.12)",
-              borderRadius: "16px",
-              color: "#e2e8f0",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: isReducedMotion ? undefined : "all 0.2s ease",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              minWidth: "110px",
-              justifyContent: "center",
-              opacity: isLoading || mappingActive ? 0.5 : 1,
-            }}
+            className={`px-3 h-[38px] bg-chip-soft border border-border-subtle rounded-2xl text-text-secondary font-semibold cursor-pointer flex items-center gap-2 min-w-[110px] justify-center hover:bg-surface-highlight ${isLoading || mappingActive ? 'opacity-50' : 'opacity-100'} ${isReducedMotion ? '' : 'transition-all duration-200 ease-out'}`}
           >
-            <span style={{ fontSize: "16px" }}>🧩</span>
+            <span className="text-base">🧩</span>
             <span>Mapping</span>
           </button>
         )}
 
         {/* Refiner Controls Toolbar */}
         {isRefinerOpen && (
-          <div
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              paddingTop: "12px",
-              marginTop: "4px",
-              borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-              animation: "fadeIn 0.3s ease-out",
-              flexWrap: "wrap",
-            }}
-          >
-            <div style={{ display: "flex", gap: "12px" }}>
+          <div className="w-full flex items-center justify-between pt-3 mt-1 border-t border-border-subtle animate-[fadeIn_0.3s_ease-out] flex-wrap">
+            <div className="flex gap-3">
               <button
                 onClick={onUndoRefinement}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#ef4444", // Red for Reject
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "4px 8px",
-                  borderRadius: "6px",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(239, 68, 68, 0.1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                className="bg-none border-none text-intent-danger cursor-pointer text-[13px] font-semibold flex items-center gap-1.5 px-2 py-1 rounded-md transition-all duration-200 hover:bg-intent-danger/10"
               >
                 <span>❌</span> Reject
               </button>
 
               <button
                 onClick={onToggleExplanation}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: showExplanation ? "#3b82f6" : "#94a3b8",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 8px",
-                  borderRadius: "6px",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.05)")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                className={`bg-none border-none cursor-pointer text-[13px] font-semibold flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 hover:bg-surface-highlight ${showExplanation ? 'text-brand-400' : 'text-text-muted'}`}
               >
-                <span style={{ transform: showExplanation ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▸</span> Explanation
+                <span className={`transform transition-transform duration-200 ${showExplanation ? 'rotate-90' : 'rotate-0'}`}>▸</span> Explanation
               </button>
             </div>
 
-            <div style={{ display: "flex", gap: "12px" }}>
+            <div className="flex gap-3">
               <button
                 onClick={onToggleAudit}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: showAudit ? "#f59e0b" : "#94a3b8",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 8px",
-                  borderRadius: "6px",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.05)")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                className={`bg-none border-none cursor-pointer text-[13px] font-semibold flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 hover:bg-surface-highlight ${showAudit ? 'text-intent-warning' : 'text-text-muted'}`}
               >
-                <span style={{ transform: showAudit ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▸</span> Audit
+                <span className={`transform transition-transform duration-200 ${showAudit ? 'rotate-90' : 'rotate-0'}`}>▸</span> Audit
               </button>
               <button
                 onClick={onToggleVariants}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: showVariants ? "#8b5cf6" : "#94a3b8",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 8px",
-                  borderRadius: "6px",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.05)")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                className={`bg-none border-none cursor-pointer text-[13px] font-semibold flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 hover:bg-surface-highlight ${showVariants ? 'text-brand-400' : 'text-text-muted'}`}
               >
-                <span style={{ transform: showVariants ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▸</span> Variants
+                <span className={`transform transition-transform duration-200 ${showVariants ? 'rotate-90' : 'rotate-0'}`}>▸</span> Variants
               </button>
             </div>
           </div>
         )}
 
-        {/* Refiner Content (Audit/Variants) */}
         {isRefinerOpen && refinerContent && (
-          <div style={{ width: "100%", marginTop: "12px" }}>
+          <div className="w-full mt-3">
             {refinerContent}
           </div>
         )}

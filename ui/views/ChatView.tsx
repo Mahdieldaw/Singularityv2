@@ -199,8 +199,11 @@ export default function ChatView() {
           ref={virtuosoRef as any}
         />
       )}
-      <ChatInputConnected />
-      <CompactModelTrayConnected />
+      {/* Bottom Dock: Tray + Input */}
+      <div className="sticky bottom-0 left-0 w-full z-[2001] flex flex-col items-center gap-2 pointer-events-none pb-2">
+        <CompactModelTrayConnected />
+        <ChatInputConnected />
+      </div>
     </div>
   );
 }

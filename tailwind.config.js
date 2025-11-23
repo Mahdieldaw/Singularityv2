@@ -26,6 +26,7 @@ module.exports = {
                     soft: '#1a1a3a',    // App bg end
                     raised: 'rgba(255, 255, 255, 0.08)', // Glass effect (Tray)
                     highest: 'rgba(3, 7, 18, 0.72)',     // Dropdowns / Popovers
+                    highlight: 'rgba(255, 255, 255, 0.1)', // Hover state
                 },
                 // Inputs / bars
                 input: {

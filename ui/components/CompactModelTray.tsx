@@ -268,10 +268,7 @@ const CompactModelTray = ({
   return (
     <div
       ref={containerRef}
-      className={`fixed left-1/2 -translate-x-1/2 w-[min(800px,calc(100%-32px))] max-h-[calc(100vh-120px)] transition-[bottom] duration-200 ease-out ${isHistoryPanelOpen ? 'z-[900] pointer-events-none' : 'z-[2000] pointer-events-auto'}`}
-      style={{
-        bottom: `${chatInputHeight + 24}px`, // Dynamic inline style for height
-      }}
+      className={`w-[min(800px,calc(100%-32px))] pointer-events-auto transition-all duration-200 ease-out`}
     >
       {/* Collapsed State */}
       {!isExpanded && (
@@ -279,7 +276,7 @@ const CompactModelTray = ({
           {/* Models Label with Dropdown Arrow */}
           <button
             type="button"
-            className="relative flex items-center gap-1 cursor-pointer bg-input-subtle rounded-full px-3 py-1 hover:bg-white/10 transition-colors duration-200"
+            className="relative flex items-center gap-1 cursor-pointer bg-chip-soft rounded-full px-3 py-1 hover:bg-surface-highlight transition-colors duration-200"
             onClick={() => {
               const opening = !showModelsDropdown;
               setShowModelsDropdown(opening);
@@ -307,14 +304,6 @@ const CompactModelTray = ({
                     <label
                       key={provider.id}
                       className={`flex items-center gap-2 p-1 px-2 rounded transition-all duration-200 ${isAuth ? 'cursor-pointer opacity-100' : 'cursor-not-allowed opacity-50'} ${isSelected ? 'bg-brand-500/30' : 'bg-transparent hover:bg-brand-500/10'}`}
-                      onMouseEnter={(e) => {
-                        if (isSelected)
-                          e.currentTarget.style.boxShadow =
-                            "0 0 8px rgba(99, 102, 241, 0.5)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.boxShadow = "none";
-                      }}
                     >
                       <input
                         type="checkbox"
@@ -339,7 +328,7 @@ const CompactModelTray = ({
           {/* Map Label with Dropdown Arrow */}
           <button
             type="button"
-            className={`relative flex items-center gap-1 bg-input-subtle rounded-full px-3 py-1 transition-colors duration-200 ${canRefine ? 'cursor-pointer opacity-100 hover:bg-white/10' : 'cursor-default opacity-50'}`}
+            className={`relative flex items-center gap-1 bg-chip-soft rounded-full px-3 py-1 transition-colors duration-200 ${canRefine ? 'cursor-pointer opacity-100 hover:bg-surface-highlight' : 'cursor-default opacity-50'}`}
             onClick={
               canRefine
                 ? () => {
@@ -437,7 +426,7 @@ const CompactModelTray = ({
                         setShowMapDropdown(false);
                       }}
                       disabled={isLoading}
-                      className={`block w-full text-left px-2.5 py-1.5 rounded transition-all duration-150 text-[13px] ${isSelected ? 'bg-intent-success/10 text-intent-success' : 'bg-transparent text-text-secondary hover:bg-white/5'}`}
+                      className={`block w-full text-left px-2.5 py-1.5 rounded transition-all duration-150 text-[13px] ${isSelected ? 'bg-intent-success/10 text-intent-success' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
                     >
                       {provider.name}
                       {isSelected && " ✓"}
@@ -453,7 +442,7 @@ const CompactModelTray = ({
           {/* Unify Label with Dropdown Arrow */}
           <button
             type="button"
-            className={`relative flex items-center gap-1 bg-input-subtle rounded-full px-3 py-1 transition-colors duration-200 ${canRefine ? 'cursor-pointer opacity-100 hover:bg-white/10' : 'cursor-default opacity-50'}`}
+            className={`relative flex items-center gap-1 bg-chip-soft rounded-full px-3 py-1 transition-colors duration-200 ${canRefine ? 'cursor-pointer opacity-100 hover:bg-surface-highlight' : 'cursor-default opacity-50'}`}
             onClick={
               canRefine
                 ? () => {
@@ -484,15 +473,7 @@ const CompactModelTray = ({
                     return (
                       <label
                         key={provider.id}
-                        className={`flex items-center gap-2 p-1.5 px-2 cursor-pointer rounded transition-all duration-150 ${isSelected ? 'bg-intent-warning/10' : 'bg-transparent hover:bg-white/5'}`}
-                        onMouseEnter={(e) => {
-                          if (isSelected)
-                            e.currentTarget.style.boxShadow =
-                              "0 0 8px rgba(251, 191, 36, 0.5)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.boxShadow = "none";
-                        }}
+                        className={`flex items-center gap-2 p-1.5 px-2 cursor-pointer rounded transition-all duration-150 ${isSelected ? 'bg-intent-warning/10' : 'bg-transparent hover:bg-surface-highlight'}`}
                       >
                         <input
                           type="checkbox"
@@ -642,7 +623,7 @@ const CompactModelTray = ({
                           setShowUnifyDropdown(false);
                         }}
                         disabled={isLoading}
-                        className={`block w-full text-left px-2.5 py-1.5 rounded transition-all duration-150 text-[13px] ${isSelected ? 'bg-intent-warning/10 text-intent-warning' : 'bg-transparent text-text-secondary hover:bg-white/5'}`}
+                        className={`block w-full text-left px-2.5 py-1.5 rounded transition-all duration-150 text-[13px] ${isSelected ? 'bg-intent-warning/10 text-intent-warning' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
                       >
                         {provider.name}
                         {isSelected && " ✓"}
@@ -658,7 +639,7 @@ const CompactModelTray = ({
           {/* Draft Label with Dropdown Arrow */}
           <button
             type="button"
-            className="relative flex items-center gap-1 cursor-pointer bg-input-subtle rounded-full px-3 py-1 hover:bg-white/10 transition-colors duration-200"
+            className="relative flex items-center gap-1 cursor-pointer bg-chip-soft rounded-full px-3 py-1 hover:bg-surface-highlight transition-colors duration-200"
             onClick={() => {
               const opening = !showDraftDropdown;
               setShowDraftDropdown(opening);
@@ -691,7 +672,7 @@ const CompactModelTray = ({
                         onClick={() => {
                           if (onSetAuthorModel) onSetAuthorModel(provider.id);
                         }}
-                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-[13px] ${isSelected ? 'bg-brand-500/10 text-brand-400' : 'bg-transparent text-text-secondary hover:bg-white/5'}`}
+                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-[13px] ${isSelected ? 'bg-brand-500/10 text-brand-400' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
                       >
                         {provider.name}
                         {isSelected && " ✓"}
@@ -713,7 +694,7 @@ const CompactModelTray = ({
                         onClick={() => {
                           if (onSetAnalystModel) onSetAnalystModel(provider.id);
                         }}
-                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-[13px] ${isSelected ? 'bg-intent-warning/10 text-intent-warning' : 'bg-transparent text-text-secondary hover:bg-white/5'}`}
+                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-[13px] ${isSelected ? 'bg-intent-warning/10 text-intent-warning' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
                       >
                         {provider.name}
                         {isSelected && " ✓"}
@@ -736,7 +717,7 @@ const CompactModelTray = ({
             }}
             aria-expanded={isExpanded}
             aria-label="Open full settings"
-            className="ml-auto bg-none border-none text-text-muted cursor-pointer text-base p-1 rounded transition-all duration-200 hover:bg-white/10"
+            className="ml-auto bg-none border-none text-text-muted cursor-pointer text-base p-1 rounded transition-all duration-200 hover:bg-surface-highlight"
           >
             ⚙️
           </button>
@@ -754,7 +735,7 @@ const CompactModelTray = ({
             <button
               onClick={() => setIsExpanded(false)}
               aria-label="Close settings"
-              className="bg-none border-none text-text-muted cursor-pointer text-lg p-1 rounded transition-all duration-200 hover:bg-white/10 hover:text-text-secondary"
+              className="bg-none border-none text-text-muted cursor-pointer text-lg p-1 rounded transition-all duration-200 hover:bg-surface-highlight hover:text-text-secondary"
             >
               ×
             </button>
@@ -778,7 +759,7 @@ const CompactModelTray = ({
                   });
                 }}
                 disabled={isLoading}
-                className={`ml-auto px-2 py-0.5 text-[10px] bg-white/10 border border-white/20 rounded text-text-muted transition-all duration-200 ${isLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-white/20'}`}
+                className={`ml-auto px-2 py-0.5 text-[10px] bg-chip-soft border border-border-subtle rounded text-text-muted transition-all duration-200 ${isLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-surface-highlight'}`}
               >
                 [All]
               </button>
@@ -790,7 +771,7 @@ const CompactModelTray = ({
                 return (
                   <label
                     key={provider.id}
-                    className={`flex items-center gap-1.5 cursor-pointer px-2 py-1 rounded-md transition-all duration-200 border ${isSelected ? 'bg-brand-500/20 border-brand-500/40' : 'bg-white/5 border-white/10'}`}
+                    className={`flex items-center gap-1.5 cursor-pointer px-2 py-1 rounded-md transition-all duration-200 border ${isSelected ? 'bg-brand-500/20 border-brand-500/40' : 'bg-chip-soft border-border-subtle'}`}
                   >
                     <input
                       type="checkbox"
