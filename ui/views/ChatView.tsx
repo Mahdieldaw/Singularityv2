@@ -33,7 +33,7 @@ export default function ChatView() {
     () => (index: number, turnId: string) => {
       if (!turnId) {
         return (
-          <div style={{ padding: "8px", color: "#ef4444" }}>
+          <div className="p-2 text-intent-danger">
             Error: Invalid turn ID
           </div>
         );
@@ -67,12 +67,9 @@ export default function ChatView() {
           }}
           style={{
             ...(props.style || {}),
-            height: "100%",
-            minHeight: 0,
-            overflowY: "auto",
-            // Remove overscrollBehavior: 'contain' to allow scroll chaining from inner elements
             WebkitOverflowScrolling: "touch",
           }}
+          className="h-full min-h-0 overflow-y-auto"
         />
       )),
     [scrollerRef],
@@ -170,17 +167,7 @@ export default function ChatView() {
   }, [turnIds, currentSessionId, selectChat]);
 
   return (
-    <div
-      className="chat-view"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        width: "100%",
-        flex: 1,
-        minHeight: 0,
-      }}
-    >
+    <div className="chat-view flex flex-col h-full w-full flex-1 min-h-0">
       {showWelcome ? (
         <WelcomeScreen />
       ) : (

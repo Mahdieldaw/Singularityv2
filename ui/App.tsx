@@ -40,15 +40,7 @@ export default function App() {
     // Render a simple loading state or nothing at all.
     // This prevents any child components from running their hooks too early.
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          background: "#0f0f23",
-        }}
-      >
+      <div className="flex items-center justify-center h-screen bg-surface-highest">
         <div className="loading-spinner" />
       </div>
     );
@@ -56,38 +48,13 @@ export default function App() {
 
   // Once initialized, render the full application.
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        width: "100vw",
-        background: "linear-gradient(135deg, #0f0f23 0%, #1a1a3a 100%)",
-        minHeight: 0,
-      }}
-    >
+    <div className="flex flex-col h-screen w-screen bg-surface-highest min-h-0">
       <Header />
       <BannerConnected />
 
       {/* Main content area */}
-      <div
-        style={{
-          display: "flex",
-          flex: 1,
-          position: "relative",
-          minHeight: 0,
-        }}
-      >
-        <main
-          className="chat-main"
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            position: "relative",
-            minHeight: 0,
-          }}
-        >
+      <div className="flex flex-1 relative min-h-0">
+        <main className="chat-main flex-1 flex flex-col relative min-h-0">
           <ChatView />
         </main>
 
@@ -95,26 +62,12 @@ export default function App() {
         {isHistoryOpen && (
           <>
             <div
-              className="history-backdrop"
+              className="history-backdrop fixed inset-0 bg-slate-900/50 backdrop-blur-md z-[1000]"
               onClick={closePanel}
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0, 0, 0, 0.4)",
-                backdropFilter: "blur(2px)",
-                zIndex: 1000,
-              }}
             />
             <div
               ref={historyPanelRef}
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: "320px",
-                height: "100vh",
-                zIndex: 1100,
-              }}
+              className="fixed top-0 left-0 w-[320px] h-screen z-[1100]"
             >
               <HistoryPanelConnected />
             </div>
