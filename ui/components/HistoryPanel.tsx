@@ -34,90 +34,14 @@ const HistoryPanel = ({
   onToggleSessionSelected,
   onConfirmBatchDelete,
 }: HistoryPanelProps) => {
-  const panelStyle: any = {
-    position: "relative",
-    width: "100%",
-    height: "100%",
-    background: "rgba(10, 10, 25, 0.9)",
-    backdropFilter: "blur(15px)",
-    borderRight: "1px solid rgba(255, 255, 255, 0.1)",
-    color: "#e2e8f0",
-    padding: "20px",
-    overflowY: "auto",
-    overflowX: "hidden",
-    display: "flex",
-    flexDirection: "column",
-  };
-
-  const headerButtonStyle: any = {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: "8px",
-    border: "1px solid rgba(255, 255, 255, 0.12)",
-    background:
-      "linear-gradient(180deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15))",
-    color: "#e2e8f0",
-    cursor: "pointer",
-    marginBottom: "12px",
-  };
-
-  const dangerButtonStyle: any = {
-    ...headerButtonStyle,
-    background:
-      "linear-gradient(180deg, rgba(239,68,68,0.18), rgba(185,28,28,0.12))",
-    border: "1px solid rgba(239,68,68,0.35)",
-  };
-
-  const itemStyle: any = {
-    padding: "10px 12px",
-    borderRadius: "8px",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
-    background: "rgba(255, 255, 255, 0.02)",
-    color: "#e2e8f0",
-    fontSize: "15px",
-    cursor: "pointer",
-    marginBottom: "8px",
-    overflow: "hidden",
-    textOverflow: "clip",
-    whiteSpace: "normal",
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: "8px",
-  };
-
-  const deleteBtnStyle: any = {
-    flexShrink: 0,
-    marginLeft: "8px",
-    background: "rgba(255, 0, 0, 0.12)",
-    border: "1px solid rgba(255, 0, 0, 0.25)",
-    color: "#fecaca",
-    borderRadius: "6px",
-    padding: "4px 6px",
-    cursor: "pointer",
-    fontSize: "12px",
-  };
-
-  const renameBtnStyle: any = {
-    flexShrink: 0,
-    marginLeft: "8px",
-    background: "rgba(16, 185, 129, 0.12)",
-    border: "1px solid rgba(16, 185, 129, 0.35)",
-    color: "#a7f3d0",
-    borderRadius: "6px",
-    padding: "4px 6px",
-    cursor: "pointer",
-    fontSize: "12px",
-  };
-
   return (
-    <div style={panelStyle}>
+    <div className="relative w-full h-full bg-surface-soft/90 backdrop-blur-xl border-r border-border-subtle text-text-secondary p-5 overflow-y-auto overflow-x-hidden flex flex-col">
       {isOpen && (
         <>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="flex gap-2">
             <button
               onClick={onNewChat}
-              style={{ ...headerButtonStyle, flex: 1 }}
+              className="flex-1 px-3 py-2.5 rounded-lg border border-border-subtle bg-brand-500/15 text-text-secondary cursor-pointer mb-3 transition-all duration-200 hover:bg-brand-500/20 hover:border-border-strong"
               title="Start a new chat"
             >
               + New Chat
@@ -136,10 +60,10 @@ const HistoryPanel = ({
                   onToggleBatchMode && onToggleBatchMode();
                 }
               }}
-              style={{
-                ...(isBatchMode ? dangerButtonStyle : headerButtonStyle),
-                flex: 1,
-              }}
+              className={`flex-1 px-3 py-2.5 rounded-lg border cursor-pointer mb-3 transition-all duration-200 ${isBatchMode
+                  ? "bg-intent-danger/15 border-intent-danger/45 text-text-secondary hover:bg-intent-danger/20"
+                  : "bg-brand-500/15 border-border-subtle text-text-secondary hover:bg-brand-500/20 hover:border-border-strong"
+                }`}
               title={
                 isBatchMode
                   ? "Confirm delete selected chats"
@@ -151,30 +75,13 @@ const HistoryPanel = ({
                 : "Delete…"}
             </button>
           </div>
-          <div
-            className="history-items"
-            style={{ flexGrow: 1, overflowY: "auto" }}
-          >
+          <div className="history-items flex-grow overflow-y-auto">
             {isLoading ? (
-              <p
-                style={{
-                  color: "#94a3b8",
-                  fontSize: "14px",
-                  textAlign: "center",
-                  marginTop: "20px",
-                }}
-              >
+              <p className="text-text-muted text-sm text-center mt-5">
                 Loading history...
               </p>
             ) : sessions.length === 0 ? (
-              <p
-                style={{
-                  color: "#94a3b8",
-                  fontSize: "14px",
-                  textAlign: "center",
-                  marginTop: "20px",
-                }}
-              >
+              <p className="text-text-muted text-sm text-center mt-5">
                 No chat history yet.
               </p>
             ) : (
@@ -200,19 +107,11 @@ const HistoryPanel = ({
                         onSelectChat(session);
                       }
                     }}
-                    style={{
-                      ...itemStyle,
-                      opacity:
-                        !!deletingIds &&
+                    className={`p-2.5 px-3 rounded-lg border border-border-subtle bg-chip text-text-secondary text-[15px] cursor-pointer mb-2 flex items-start justify-between gap-2 transition-all duration-200 hover:bg-surface-highlight hover:border-border-strong ${!!deletingIds &&
                         (deletingIds as Set<string>).has(session.sessionId)
-                          ? 0.6
-                          : 1,
-                      pointerEvents:
-                        !!deletingIds &&
-                        (deletingIds as Set<string>).has(session.sessionId)
-                          ? "none"
-                          : "auto",
-                    }}
+                        ? "opacity-60 pointer-events-none"
+                        : ""
+                      }`}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
@@ -233,14 +132,7 @@ const HistoryPanel = ({
                     }}
                     title={session.title}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        flex: 1,
-                      }}
-                    >
+                    <div className="flex items-center gap-2 flex-1">
                       {isBatchMode && (
                         <input
                           type="checkbox"
@@ -254,25 +146,19 @@ const HistoryPanel = ({
                               onToggleSessionSelected(session.sessionId);
                           }}
                           aria-label={`Select ${session.title} for deletion`}
-                          style={{ flexShrink: 0 }}
+                          className="flex-shrink-0 accent-brand-500"
                         />
                       )}
-                      <span
-                        style={{
-                          overflowWrap: "anywhere",
-                          wordBreak: "break-word",
-                          whiteSpace: "normal",
-                        }}
-                      >
+                      <span className="overflow-wrap-anywhere break-words whitespace-normal">
                         {session.title}
                       </span>
                     </div>
                     {!isBatchMode && (
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div className="flex gap-1.5">
                         <button
                           aria-label={`Rename chat ${session.title}`}
                           title="Rename chat"
-                          style={renameBtnStyle}
+                          className="flex-shrink-0 ml-2 bg-intent-success/10 border border-intent-success/40 text-intent-success rounded-md px-1.5 py-1 cursor-pointer text-xs transition-all duration-200 hover:bg-intent-success/20"
                           onClick={(e) => {
                             e.stopPropagation();
                             onRenameChat &&
@@ -284,16 +170,11 @@ const HistoryPanel = ({
                         <button
                           aria-label={`Delete chat ${session.title}`}
                           title="Delete chat"
-                          style={{
-                            ...deleteBtnStyle,
-                            cursor:
-                              !!deletingIds &&
-                              (deletingIds as Set<string>).has(
-                                session.sessionId,
-                              )
-                                ? "not-allowed"
-                                : "pointer",
-                          }}
+                          className={`flex-shrink-0 ml-2 bg-intent-danger/10 border border-intent-danger/45 text-intent-danger rounded-md px-1.5 py-1 text-xs transition-all duration-200 ${!!deletingIds &&
+                              (deletingIds as Set<string>).has(session.sessionId)
+                              ? "cursor-not-allowed opacity-60"
+                              : "cursor-pointer hover:bg-intent-danger/20"
+                            }`}
                           onClick={(e) => {
                             e.stopPropagation();
                             onDeleteChat(session.sessionId);
@@ -304,7 +185,7 @@ const HistoryPanel = ({
                           }
                         >
                           {!!deletingIds &&
-                          (deletingIds as Set<string>).has(session.sessionId)
+                            (deletingIds as Set<string>).has(session.sessionId)
                             ? "Deleting…"
                             : "🗑️"}
                         </button>
