@@ -3,9 +3,9 @@ import { useAtom, useSetAtom } from "jotai";
 import { isHistoryPanelOpenAtom, isSettingsOpenAtom } from "../state/atoms";
 
 // MenuIcon component (inline for simplicity)
-const MenuIcon = ({ style }: { style?: React.CSSProperties }) => (
+const MenuIcon = ({ className }: { className?: string }) => (
   <svg
-    style={style}
+    className={className}
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -26,78 +26,26 @@ export default function Header() {
   const setIsSettingsOpen = useSetAtom(isSettingsOpenAtom);
 
   return (
-    <header
-      className="header"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "10px 16px",
-        background: "rgba(10, 10, 25, 0.85)",
-        backdropFilter: "blur(14px)",
-        borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-        flexShrink: 0,
-      }}
-    >
-      <div
-        className="logo-area"
-        style={{ display: "flex", alignItems: "center", gap: "12px" }}
-      >
+    <header className="flex items-center justify-between px-4 py-2.5 bg-surface-soft backdrop-blur-lg border-b border-border-subtle shrink-0 text-text-secondary">
+      <div className="flex items-center gap-3">
         <button
           onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#e2e8f0",
-            cursor: "pointer",
-            padding: "4px",
-          }}
+          className="bg-transparent border-0 text-text-secondary cursor-pointer p-1 hover:text-text-primary transition-colors"
           aria-label="Toggle History Panel"
         >
-          <MenuIcon style={{ width: "24px", height: "24px" }} />
+          <MenuIcon className="w-6 h-6" />
         </button>
-        <div
-          className="logo"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            fontWeight: 600,
-            fontSize: "16px",
-            color: "#e2e8f0",
-          }}
-        >
-          <div
-            className="logo-icon"
-            style={{
-              width: "24px",
-              height: "24px",
-              background: "rgba(99, 102, 241, 0.25)",
-              borderRadius: "6px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "12px",
-            }}
-          >
+        <div className="flex items-center gap-2 font-semibold text-base text-text-secondary">
+          <div className="w-6 h-6 bg-brand-500/25 rounded-md flex items-center justify-center text-xs">
             ⚡
           </div>
           Singularity
         </div>
       </div>
-      <div style={{ display: "flex", gap: "8px" }}>
+      <div className="flex gap-2">
         <button
-          className="settings-btn"
+          className="px-3 py-2 bg-surface-highlight border border-border-strong rounded-lg text-text-secondary cursor-pointer transition-all duration-200 hover:bg-surface-raised"
           onClick={() => setIsSettingsOpen(true)}
-          style={{
-            padding: "8px 12px",
-            background: "rgba(255, 255, 255, 0.1)",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
-            borderRadius: "8px",
-            color: "#e2e8f0",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-          }}
         >
           ⚙️ Models
         </button>

@@ -11,37 +11,14 @@ const Banner: React.FC<BannerProps> = ({ text, onClose, onOpen }) => {
     <div
       role="status"
       aria-live="polite"
-      style={{
-        position: "fixed",
-        top: 72, // Position below the header (header height ~52px + padding)
-        right: 12,
-        zIndex: 2000,
-        background: "rgba(15, 23, 42, 0.95)",
-        color: "#e2e8f0",
-        border: "1px solid rgba(255,255,255,0.15)",
-        borderRadius: 10,
-        padding: "10px 12px",
-        boxShadow: "0 6px 20px rgba(0,0,0,0.3)",
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        maxWidth: 360,
-      }}
+      className="fixed top-[72px] right-3 z-[2000] bg-surface-highest text-text-secondary border border-border-subtle rounded-[10px] px-3 py-2.5 shadow-elevated flex items-center gap-2 max-w-[360px]"
     >
-      <span style={{ fontSize: 12, lineHeight: 1.4 }}>{text}</span>
-      <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+      <span className="text-xs leading-snug">{text}</span>
+      <div className="ml-auto flex gap-2">
         {onOpen && (
           <button
             onClick={onOpen}
-            style={{
-              background: "#334155",
-              color: "#cbd5e1",
-              border: "1px solid #475569",
-              borderRadius: 6,
-              padding: "4px 8px",
-              fontSize: 12,
-              cursor: "pointer",
-            }}
+            className="bg-chip-soft text-text-secondary border border-border-subtle rounded-md px-2 py-1 text-xs cursor-pointer hover:bg-surface-highlight transition-colors"
           >
             Open
           </button>
@@ -49,15 +26,7 @@ const Banner: React.FC<BannerProps> = ({ text, onClose, onOpen }) => {
         <button
           onClick={onClose}
           aria-label="Close notice"
-          style={{
-            background: "transparent",
-            color: "#94a3b8",
-            border: "1px solid #475569",
-            borderRadius: 6,
-            padding: "4px 8px",
-            fontSize: 12,
-            cursor: "pointer",
-          }}
+          className="bg-transparent text-text-muted border border-border-subtle rounded-md px-2 py-1 text-xs cursor-pointer hover:bg-surface-highlight hover:text-text-secondary transition-colors"
         >
           Dismiss
         </button>
@@ -67,3 +36,4 @@ const Banner: React.FC<BannerProps> = ({ text, onClose, onOpen }) => {
 };
 
 export default Banner;
+
