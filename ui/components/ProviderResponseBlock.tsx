@@ -86,16 +86,7 @@ const CopyButton = ({ text, label }: { text: string; label: string }) => {
     <button
       onClick={handleCopy}
       aria-label={label}
-      style={{
-        background: "#334155",
-        border: "1px solid #475569",
-        borderRadius: "6px",
-        padding: "4px 8px",
-        color: "#94a3b8",
-        fontSize: "12px",
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-      }}
+      className="bg-surface-raised border border-border-subtle rounded-md px-2 py-1 text-text-muted text-xs cursor-pointer hover:bg-surface-highlight transition-all"
     >
       {copied ? "✓" : "📋"} {copied ? "Copied" : "Copy"}
     </button>
@@ -319,6 +310,10 @@ const ProviderResponseBlock = ({
       <div
         key={providerId}
         id={`provider-card-${aiTurnId || "unknown"}-${providerId}`}
+        className={`flex flex-col bg-surface-raised border rounded-2xl p-3 shadow-sm flex-shrink-0 overflow-hidden ${isHighlighted
+          ? "border-brand-500 shadow-glow-brand"
+          : "border-border-subtle"
+          }`}
         style={{
           flex: "1 1 320px",
           minWidth: "260px",
@@ -326,55 +321,30 @@ const ProviderResponseBlock = ({
           width: "100%",
           height: "300px",
           display: isVisible ? "flex" : "none",
-          flexDirection: "column",
-          background: "#1e293b",
-          border: isHighlighted ? "1px solid #3b82f6" : "1px solid #334155",
-          borderRadius: "12px",
-          padding: "12px",
-          flexShrink: 0,
-          overflow: "hidden",
-          boxShadow: isHighlighted
-            ? "0 0 0 2px rgba(59,130,246,0.6), 0 10px 30px rgba(59,130,246,0.25)"
-            : "none",
           transition: "box-shadow 0.3s ease, border-color 0.3s ease",
         }}
         aria-live="polite"
       >
         {/* Fixed Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            marginBottom: "12px",
-            flexShrink: 0,
-            height: "24px",
-          }}
-        >
+        <div className="flex items-center gap-2 mb-3 flex-shrink-0 h-6">
           {provider && (
             <div
-              className={`model-logo ${provider.logoBgClass}`}
-              style={{ width: "16px", height: "16px", borderRadius: "3px" }}
+              className={`model-logo ${provider.logoBgClass} w-4 h-4 rounded`}
             />
           )}
-          <div style={{ fontWeight: 500, fontSize: "12px", color: "#94a3b8" }}>
+          <div className="font-medium text-xs text-text-muted">
             {provider?.name || providerId}
           </div>
           {context && (
-            <div
-              style={{ fontSize: "10px", color: "#64748b", marginLeft: "4px" }}
-            >
+            <div className="text-[10px] text-text-muted/70 ml-1">
               {context.rateLimitRemaining &&
                 `(${context.rateLimitRemaining} left)`}
               {context.modelName && ` • ${context.modelName}`}
             </div>
           )}
           <div
+            className="ml-auto w-2 h-2 rounded-full"
             style={{
-              marginLeft: "auto",
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
               background: getStatusColor(state?.status, hasText),
               ...(isStreaming &&
                 !isReducedMotion && {
@@ -386,7 +356,7 @@ const ProviderResponseBlock = ({
 
         {/* Scrollable Content Area */}
         <div
-          className="provider-card-scroll"
+          className="provider-card-scroll flex-1 overflow-y-auto overflow-x-hidden p-3 bg-surface-overlay rounded-lg min-h-0"
           onWheelCapture={(e: React.WheelEvent<HTMLDivElement>) => {
             const el = e.currentTarget;
             const dy = e.deltaY ?? 0;
@@ -422,9 +392,6 @@ const ProviderResponseBlock = ({
             flex: 1,
             overflowY: "auto",
             overflowX: "hidden",
-            padding: "12px",
-            background: "rgba(0, 0, 0, 0.18)",
-            borderRadius: "8px",
             minHeight: 0,
           }}
         >
@@ -434,47 +401,19 @@ const ProviderResponseBlock = ({
 
             return (
               <>
-                <div
-                  className="prose prose-sm max-w-none dark:prose-invert"
-                  style={{
-                    fontSize: "13px",
-                    lineHeight: "1.5",
-                    color: "#e2e8f0",
-                  }}
-                >
+                <div className="prose prose-sm max-w-none dark:prose-invert text-[13px] leading-relaxed text-text-secondary">
                   <MarkdownDisplay content={String(cleanText || displayText || "")} />
                   {isStreaming && <span className="streaming-dots" />}
                 </div>
 
                 {/* Artifact badges */}
                 {artifacts.length > 0 && (
-                  <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <div className="mt-3 flex flex-wrap gap-2">
                     {artifacts.map((artifact, idx) => (
                       <button
                         key={idx}
                         onClick={() => setSelectedArtifact(artifact)}
-                        style={{
-                          background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-                          border: "1px solid #818cf8",
-                          borderRadius: 8,
-                          padding: "8px 12px",
-                          color: "#ffffff",
-                          fontSize: 13,
-                          fontWeight: 500,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          transition: "all 0.2s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = "translateY(-1px)";
-                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(99, 102, 241, 0.4)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = "translateY(0)";
-                          e.currentTarget.style.boxShadow = "none";
-                        }}
+                        className="bg-gradient-to-br from-brand-500 to-brand-600 border border-brand-400 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer flex items-center gap-1.5 hover:-translate-y-px hover:shadow-glow-brand-soft transition-all"
                       >
                         📄 {artifact.title}
                       </button>
@@ -487,33 +426,13 @@ const ProviderResponseBlock = ({
         </div>
 
         {/* Fixed Footer with actions */}
-        <div
-          style={{
-            marginTop: "12px",
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "8px",
-            flexShrink: 0,
-            height: "32px",
-          }}
-        >
+        <div className="mt-3 flex justify-end gap-2 flex-shrink-0 h-8">
           {/* Retry Button - Only show for failed or empty completed responses */}
           {(isError || (state?.status === "completed" && !state?.text?.trim())) && onRetryProvider && (
             <button
               onClick={() => onRetryProvider(providerId)}
               title="Retry this provider"
-              style={{
-                background: "#dc2626",
-                border: "1px solid #b91c1c",
-                borderRadius: "6px",
-                padding: "4px 8px",
-                color: "#fef2f2",
-                fontSize: "12px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
+              className="bg-intent-danger border border-intent-danger/80 rounded-md px-2 py-1 text-white text-xs cursor-pointer flex items-center gap-1"
             >
               🔄 Retry
             </button>
@@ -524,7 +443,7 @@ const ProviderResponseBlock = ({
           />
           <ProviderPill id={providerId as any} />
         </div>
-      </div>
+      </div >
     );
   };
 
@@ -545,69 +464,28 @@ const ProviderResponseBlock = ({
         key={providerId}
         onClick={() => swapProviderIn(providerId)}
         title={`Click to view ${provider?.name || providerId}`}
-        // disabled={isStreaming} // Allow swapping even if streaming
+        className="flex flex-col items-center justify-center gap-1 p-3 min-w-[80px] rounded-2xl bg-surface-soft border cursor-pointer flex-shrink-0 hover:-translate-y-0.5 hover:shadow-lg transition-all shadow-card-sm"
         style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "4px",
-          padding: "12px 8px",
-          minWidth: "80px",
-          borderRadius: "12px",
+          borderColor: borderColor,
           background: bgColor,
-          border: `1px solid ${borderColor}`,
-          cursor: "pointer",
-          flexShrink: 0,
-          transition: isReducedMotion ? "none" : "all 0.2s ease",
-          opacity: 1,
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.2)";
         }}
       >
         {/* Provider Logo */}
         {provider && (
-          <div
-            className={`model-logo ${provider.logoBgClass}`}
-            style={{
-              width: "20px",
-              height: "20px",
-              borderRadius: "4px",
-            }}
-          />
+          <div className={`model-logo ${provider.logoBgClass} w-5 h-5 rounded`} />
         )}
 
         {/* Status + Name */}
-        <div
-          style={{
-            fontSize: "10px",
-            fontWeight: 500,
-            color: "#e2e8f0",
-            textAlign: "center",
-            lineHeight: 1.2,
-            display: "flex",
-            alignItems: "center",
-            gap: "3px",
-          }}
-        >
-          <span style={{ fontSize: "12px" }}>{statusIcon}</span>
+        <div className="text-[10px] font-medium text-text-secondary text-center leading-tight flex items-center gap-0.5">
+          <span className="text-xs">{statusIcon}</span>
           <span>{provider?.name || providerId}</span>
         </div>
 
         {/* Streaming indicator dot */}
         {isStreaming && (
           <div
+            className="w-1.5 h-1.5 rounded-full"
             style={{
-              width: "6px",
-              height: "6px",
-              borderRadius: "50%",
               background: getStatusColor(state?.status, !!state?.text),
               animation: isReducedMotion
                 ? "none"
@@ -620,36 +498,12 @@ const ProviderResponseBlock = ({
   };
 
   return (
-    <div
-      className="response-container"
-      style={{ marginBottom: "24px", display: "flex" }}
-    >
-      <BotIcon
-        style={{
-          width: "32px",
-          height: "32px",
-          color: "#a78bfa",
-          marginRight: "12px",
-          flexShrink: 0,
-          marginTop: "4px",
-        }}
-      />
-      <div style={{ flexGrow: 1 }}>
+    <div className="response-container mb-6 flex">
+      <BotIcon className="w-8 h-8 text-text-brand mr-3 flex-shrink-0 mt-1" />
+      <div className="flex-1">
         {/* Global Controls Header */}
-        <div
-          className="global-controls"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "12px",
-            padding: "8px 12px",
-            background: "#1e293b",
-            borderRadius: "8px",
-            border: "1px solid #334155",
-          }}
-        >
-          <div style={{ fontSize: "14px", fontWeight: 500, color: "#94a3b8" }}>
+        <div className="global-controls flex items-center justify-between mb-3 p-3 bg-surface-raised rounded-lg border border-border-subtle">
+          <div className="text-sm font-medium text-text-muted">
             AI Responses ({allProviderIds.length})
           </div>
           <CopyButton
@@ -704,109 +558,45 @@ const ProviderResponseBlock = ({
         {/* Artifact Overlay Modal */}
         {selectedArtifact && (
           <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: "rgba(0, 0, 0, 0.85)",
-              zIndex: 9999,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 20,
-            }}
+            className="fixed inset-0 bg-overlay-backdrop z-[9999] flex items-center justify-center p-5"
             onClick={() => setSelectedArtifact(null)}
           >
             <div
-              style={{
-                background: "#1e293b",
-                border: "1px solid #475569",
-                borderRadius: 12,
-                maxWidth: "900px",
-                width: "100%",
-                maxHeight: "90vh",
-                display: "flex",
-                flexDirection: "column",
-                boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5)",
-              }}
+              className="bg-surface-raised border border-border-strong rounded-2xl max-w-[900px] w-full max-h-[90vh] flex flex-col shadow-elevated"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "16px 20px",
-                  borderBottom: "1px solid #334155",
-                }}
-              >
+              <div className="flex items-center justify-between p-4 border-b border-border-subtle">
                 <div>
-                  <h3 style={{ margin: 0, fontSize: 18, color: "#f1f5f9", fontWeight: 600 }}>
+                  <h3 className="m-0 text-lg text-text-primary font-semibold">
                     📄 {selectedArtifact.title}
                   </h3>
-                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                  <div className="text-xs text-text-muted mt-1">
                     {selectedArtifact.identifier}
                   </div>
                 </div>
                 <button
                   onClick={() => setSelectedArtifact(null)}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    color: "#94a3b8",
-                    fontSize: 24,
-                    cursor: "pointer",
-                    padding: "4px 8px",
-                  }}
+                  className="bg-transparent border-none text-text-muted text-2xl cursor-pointer px-2 py-1"
                 >
                   ×
                 </button>
               </div>
 
               {/* Content */}
-              <div
-                style={{
-                  flex: 1,
-                  overflowY: "auto",
-                  padding: 20,
-                  background: "#0f172a",
-                }}
-              >
+              <div className="flex-1 overflow-y-auto p-5 bg-surface">
                 <MarkdownDisplay content={selectedArtifact.content} />
               </div>
 
               {/* Footer Actions */}
-              <div
-                style={{
-                  display: "flex",
-                  gap: 12,
-                  padding: "16px 20px",
-                  borderTop: "1px solid #334155",
-                  justifyContent: "flex-end",
-                }}
-              >
+              <div className="flex gap-3 p-4 border-t border-border-subtle justify-end">
                 <button
                   onClick={async () => {
                     await navigator.clipboard.writeText(selectedArtifact.content);
                   }}
-                  style={{
-                    background: "#334155",
-                    border: "1px solid #475569",
-                    borderRadius: 6,
-                    padding: "8px 16px",
-                    color: "#e2e8f0",
-                    fontSize: 14,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
+                  className="bg-surface-raised border border-border-subtle rounded-md px-4 py-2 text-text-secondary text-sm cursor-pointer flex items-center gap-1.5 hover:bg-surface-highlight transition-all"
                 >
-                  📋 Copy
-                </button>
+                  📋 Copy                </button>
                 <button
                   onClick={() => {
                     const blob = new Blob([selectedArtifact.content], { type: "text/plain;charset=utf-8" });
@@ -821,18 +611,7 @@ const ProviderResponseBlock = ({
                       try { document.body.removeChild(a); } catch { }
                     }, 0);
                   }}
-                  style={{
-                    background: "#6366f1",
-                    border: "1px solid #818cf8",
-                    borderRadius: 6,
-                    padding: "8px 16px",
-                    color: "#ffffff",
-                    fontSize: 14,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
+                  className="bg-brand-500 border border-brand-400 rounded-md px-4 py-2 text-white text-sm cursor-pointer flex items-center gap-1.5 hover:bg-brand-600 transition-all"
                 >
                   ⬇️ Download
                 </button>

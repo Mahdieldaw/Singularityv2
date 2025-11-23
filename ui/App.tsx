@@ -48,7 +48,7 @@ export default function App() {
 
   // Once initialized, render the full application.
   return (
-    <div className="flex flex-col h-screen w-screen bg-surface-highest min-h-0">
+    <div className="flex flex-col h-screen w-screen bg-app-gradient min-h-0">
       <Header />
       <BannerConnected />
 
@@ -62,7 +62,7 @@ export default function App() {
         {isHistoryOpen && (
           <>
             <div
-              className="history-backdrop fixed inset-0 bg-slate-900/50 backdrop-blur-md z-[1000]"
+              className="history-backdrop fixed inset-0 bg-overlay-backdrop backdrop-blur-md z-[1000]"
               onClick={closePanel}
             />
             <div

@@ -18,7 +18,7 @@ export const ProviderPill = ({ id }: { id: string }) => {
       className="provider-pill"
       style={{
         fontSize: "10px",
-        backgroundColor: "rgba(15, 23, 42, 0.5)", // bg-slate-900/50
+        backgroundColor: "rgba(15, 23, 42, 0.5)", // overlay-backdrop
         padding: "2px 6px",
         borderRadius: "4px",
         color: "#e2e8f0",

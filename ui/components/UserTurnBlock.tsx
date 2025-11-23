@@ -33,17 +33,7 @@ const CopyButton = ({
     <button
       onClick={handleCopy}
       aria-label={label}
-      className="copy-button"
-      style={{
-        background: "#334155",
-        border: "1px solid #475569",
-        borderRadius: "6px",
-        padding: "4px 8px",
-        color: "#94a3b8",
-        fontSize: "12px",
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-      }}
+      className="bg-surface-raised border border-border-subtle rounded-md px-2 py-1 text-text-muted text-xs cursor-pointer hover:bg-surface-highlight transition-all"
     >
       {copied ? "✓" : "📋"} {copied ? "Copied" : "Copy"}
     </button>
@@ -72,90 +62,33 @@ const UserTurnBlock = ({
 
   return (
     <div
-      className="user-turn-block"
-      style={{
-        display: "flex",
-        gap: "12px",
-        padding: "12px 16px",
-        background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-        border: "1px solid #475569",
-        borderRadius: "1rem",
-      }}
+      className="user-turn-block flex gap-3 p-3 bg-surface-raised border border-border-subtle rounded-2xl"
     >
-      <div
-        className="user-avatar"
-        style={{
-          width: "32px",
-          height: "32px",
-          borderRadius: "8px",
-          background: "rgba(99, 102, 241, 0.2)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        <UserIcon style={{ width: "18px", height: "18px", color: "#6366f1" }} />
+      <div className="user-avatar w-8 h-8 rounded-lg bg-brand-500/20 flex items-center justify-center flex-shrink-0">
+        <UserIcon className="w-4.5 h-4.5 text-brand-500" />
       </div>
-      <div
-        className="user-content"
-        style={{
-          flex: 1,
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "visible",
-          minHeight: "80px",
-        }}
-      >
+      <div className="user-content flex-1 min-w-0 flex flex-col overflow-visible min-h-[80px]">
         <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            cursor: "pointer",
-            marginBottom: isExpanded ? "8px" : "0px",
-          }}
+          className="flex justify-between items-center cursor-pointer"
+          style={{ marginBottom: isExpanded ? "8px" : "0px" }}
           onClick={onToggle}
         >
-          <span style={{ fontSize: "12px", fontWeight: 600, color: "#e2e8f0" }}>
+          <span className="text-xs font-semibold text-text-secondary">
             Your Prompt
           </span>
           {isExpanded ? (
-            <ChevronUpIcon
-              style={{ width: "16px", height: "16px", color: "#cbd5e1" }}
-            />
+            <ChevronUpIcon className="w-4 h-4 text-text-secondary" />
           ) : (
-            <ChevronDownIcon
-              style={{ width: "16px", height: "16px", color: "#cbd5e1" }}
-            />
+            <ChevronDownIcon className="w-4 h-4 text-text-secondary" />
           )}
         </div>
 
         {isExpanded ? (
           <>
-            <div
-              className="user-message prose prose-sm max-w-none dark:prose-invert"
-              style={{
-                fontSize: "14px",
-                lineHeight: "1.5",
-                color: "#f1f5f9",
-                wordBreak: "break-word",
-                marginBottom: "8px",
-              }}
-            >
+            <div className="user-message prose prose-sm max-w-none dark:prose-invert text-sm leading-relaxed text-text-primary break-words mb-2">
               <MarkdownDisplay content={String(userTurn.text || "")} />
             </div>
-            <div
-              className="user-metadata"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                fontSize: "11px",
-                color: "#94a3b8",
-              }}
-            >
+            <div className="user-metadata flex items-center gap-3 text-[11px] text-text-muted">
               <span
                 className="timestamp"
                 title={isoTimestamp}
@@ -169,31 +102,13 @@ const UserTurnBlock = ({
                 </span>
               )}
             </div>
-            <div
-              style={{
-                marginTop: "auto",
-                display: "flex",
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className="mt-auto flex justify-end">
               <CopyButton text={userTurn.text} label="Copy user prompt" />
             </div>
           </>
         ) : (
           <div
-            className="user-message-preview"
-            style={{
-              fontSize: "14px",
-              color: "#cbd5e1",
-
-              overflow: "hidden",
-
-              paddingTop: "4px",
-              marginBottom: "4px",
-              display: "-webkit-box",
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: "vertical",
-            }}
+            className="user-message-preview text-sm text-text-secondary overflow-hidden pt-1 mb-1 line-clamp-3"
             title={userTurn.text}
           >
             {userTurn.text}
@@ -201,13 +116,7 @@ const UserTurnBlock = ({
         )}
 
         {!isExpanded && (
-          <div
-            style={{
-              marginTop: "auto",
-              display: "flex",
-              justifyContent: "flex-end",
-            }}
-          >
+          <div className="mt-auto flex justify-end">
             <CopyButton
               text={String(userTurn.text || "")}
               label="Copy user prompt"

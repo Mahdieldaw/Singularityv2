@@ -422,29 +422,13 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
           return (
             <button
               type="button"
-              className="citation-pill" // Ensure this class is in your CSS
+              className="inline-flex items-center gap-1 px-1.5 mx-0.5 bg-chip-active border border-border-brand rounded-pill text-white text-xs font-bold leading-snug cursor-pointer no-underline"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleCitationClick(num);
               }}
               title={`View Source ${idStr}`}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-                padding: "0 6px",
-                margin: "0 2px",
-                backgroundColor: "#2563eb",
-                border: "1px solid #1d4ed8",
-                borderRadius: "9999px",
-                color: "#ffffff",
-                fontSize: "12px",
-                fontWeight: "700",
-                lineHeight: "1.4",
-                cursor: "pointer",
-                textDecoration: "none",
-              }}
             >
               {children}
             </button>
@@ -490,37 +474,20 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
     null;
 
   return (
-    <div
-      className="turn-block"
-      style={{ paddingBottom: "1rem", borderBottom: "1px solid #334155" }}
-    >
+    <div className="turn-block pb-4 border-b border-border-subtle">
       {userPrompt && (
-        <div className="user-prompt-block" style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>
+        <div className="user-prompt-block mb-2">
+          <div className="text-xs text-text-muted mb-1.5">
             User
           </div>
-          <div
-            style={{
-              background: "#0b1220",
-              border: "1px solid #334155",
-              borderRadius: 8,
-              padding: 8,
-              color: "#cbd5e1",
-            }}
-          >
+          <div className="bg-surface border border-border-subtle rounded-lg p-2 text-text-secondary">
             {userPrompt}
           </div>
         </div>
       )}
 
-      <div
-        className="ai-turn-block"
-        style={{ border: "1px solid #334155", borderRadius: 12, padding: 12 }}
-      >
-        <div
-          className="ai-turn-content"
-          style={{ display: "flex", flexDirection: "column", gap: 12 }}
-        >
+      <div className="ai-turn-block border border-border-subtle rounded-2xl p-3">
+        <div className="ai-turn-content flex flex-col gap-3">
           <div
             className="primaries"
             style={{ marginBottom: "1rem", position: "relative" }}
@@ -539,17 +506,8 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                 className="synthesis-section"
                 style={getSectionStyle("synthesis", synthExpanded)}
               >
-                <div
-                  className="section-header"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: 8,
-                    flexShrink: 0,
-                  }}
-                >
-                  <h4 style={{ margin: 0, fontSize: 14, color: "#e2e8f0" }}>
+                <div className="section-header flex items-center justify-between mb-2 flex-shrink-0">
+                  <h4 className="m-0 text-sm text-text-secondary">
                     Unified Synthesis
                   </h4>
                   <button
@@ -557,34 +515,19 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                     onClick={() =>
                       onToggleSynthesisExpanded && onToggleSynthesisExpanded()
                     }
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#94a3b8",
-                      cursor: "pointer",
-                      padding: 4,
-                    }}
+                    className="bg-transparent border-none text-text-muted cursor-pointer p-1"
                   >
                     {isSynthesisExpanded ? (
-                      <ChevronUpIcon style={{ width: 16, height: 16 }} />
+                      <ChevronUpIcon className="w-4 h-4" />
                     ) : (
-                      <ChevronDownIcon style={{ width: 16, height: 16 }} />
+                      <ChevronDownIcon className="w-4 h-4" />
                     )}
                   </button>
                 </div>
 
                 {isSynthesisExpanded && (
-                  <div
-                    style={{
-                      flex: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      minHeight: 0,
-                      overflow:
-                        synthTruncated && !synthExpanded ? "hidden" : "visible",
-                    }}
-                  >
-                    <div style={{ flexShrink: 0 }}>
+                  <div className="flex-1 flex flex-col min-h-0" style={{ overflow: synthTruncated && !synthExpanded ? "hidden" : "visible" }}>
+                    <div className="flex-shrink-0">
                       <ClipsCarousel
                         providers={LLM_PROVIDERS_CONFIG}
                         responsesMap={synthesisResponses}
@@ -595,18 +538,8 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                     </div>
 
                     <div
-                      className="clip-content"
+                      className="clip-content mt-3 bg-surface border border-border-subtle rounded-lg p-3 pb-4.5 flex-1 min-w-0 break-words"
                       style={{
-                        marginTop: 12,
-                        background: "#0f172a",
-                        border: "1px solid #334155",
-                        borderRadius: 8,
-                        padding: 12,
-                        paddingBottom: 18,
-                        flex: 1,
-                        minWidth: 0,
-                        wordBreak: "break-word",
-                        overflowWrap: "break-word",
                         overflowY: isLive || isLoading ? "auto" : "visible",
                         maxHeight: isLive || isLoading ? "40vh" : "none",
                         minHeight: 0,
@@ -650,13 +583,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                       {(() => {
                         if (!wasSynthRequested)
                           return (
-                            <div
-                              style={{
-                                color: "#64748b",
-                                fontStyle: "italic",
-                                textAlign: "center",
-                              }}
-                            >
+                            <div className="text-text-muted/70 italic text-center">
                               Synthesis not enabled for this turn.
                             </div>
                           );
@@ -693,22 +620,11 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                           );
                           if (take && take.status === "error") {
                             return (
-                              <div
-                                style={{
-                                  background: "#1f2937",
-                                  border: "1px solid #ef4444",
-                                  color: "#fecaca",
-                                  borderRadius: 8,
-                                  padding: 12,
-                                }}
-                              >
-                                <div style={{ fontSize: 12, marginBottom: 8 }}>
+                              <div className="bg-intent-danger/15 border border-intent-danger text-intent-danger rounded-lg p-3">
+                                <div className="text-xs mb-2">
                                   {activeSynthPid} · error
                                 </div>
-                                <div
-                                  className="prose prose-sm max-w-none dark:prose-invert"
-                                  style={{ lineHeight: 1.7, fontSize: 14 }}
-                                >
+                                <div className="prose prose-sm max-w-none dark:prose-invert leading-7 text-sm">
                                   <MarkdownDisplay
                                     content={String(
                                       take.text || "Synthesis failed"
@@ -720,7 +636,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                           }
                           if (!take)
                             return (
-                              <div style={{ color: "#64748b" }}>
+                              <div className="text-text-muted">
                                 No synthesis yet.
                               </div>
                             );
@@ -746,15 +662,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                       String(take.text || "")
                                     );
                                   }}
-                                  style={{
-                                    background: "#334155",
-                                    border: "1px solid #475569",
-                                    borderRadius: 6,
-                                    padding: "4px 8px",
-                                    color: "#94a3b8",
-                                    fontSize: 12,
-                                    cursor: "pointer",
-                                  }}
+                                  className="bg-surface-raised border border-border-subtle rounded-md px-2 py-1 text-text-muted text-xs cursor-pointer hover:bg-surface-highlight transition-all"
                                 >
                                   📋 Copy
                                 </button>
@@ -766,42 +674,18 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 return (
                                   <>
                                     {/* Main content */}
-                                    <div
-                                      className="prose prose-sm max-w-none dark:prose-invert"
-                                      style={{ lineHeight: 1.7, fontSize: 16 }}
-                                    >
+                                    <div className="prose prose-sm max-w-none dark:prose-invert leading-7 text-base">
                                       <MarkdownDisplay content={String(cleanText || take.text || "")} />
                                     </div>
 
                                     {/* Artifact badges */}
                                     {artifacts.length > 0 && (
-                                      <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                      <div className="mt-3 flex flex-wrap gap-2">
                                         {artifacts.map((artifact, idx) => (
                                           <button
                                             key={idx}
                                             onClick={() => setSelectedArtifact(artifact)}
-                                            style={{
-                                              background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-                                              border: "1px solid #818cf8",
-                                              borderRadius: 8,
-                                              padding: "8px 12px",
-                                              color: "#ffffff",
-                                              fontSize: 13,
-                                              fontWeight: 500,
-                                              cursor: "pointer",
-                                              display: "flex",
-                                              alignItems: "center",
-                                              gap: 6,
-                                              transition: "all 0.2s ease",
-                                            }}
-                                            onMouseEnter={(e) => {
-                                              e.currentTarget.style.transform = "translateY(-1px)";
-                                              e.currentTarget.style.boxShadow = "0 4px 12px rgba(99, 102, 241, 0.4)";
-                                            }}
-                                            onMouseLeave={(e) => {
-                                              e.currentTarget.style.transform = "translateY(0)";
-                                              e.currentTarget.style.boxShadow = "none";
-                                            }}
+                                            className="bg-gradient-to-br from-brand-500 to-brand-600 border border-brand-400 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer flex items-center gap-1.5 hover:-translate-y-px hover:shadow-glow-brand-soft transition-all"
                                           >
                                             📄 {artifact.title}
                                           </button>
@@ -811,107 +695,38 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
                                     {/* Artifact Overlay Modal */}
                                     {selectedArtifact && (
-                                      <div
-                                        style={{
-                                          position: "fixed",
-                                          top: 0,
-                                          left: 0,
-                                          right: 0,
-                                          bottom: 0,
-                                          background: "rgba(0, 0, 0, 0.85)",
-                                          zIndex: 9999,
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "center",
-                                          padding: 20,
-                                        }}
-                                        onClick={() => setSelectedArtifact(null)}
-                                      >
-                                        <div
-                                          style={{
-                                            background: "#1e293b",
-                                            border: "1px solid #475569",
-                                            borderRadius: 12,
-                                            maxWidth: "900px",
-                                            width: "100%",
-                                            maxHeight: "90vh",
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5)",
-                                          }}
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
+                                      <div className="fixed inset-0 bg-overlay-backdrop z-[9999] flex items-center justify-center p-5" onClick={() => setSelectedArtifact(null)}>
+                                        <div className="bg-surface-raised border border-border-strong rounded-2xl max-w-[900px] w-full max-h-[90vh] flex flex-col shadow-elevated" onClick={(e) => e.stopPropagation()}>
                                           {/* Header */}
-                                          <div
-                                            style={{
-                                              display: "flex",
-                                              alignItems: "center",
-                                              justifyContent: "space-between",
-                                              padding: "16px 20px",
-                                              borderBottom: "1px solid #334155",
-                                            }}
-                                          >
+                                          <div className="flex items-center justify-between p-4 border-b border-border-subtle">
                                             <div>
-                                              <h3 style={{ margin: 0, fontSize: 18, color: "#f1f5f9", fontWeight: 600 }}>
+                                              <h3 className="m-0 text-lg text-text-primary font-semibold">
                                                 📄 {selectedArtifact.title}
                                               </h3>
-                                              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                                              <div className="text-xs text-text-muted mt-1">
                                                 {selectedArtifact.identifier}
                                               </div>
                                             </div>
                                             <button
                                               onClick={() => setSelectedArtifact(null)}
-                                              style={{
-                                                background: "transparent",
-                                                border: "none",
-                                                color: "#94a3b8",
-                                                fontSize: 24,
-                                                cursor: "pointer",
-                                                padding: "4px 8px",
-                                              }}
+                                              className="bg-transparent border-none text-text-muted text-2xl cursor-pointer px-2 py-1"
                                             >
                                               ×
                                             </button>
                                           </div>
 
                                           {/* Content */}
-                                          <div
-                                            style={{
-                                              flex: 1,
-                                              overflowY: "auto",
-                                              padding: 20,
-                                              background: "#0f172a",
-                                            }}
-                                          >
+                                          <div className="flex-1 overflow-y-auto p-5 bg-surface">
                                             <MarkdownDisplay content={selectedArtifact.content} />
                                           </div>
 
                                           {/* Footer Actions */}
-                                          <div
-                                            style={{
-                                              display: "flex",
-                                              gap: 12,
-                                              padding: "16px 20px",
-                                              borderTop: "1px solid #334155",
-                                              justifyContent: "flex-end",
-                                            }}
-                                          >
+                                          <div className="flex gap-3 p-4 border-t border-border-subtle justify-end">
                                             <button
                                               onClick={async () => {
                                                 await navigator.clipboard.writeText(selectedArtifact.content);
                                               }}
-                                              style={{
-                                                background: "#334155",
-                                                border: "1px solid #475569",
-                                                borderRadius: 6,
-                                                padding: "8px 16px",
-                                                color: "#e2e8f0",
-                                                fontSize: 14,
-                                                cursor: "pointer",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: 6,
-                                              }}
+                                              className="bg-surface-raised border border-border-subtle rounded-md px-4 py-2 text-text-secondary text-sm cursor-pointer flex items-center gap-1.5 hover:bg-surface-highlight transition-all"
                                             >
                                               📋 Copy
                                             </button>
@@ -929,18 +744,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                                   try { document.body.removeChild(a); } catch { }
                                                 }, 0);
                                               }}
-                                              style={{
-                                                background: "#6366f1",
-                                                border: "1px solid #818cf8",
-                                                borderRadius: 6,
-                                                padding: "8px 16px",
-                                                color: "#ffffff",
-                                                fontSize: 14,
-                                                cursor: "pointer",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: 6,
-                                              }}
+                                              className="bg-brand-500 border border-brand-400 rounded-md px-4 py-2 text-white text-sm cursor-pointer flex items-center gap-1.5 hover:bg-brand-600 transition-all"
                                             >
                                               ⬇️ Download
                                             </button>
@@ -955,16 +759,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                           );
                         }
                         return (
-                          <div
-                            style={{
-                              color: "#64748b",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              height: "100%",
-                              fontStyle: "italic",
-                            }}
-                          >
+                          <div className="flex items-center justify-center h-full text-text-muted italic">
                             Choose a model.
                           </div>
                         );
@@ -1378,16 +1173,8 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                             isMappingTarget;
                           if (isGenerating)
                             return (
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  gap: 8,
-                                  color: "#94a3b8",
-                                }}
-                              >
-                                <span style={{ fontStyle: "italic" }}>
+                              <div className="flex items-center justify-center gap-2 text-text-muted">
+                                <span className="italic">
                                   Conflict map generating
                                 </span>
                                 <span className="streaming-dots" />
