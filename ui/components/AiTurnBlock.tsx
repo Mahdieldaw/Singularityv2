@@ -422,7 +422,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
           return (
             <button
               type="button"
-              className="inline-flex items-center gap-1 px-1.5 mx-0.5 bg-chip-active border border-border-brand rounded-pill text-white text-xs font-bold leading-snug cursor-pointer no-underline"
+              className="inline-flex items-center gap-1 px-1.5 mx-0.5 bg-chip-active border border-border-brand rounded-pill text-text-primary text-xs font-bold leading-snug cursor-pointer no-underline"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -685,7 +685,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                           <button
                                             key={idx}
                                             onClick={() => setSelectedArtifact(artifact)}
-                                            className="bg-gradient-to-br from-brand-500 to-brand-600 border border-brand-400 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer flex items-center gap-1.5 hover:-translate-y-px hover:shadow-glow-brand-soft transition-all"
+                                            className="bg-gradient-to-br from-brand-500 to-brand-600 border border-brand-400 rounded-lg px-3 py-2 text-text-primary text-sm font-medium cursor-pointer flex items-center gap-1.5 hover:-translate-y-px hover:shadow-glow-brand-soft transition-all"
                                           >
                                             📄 {artifact.title}
                                           </button>
@@ -744,7 +744,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                                   try { document.body.removeChild(a); } catch { }
                                                 }, 0);
                                               }}
-                                              className="bg-brand-500 border border-brand-400 rounded-md px-4 py-2 text-white text-sm cursor-pointer flex items-center gap-1.5 hover:bg-brand-600 transition-all"
+                                              className="bg-brand-500 border border-brand-400 rounded-md px-4 py-2 text-text-primary text-sm cursor-pointer flex items-center gap-1.5 hover:bg-brand-600 transition-all"
                                             >
                                               ⬇️ Download
                                             </button>

@@ -413,7 +413,7 @@ const ProviderResponseBlock = ({
                       <button
                         key={idx}
                         onClick={() => setSelectedArtifact(artifact)}
-                        className="bg-gradient-to-br from-brand-500 to-brand-600 border border-brand-400 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer flex items-center gap-1.5 hover:-translate-y-px hover:shadow-glow-brand-soft transition-all"
+                        className="bg-gradient-to-br from-brand-500 to-brand-600 border border-brand-400 rounded-lg px-3 py-2 text-text-primary text-sm font-medium cursor-pointer flex items-center gap-1.5 hover:-translate-y-px hover:shadow-glow-brand-soft transition-all"
                       >
                         📄 {artifact.title}
                       </button>
@@ -432,7 +432,7 @@ const ProviderResponseBlock = ({
             <button
               onClick={() => onRetryProvider(providerId)}
               title="Retry this provider"
-              className="bg-intent-danger border border-intent-danger/80 rounded-md px-2 py-1 text-white text-xs cursor-pointer flex items-center gap-1"
+              className="bg-intent-danger border border-intent-danger/80 rounded-md px-2 py-1 text-text-primary text-xs cursor-pointer flex items-center gap-1"
             >
               🔄 Retry
             </button>
@@ -611,7 +611,7 @@ const ProviderResponseBlock = ({
                       try { document.body.removeChild(a); } catch { }
                     }, 0);
                   }}
-                  className="bg-brand-500 border border-brand-400 rounded-md px-4 py-2 text-white text-sm cursor-pointer flex items-center gap-1.5 hover:bg-brand-600 transition-all"
+                  className="bg-brand-500 border border-brand-400 rounded-md px-4 py-2 text-text-primary text-sm cursor-pointer flex items-center gap-1.5 hover:bg-brand-600 transition-all"
                 >
                   ⬇️ Download
                 </button>
