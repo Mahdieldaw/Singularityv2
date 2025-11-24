@@ -351,9 +351,6 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
     const isTruncated = section === "synthesis" ? synthTruncated : mapTruncated;
     const duringStreaming = isLive || isLoading;
     return {
-      border: "1px solid #475569",
-      borderRadius: 8,
-      padding: 12,
       flex: "1 1 0%",
       minWidth: 0,
       display: "flex",
@@ -503,11 +500,11 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               {/* Synthesis Section */}
               <div
                 ref={synthRef}
-                className="synthesis-section"
+                className="flex-1 bg-surface-raised border border-border-subtle rounded-3xl p-4 shadow-card-sm flex flex-col gap-3"
                 style={getSectionStyle("synthesis", synthExpanded)}
               >
-                <div className="section-header flex items-center justify-between mb-2 flex-shrink-0">
-                  <h4 className="m-0 text-sm font-semibold text-text-secondary">
+                <div className="section-header flex items-center justify-between flex-shrink-0">
+                  <h4 className="m-0 text-sm font-semibold text-text-secondary mb-1.5">
                     Unified Synthesis
                   </h4>
                   <button
@@ -538,7 +535,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                     </div>
 
                     <div
-                      className="clip-content mt-3 bg-surface border border-border-subtle rounded-lg p-3 pb-4.5 flex-1 min-w-0 break-words"
+                      className="clip-content bg-surface border border-border-subtle rounded-2xl p-3 flex-1 min-w-0 break-words"
                       style={{
                         overflowY: isLive || isLoading ? "auto" : "visible",
                         maxHeight: isLive || isLoading ? "40vh" : "none",
@@ -674,7 +671,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 return (
                                   <>
                                     {/* Main content */}
-                                    <div className="prose prose-sm max-w-none dark:prose-invert text-[15px] leading-relaxed">
+                                    <div className="text-[15px] leading-relaxed text-text-primary">
                                       <MarkdownDisplay content={String(cleanText || take.text || "")} />
                                     </div>
 
@@ -835,20 +832,13 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               {/* Mapping Section */}
               <div
                 ref={mapRef}
-                className="mapping-section"
+                className="flex-1 bg-surface-raised border border-border-subtle rounded-3xl p-4 shadow-card-sm flex flex-col gap-3"
                 style={getSectionStyle("mapping", mapExpanded)}
               >
                 <div
-                  className="section-header"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: 8,
-                    flexShrink: 0,
-                  }}
+                  className="section-header flex items-center justify-between flex-shrink-0"
                 >
-                  <h4 className="m-0 text-sm font-semibold text-text-secondary">
+                  <h4 className="m-0 text-sm font-semibold text-text-secondary mb-1.5">
                     Decision Map
                   </h4>
                   <div
@@ -1043,18 +1033,8 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                     </div>
 
                     <div
-                      className="clip-content"
+                      className="clip-content bg-surface border border-border-subtle rounded-2xl p-3 flex-1 min-w-0 break-words"
                       style={{
-                        marginTop: 12,
-                        background: "#0f172a",
-                        border: "1px solid #334155",
-                        borderRadius: 8,
-                        padding: 12,
-                        paddingBottom: 18,
-                        flex: 1,
-                        minWidth: 0,
-                        wordBreak: "break-word",
-                        overflowWrap: "break-word",
                         overflowY: isLive || isLoading ? "auto" : "visible",
                         maxHeight: isLive || isLoading ? "40vh" : "none",
                         minHeight: 0,
@@ -1140,7 +1120,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 </button>
                               </div>
                               <div
-                                className="prose prose-sm max-w-none dark:prose-invert text-[15px] leading-relaxed"
+                                className="text-[15px] leading-relaxed text-text-primary"
                               >
                                 <MarkdownDisplay
                                   content={transformCitations(options)}
@@ -1260,7 +1240,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   return (
                                     <>
                                       <div
-                                        className="prose prose-sm max-w-none dark:prose-invert text-[15px] leading-relaxed"
+                                        className="text-[15px] leading-relaxed text-text-primary"
                                       >
                                         <MarkdownDisplay
                                           content={transformCitations(cleanText || displayedMappingText)}
