@@ -12,6 +12,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { providerContextsAtom } from "../state/atoms";
 import MarkdownDisplay from "./MarkdownDisplay";
 import { normalizeProviderId } from "../utils/provider-id-mapper";
+import clsx from "clsx";
 
 // Import Claude artifact extraction helper
 function extractClaudeArtifacts(text: string | null | undefined): {
@@ -259,18 +260,17 @@ const ProviderResponseBlock = ({
       );
   }, [aiTurnId, visibleSlots]); // Added visibleSlots dependency to ensure we have fresh state
 
-  const getStatusColor = (status: string, hasText: boolean = true) => {
+  const getStatusClass = (status: string, hasText: boolean = true) => {
     switch (status) {
       case "pending":
-        return "#f59e0b";
       case "streaming":
-        return "#f59e0b";
+        return "bg-intent-warning";
       case "completed":
-        return hasText ? "#10b981" : "#f59e0b";
+        return hasText ? "bg-intent-success" : "bg-intent-warning";
       case "error":
-        return "#ef4444";
+        return "bg-intent-danger";
       default:
-        return "#6b7280";
+        return "bg-text-muted";
     }
   };
 
@@ -310,19 +310,14 @@ const ProviderResponseBlock = ({
       <div
         key={providerId}
         id={`provider-card-${aiTurnId || "unknown"}-${providerId}`}
-        className={`flex flex-col bg-surface-raised border rounded-2xl p-3 shadow-sm flex-shrink-0 overflow-hidden ${isHighlighted
-          ? "border-brand-500 shadow-glow-brand"
-          : "border-border-subtle"
-          }`}
-        style={{
-          flex: "1 1 320px",
-          minWidth: "260px",
-          maxWidth: "380px",
-          width: "100%",
-          height: "300px",
-          display: isVisible ? "flex" : "none",
-          transition: "box-shadow 0.3s ease, border-color 0.3s ease",
-        }}
+        className={clsx(
+          "flex flex-col bg-surface-raised border rounded-2xl p-3",
+          "shadow-card-sm flex-shrink-0 overflow-hidden",
+          "flex-1 basis-[320px] min-w-[260px] max-w-[380px] w-full h-[300px]",
+          "transition-[box-shadow,border-color] duration-300",
+          isHighlighted ? "border-brand-500 shadow-glow-brand" : "border-border-subtle",
+          !isVisible && "hidden"
+        )}
         aria-live="polite"
       >
         {/* Fixed Header */}
@@ -343,14 +338,11 @@ const ProviderResponseBlock = ({
             </div>
           )}
           <div
-            className="ml-auto w-2 h-2 rounded-full"
-            style={{
-              background: getStatusColor(state?.status, hasText),
-              ...(isStreaming &&
-                !isReducedMotion && {
-                animation: "pulse 1.5s ease-in-out infinite",
-              }),
-            }}
+            className={clsx(
+              "ml-auto w-2 h-2 rounded-full",
+              getStatusClass(state?.status, hasText),
+              isStreaming && !isReducedMotion && "animate-pulse"
+            )}
           />
         </div>
 
@@ -387,12 +379,6 @@ const ProviderResponseBlock = ({
             if (canDown || canUp) {
               e.stopPropagation();
             }
-          }}
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            overflowX: "hidden",
-            minHeight: 0,
           }}
         >
           {(() => {
@@ -456,19 +442,27 @@ const ProviderResponseBlock = ({
 
     // State indicator similar to ClipsCarousel
     const statusIcon = isStreaming ? "⏳" : isCompleted ? "◉" : "○";
-    const borderColor = isCompleted ? provider?.color || "#475569" : "#475569";
-    const bgColor = isCompleted ? "rgba(255,255,255,0.06)" : "#0f172a";
+
+    const sideBaseClasses =
+      "flex flex-col items-center justify-center gap-1 p-3 min-w-[80px] rounded-2xl " +
+      "cursor-pointer flex-shrink-0 hover:-translate-y-0.5 hover:shadow-card-sm " +
+      "transition-all shadow-card-sm";
+
+    const sideClass = isCompleted
+      ? clsx(sideBaseClasses, "bg-chip-active border border-border-subtle")
+      : clsx(sideBaseClasses, "bg-chip border border-border-subtle");
 
     return (
       <button
         key={providerId}
         onClick={() => swapProviderIn(providerId)}
         title={`Click to view ${provider?.name || providerId}`}
-        className="flex flex-col items-center justify-center gap-1 p-3 min-w-[80px] rounded-2xl bg-surface-soft border cursor-pointer flex-shrink-0 hover:-translate-y-0.5 hover:shadow-lg transition-all shadow-card-sm"
-        style={{
-          borderColor: borderColor,
-          background: bgColor,
-        }}
+        className={sideClass}
+        style={
+          isCompleted && provider?.color
+            ? { borderColor: provider.color }
+            : undefined
+        }
       >
         {/* Provider Logo */}
         {provider && (
@@ -484,13 +478,11 @@ const ProviderResponseBlock = ({
         {/* Streaming indicator dot */}
         {isStreaming && (
           <div
-            className="w-1.5 h-1.5 rounded-full"
-            style={{
-              background: getStatusColor(state?.status, !!state?.text),
-              animation: isReducedMotion
-                ? "none"
-                : "pulse 1.5s ease-in-out infinite",
-            }}
+            className={clsx(
+              "w-1.5 h-1.5 rounded-full",
+              getStatusClass(state?.status, !!state?.text),
+              !isReducedMotion && "animate-pulse"
+            )}
           />
         )}
       </button>
@@ -519,36 +511,20 @@ const ProviderResponseBlock = ({
         </div>
 
         {/* CAROUSEL LAYOUT: [Left Indicator] [3 Main Cards] [Right Indicator] */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-2 flex-shrink-0">
             {hiddenLeft.map((pid) => (
               <div key={`left-${pid}`}>{renderSideIndicator(pid)}</div>
             ))}
           </div>
 
           {/* Main Cards Container (3 slots) */}
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              flex: 1,
-              justifyContent: "flex-start",
-              minWidth: 0,
-              flexWrap: "wrap",
-              width: "100%",
-            }}
-          >
+          <div className="flex gap-2 flex-1 justify-start min-w-0 flex-wrap w-full">
             {/* Render only visible providers to reduce re-render cost */}
             {visibleSlots.map((id) => renderProviderCard(id, true))}
           </div>
 
-          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div className="flex flex-col gap-2 flex-shrink-0">
             {hiddenRight.map((pid) => (
               <div key={`right-${pid}`}>{renderSideIndicator(pid)}</div>
             ))}
