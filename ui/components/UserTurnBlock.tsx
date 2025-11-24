@@ -88,7 +88,7 @@ const UserTurnBlock = ({
 
         {isExpanded ? (
           <>
-            <div className="user-message text-[15px] leading-relaxed text-text-primary break-words mb-2">
+            <div className="user-message text-[16px] leading-relaxed text-text-primary break-words mb-2">
               <MarkdownDisplay content={String(userTurn.text || "")} />
             </div>
             <div className="user-metadata flex items-center gap-3 text-[11px] text-text-muted">
@@ -111,7 +111,7 @@ const UserTurnBlock = ({
           </>
         ) : (
           <div
-            className="user-message-preview text-[15px] text-text-secondary overflow-hidden pt-1 mb-1 line-clamp-3"
+            className="user-message-preview text-[16px] text-text-secondary overflow-hidden pt-1 mb-1 line-clamp-3"
           >
             {userTurn.text}
           </div>

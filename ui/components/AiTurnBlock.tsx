@@ -657,7 +657,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 return (
                                   <>
                                     {/* Main content */}
-                                    <div className="text-[15px] leading-relaxed text-text-primary">
+                                    <div className="text-[16px] leading-relaxed text-text-primary">
                                       <MarkdownDisplay content={String(cleanText || take.text || "")} />
                                     </div>
 
@@ -1005,7 +1005,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 </button>
                               </div>
                               <div
-                                className="text-[15px] leading-relaxed text-text-primary"
+                                className="text-[16px] leading-relaxed text-text-primary"
                               >
                                 <MarkdownDisplay
                                   content={transformCitations(options)}
@@ -1090,7 +1090,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   return (
                                     <>
                                       <div
-                                        className="text-[15px] leading-relaxed text-text-primary"
+                                        className="text-[16px] leading-relaxed text-text-primary"
                                       >
                                         <MarkdownDisplay
                                           content={transformCitations(cleanText || displayedMappingText)}

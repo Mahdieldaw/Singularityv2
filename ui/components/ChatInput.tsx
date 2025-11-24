@@ -119,7 +119,7 @@ const ChatInput = ({
                 : "Ask anything... Singularity will orchestrate multiple AI models for you."
             }
             rows={1}
-            className={`w-full min-h-[38px] px-3 py-2 bg-transparent border-none text-text-primary text-[15px] font-inherit resize-none outline-none overflow-y-auto ${isReducedMotion ? '' : 'transition-all duration-200 ease-out'} placeholder:text-text-muted`}
+            className={`w-full min-h-[38px] px-3 py-2 bg-transparent border-none text-text-primary text-[16px] font-inherit resize-none outline-none overflow-y-auto ${isReducedMotion ? '' : 'transition-all duration-200 ease-out'} placeholder:text-text-muted`}
             onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
               if (e.key === "Enter" && !e.shiftKey && prompt.trim()) {
                 e.preventDefault();

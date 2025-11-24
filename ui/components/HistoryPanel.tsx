@@ -61,8 +61,8 @@ const HistoryPanel = ({
                 }
               }}
               className={`flex-1 px-3 py-2.5 rounded-lg border cursor-pointer mb-3 transition-all duration-200 ${isBatchMode
-                  ? "bg-intent-danger/15 border-intent-danger/45 text-text-secondary hover:bg-intent-danger/20"
-                  : "bg-brand-500/15 border-border-subtle text-text-secondary hover:bg-brand-500/20 hover:border-border-strong"
+                ? "bg-intent-danger/15 border-intent-danger/45 text-text-secondary hover:bg-intent-danger/20"
+                : "bg-brand-500/15 border-border-subtle text-text-secondary hover:bg-brand-500/20 hover:border-border-strong"
                 }`}
               title={
                 isBatchMode
@@ -107,10 +107,10 @@ const HistoryPanel = ({
                         onSelectChat(session);
                       }
                     }}
-                    className={`p-2.5 px-3 rounded-lg border border-border-subtle bg-chip text-text-secondary text-[15px] cursor-pointer mb-2 flex items-start justify-between gap-2 transition-all duration-200 hover:bg-surface-highlight hover:border-border-strong ${!!deletingIds &&
-                        (deletingIds as Set<string>).has(session.sessionId)
-                        ? "opacity-60 pointer-events-none"
-                        : ""
+                    className={`p-2.5 px-3 rounded-lg border border-border-subtle bg-chip text-text-secondary text-[16px] cursor-pointer mb-2 flex items-start justify-between gap-2 transition-all duration-200 hover:bg-surface-highlight hover:border-border-strong ${!!deletingIds &&
+                      (deletingIds as Set<string>).has(session.sessionId)
+                      ? "opacity-60 pointer-events-none"
+                      : ""
                       }`}
                     role="button"
                     tabIndex={0}
@@ -171,9 +171,9 @@ const HistoryPanel = ({
                           aria-label={`Delete chat ${session.title}`}
                           title="Delete chat"
                           className={`flex-shrink-0 ml-2 bg-intent-danger/10 border border-intent-danger/45 text-intent-danger rounded-md px-1.5 py-1 text-xs transition-all duration-200 ${!!deletingIds &&
-                              (deletingIds as Set<string>).has(session.sessionId)
-                              ? "cursor-not-allowed opacity-60"
-                              : "cursor-pointer hover:bg-intent-danger/20"
+                            (deletingIds as Set<string>).has(session.sessionId)
+                            ? "cursor-not-allowed opacity-60"
+                            : "cursor-pointer hover:bg-intent-danger/20"
                             }`}
                           onClick={(e) => {
                             e.stopPropagation();

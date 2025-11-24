@@ -36,7 +36,7 @@
 
   /* Base Styles */
   body {
-    @apply font-sans text-text-primary bg-surface text-[15px] leading-relaxed;
+    @apply font-sans text-text-primary bg-surface text-[16px] leading-[1.6];
   }
 
   #root {

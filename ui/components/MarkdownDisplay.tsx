@@ -150,7 +150,7 @@ interface MarkdownDisplayProps {
 
 const MarkdownDisplay: React.FC<MarkdownDisplayProps> = ({ content, components = {} }) => {
   return (
-    <div className="markdown-body text-[15px] leading-relaxed text-text-primary">
+    <div className="markdown-body text-[16px] leading-relaxed text-text-primary">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -185,7 +185,7 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = ({ content, components =
           ),
           h1: ({ children }) => <h1 className="text-xl font-semibold mt-2 mb-2 text-text-primary">{children}</h1>,
           h2: ({ children }) => <h2 className="text-[17px] font-semibold mt-2 mb-2 text-text-primary">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-[15px] font-semibold mt-2 mb-2 text-text-primary">{children}</h3>,
+          h3: ({ children }) => <h3 className="text-[16px] font-semibold mt-2 mb-2 text-text-primary">{children}</h3>,
           blockquote: ({ children }) => <blockquote className="border-l-4 border-border-subtle pl-4 ml-0 text-text-muted italic">{children}</blockquote>,
 
           // --- TABLE STYLING (Restored) ---
