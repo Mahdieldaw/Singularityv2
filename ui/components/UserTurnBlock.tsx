@@ -4,6 +4,9 @@ import { UserIcon, ChevronDownIcon, ChevronUpIcon } from "./Icons";
 import MarkdownDisplay from "./MarkdownDisplay";
 import clsx from "clsx";
 
+import { useSetAtom } from "jotai";
+import { toastAtom } from "../state/atoms";
+
 const CopyButton = ({
   text,
   label,
@@ -13,6 +16,7 @@ const CopyButton = ({
   label: string;
   onClick?: () => void;
 }) => {
+  const setToast = useSetAtom(toastAtom);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(
@@ -21,13 +25,15 @@ const CopyButton = ({
       try {
         await navigator.clipboard.writeText(text);
         setCopied(true);
+        setToast({ id: Date.now(), message: 'Copied to clipboard', type: 'info' });
         setTimeout(() => setCopied(false), 2000);
         onClick?.();
       } catch (error) {
         console.error("Failed to copy text:", error);
+        setToast({ id: Date.now(), message: 'Failed to copy', type: 'error' });
       }
     },
-    [text, onClick],
+    [text, onClick, setToast],
   );
 
   return (

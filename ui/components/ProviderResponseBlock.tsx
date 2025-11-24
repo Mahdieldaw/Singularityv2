@@ -9,7 +9,7 @@ import { BotIcon } from "./Icons";
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { ProviderPill } from "./ProviderPill";
 import { useAtomValue, useSetAtom } from "jotai";
-import { providerContextsAtom } from "../state/atoms";
+import { providerContextsAtom, toastAtom } from "../state/atoms";
 import MarkdownDisplay from "./MarkdownDisplay";
 import { normalizeProviderId } from "../utils/provider-id-mapper";
 import clsx from "clsx";
@@ -67,6 +67,7 @@ interface ProviderResponseBlockProps {
 }
 
 const CopyButton = ({ text, label }: { text: string; label: string }) => {
+  const setToast = useSetAtom(toastAtom);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(
@@ -75,12 +76,14 @@ const CopyButton = ({ text, label }: { text: string; label: string }) => {
       try {
         await navigator.clipboard.writeText(text);
         setCopied(true);
+        setToast({ id: Date.now(), message: 'Copied to clipboard', type: 'info' });
         setTimeout(() => setCopied(false), 2000);
       } catch (error) {
         console.error("Failed to copy text:", error);
+        setToast({ id: Date.now(), message: 'Failed to copy', type: 'error' });
       }
     },
-    [text],
+    [text, setToast],
   );
 
   return (

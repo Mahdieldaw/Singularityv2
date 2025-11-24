@@ -311,3 +311,14 @@ export const chatInputValueAtom = atomWithStorage<string>(
   undefined,
   { getOnInit: true }
 );
+
+// -----------------------------
+// Global Toast Notification
+// -----------------------------
+export type Toast = {
+  id: number;
+  message: string;
+  type?: 'info' | 'success' | 'error';
+} | null;
+
+export const toastAtom = atom<Toast>(null);

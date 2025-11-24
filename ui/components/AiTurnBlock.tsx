@@ -6,6 +6,8 @@ import React, {
   useRef,
   useEffect,
 } from "react";
+import { useSetAtom } from "jotai";
+import { toastAtom } from "../state/atoms";
 import { AiTurn, ProviderResponse, AppStep } from "../types";
 import MarkdownDisplay from "./MarkdownDisplay";
 import { LLM_PROVIDERS_CONFIG } from "../constants";
@@ -139,6 +141,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 }) => {
   const setSynthExpanded = onSetSynthExpanded || (() => { });
   const setMapExpanded = onSetMapExpanded || (() => { });
+  const setToast = useSetAtom(toastAtom);
 
   // State for Claude artifact overlay
   const [selectedArtifact, setSelectedArtifact] = useState<{
@@ -573,9 +576,15 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   type="button"
                                   onClick={async (e) => {
                                     e.stopPropagation();
-                                    await navigator.clipboard.writeText(
-                                      String(take.text || "")
-                                    );
+                                    try {
+                                      await navigator.clipboard.writeText(
+                                        String(take.text || "")
+                                      );
+                                      setToast({ id: Date.now(), message: 'Copied to clipboard', type: 'info' });
+                                    } catch (err) {
+                                      console.error("Failed to copy:", err);
+                                      setToast({ id: Date.now(), message: 'Failed to copy', type: 'error' });
+                                    }
                                   }}
                                   className="bg-surface-raised border border-border-subtle rounded-md
                                                px-2 py-1 text-text-muted text-xs cursor-pointer
@@ -641,7 +650,13 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                           <div className="flex gap-3 p-4 border-t border-border-subtle justify-end">
                                             <button
                                               onClick={async () => {
-                                                await navigator.clipboard.writeText(selectedArtifact.content);
+                                                try {
+                                                  await navigator.clipboard.writeText(selectedArtifact.content);
+                                                  setToast({ id: Date.now(), message: 'Copied artifact', type: 'info' });
+                                                } catch (err) {
+                                                  console.error("Failed to copy artifact:", err);
+                                                  setToast({ id: Date.now(), message: 'Failed to copy', type: 'error' });
+                                                }
                                               }}
                                               className="bg-surface-raised border border-border-subtle rounded-md px-4 py-2 text-text-secondary text-sm cursor-pointer flex items-center gap-1.5 hover:bg-surface-highlight transition-all"
                                             >

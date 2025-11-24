@@ -10,6 +10,7 @@ import HistoryPanelConnected from "./components/HistoryPanelConnected";
 import BannerConnected from "./components/BannerConnected";
 import CompactModelTrayConnected from "./components/CompactModelTrayConnected";
 import SettingsPanel from "./components/SettingsPanel";
+import { Toast } from "./components/Toast";
 import { isHistoryPanelOpenAtom } from "./state/atoms";
 import { useInitialization } from "./hooks/useInitialization"; // Import the new hook
 import { useOnClickOutside } from "usehooks-ts";
@@ -77,6 +78,9 @@ export default function App() {
 
       {/* Settings Panel - Slides in from right */}
       <SettingsPanel />
+
+      {/* Global Toast Notifications */}
+      <Toast />
     </div>
   );
 }
