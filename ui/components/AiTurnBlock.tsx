@@ -507,7 +507,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                 style={getSectionStyle("synthesis", synthExpanded)}
               >
                 <div className="section-header flex items-center justify-between mb-2 flex-shrink-0">
-                  <h4 className="m-0 text-sm text-text-secondary">
+                  <h4 className="m-0 text-sm font-semibold text-text-secondary">
                     Unified Synthesis
                   </h4>
                   <button
@@ -674,7 +674,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 return (
                                   <>
                                     {/* Main content */}
-                                    <div className="prose prose-sm max-w-none dark:prose-invert leading-7 text-base">
+                                    <div className="prose prose-sm max-w-none dark:prose-invert text-[15px] leading-relaxed">
                                       <MarkdownDisplay content={String(cleanText || take.text || "")} />
                                     </div>
 
@@ -848,7 +848,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                     flexShrink: 0,
                   }}
                 >
-                  <h4 style={{ margin: 0, fontSize: 14, color: "#e2e8f0" }}>
+                  <h4 className="m-0 text-sm font-semibold text-text-secondary">
                     Decision Map
                   </h4>
                   <div
@@ -1140,8 +1140,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 </button>
                               </div>
                               <div
-                                className="prose prose-sm max-w-none dark:prose-invert"
-                                style={{ lineHeight: 1.7, fontSize: 14 }}
+                                className="prose prose-sm max-w-none dark:prose-invert text-[15px] leading-relaxed"
                               >
                                 <MarkdownDisplay
                                   content={transformCitations(options)}
@@ -1261,8 +1260,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   return (
                                     <>
                                       <div
-                                        className="prose prose-sm max-w-none dark:prose-invert"
-                                        style={{ lineHeight: 1.7, fontSize: 16 }}
+                                        className="prose prose-sm max-w-none dark:prose-invert text-[15px] leading-relaxed"
                                       >
                                         <MarkdownDisplay
                                           content={transformCitations(cleanText || displayedMappingText)}

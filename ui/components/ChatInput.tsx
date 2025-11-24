@@ -206,14 +206,14 @@ const ChatInput = ({
             <div className="flex gap-3">
               <button
                 onClick={onUndoRefinement}
-                className="bg-none border-none text-intent-danger cursor-pointer text-[13px] font-semibold flex items-center gap-1.5 px-2 py-1 rounded-md transition-all duration-200 hover:bg-intent-danger/10"
+                className="bg-none border-none text-intent-danger cursor-pointer text-sm font-semibold flex items-center gap-1.5 px-2 py-1 rounded-md transition-all duration-200 hover:bg-intent-danger/10"
               >
                 <span>❌</span> Reject
               </button>
 
               <button
                 onClick={onToggleExplanation}
-                className={`bg-none border-none cursor-pointer text-[13px] font-semibold flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 hover:bg-surface-highlight ${showExplanation ? 'text-brand-400' : 'text-text-muted'}`}
+                className={`bg-none border-none cursor-pointer text-sm font-semibold flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 hover:bg-surface-highlight ${showExplanation ? 'text-brand-400' : 'text-text-muted'}`}
               >
                 <span className={`transform transition-transform duration-200 ${showExplanation ? 'rotate-90' : 'rotate-0'}`}>▸</span> Explanation
               </button>
@@ -222,13 +222,13 @@ const ChatInput = ({
             <div className="flex gap-3">
               <button
                 onClick={onToggleAudit}
-                className={`bg-none border-none cursor-pointer text-[13px] font-semibold flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 hover:bg-surface-highlight ${showAudit ? 'text-intent-warning' : 'text-text-muted'}`}
+                className={`bg-none border-none cursor-pointer text-sm font-semibold flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 hover:bg-surface-highlight ${showAudit ? 'text-intent-warning' : 'text-text-muted'}`}
               >
                 <span className={`transform transition-transform duration-200 ${showAudit ? 'rotate-90' : 'rotate-0'}`}>▸</span> Audit
               </button>
               <button
                 onClick={onToggleVariants}
-                className={`bg-none border-none cursor-pointer text-[13px] font-semibold flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 hover:bg-surface-highlight ${showVariants ? 'text-brand-400' : 'text-text-muted'}`}
+                className={`bg-none border-none cursor-pointer text-sm font-semibold flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 hover:bg-surface-highlight ${showVariants ? 'text-brand-400' : 'text-text-muted'}`}
               >
                 <span className={`transform transition-transform duration-200 ${showVariants ? 'rotate-90' : 'rotate-0'}`}>▸</span> Variants
               </button>

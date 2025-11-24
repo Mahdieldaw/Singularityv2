@@ -401,7 +401,7 @@ const ProviderResponseBlock = ({
 
             return (
               <>
-                <div className="prose prose-sm max-w-none dark:prose-invert text-[13px] leading-relaxed text-text-secondary">
+                <div className="prose prose-sm max-w-none dark:prose-invert text-sm leading-relaxed text-text-secondary">
                   <MarkdownDisplay content={String(cleanText || displayText || "")} />
                   {isStreaming && <span className="streaming-dots" />}
                 </div>

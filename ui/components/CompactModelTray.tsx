@@ -272,7 +272,7 @@ const CompactModelTray = ({
     >
       {/* Collapsed State */}
       {!isExpanded && (
-        <div className="bg-surface-raised backdrop-blur-md border border-border-subtle rounded-2xl p-2 px-4 flex items-center gap-4 text-[13px] text-text-secondary relative">
+        <div className="bg-surface-raised backdrop-blur-md border border-border-subtle rounded-2xl p-2 px-4 flex items-center gap-4 text-sm text-text-secondary relative">
           {/* Models Label with Dropdown Arrow */}
           <button
             type="button"
@@ -312,7 +312,7 @@ const CompactModelTray = ({
                         disabled={isLoading || !isAuth}
                         className="w-3.5 h-3.5 accent-brand-500"
                       />
-                      <span className={`text-[13px] ${isSelected ? 'text-text-brand' : 'text-text-muted'}`}>
+                      <span className={`text-sm ${isSelected ? 'text-text-brand' : 'text-text-muted'}`}>
                         {provider.name}
                         {!isAuth && " (Login)"}
                       </span>
@@ -426,7 +426,7 @@ const CompactModelTray = ({
                         setShowMapDropdown(false);
                       }}
                       disabled={isLoading}
-                      className={`block w-full text-left px-2.5 py-1.5 rounded transition-all duration-150 text-[13px] ${isSelected ? 'bg-intent-success/10 text-intent-success' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
+                      className={`block w-full text-left px-2.5 py-1.5 rounded transition-all duration-150 text-sm ${isSelected ? 'bg-intent-success/10 text-intent-success' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
                     >
                       {provider.name}
                       {isSelected && " ✓"}
@@ -529,7 +529,7 @@ const CompactModelTray = ({
                           disabled={isLoading}
                           className="w-3.5 h-3.5 accent-intent-warning"
                         />
-                        <span className={`text-[13px] ${isSelected ? 'text-intent-warning' : 'text-text-muted'}`}>
+                        <span className={`text-sm ${isSelected ? 'text-intent-warning' : 'text-text-muted'}`}>
                           {provider.name}
                         </span>
                       </label>
@@ -623,7 +623,7 @@ const CompactModelTray = ({
                           setShowUnifyDropdown(false);
                         }}
                         disabled={isLoading}
-                        className={`block w-full text-left px-2.5 py-1.5 rounded transition-all duration-150 text-[13px] ${isSelected ? 'bg-intent-warning/10 text-intent-warning' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
+                        className={`block w-full text-left px-2.5 py-1.5 rounded transition-all duration-150 text-sm ${isSelected ? 'bg-intent-warning/10 text-intent-warning' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
                       >
                         {provider.name}
                         {isSelected && " ✓"}
@@ -672,7 +672,7 @@ const CompactModelTray = ({
                         onClick={() => {
                           if (onSetAuthorModel) onSetAuthorModel(provider.id);
                         }}
-                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-[13px] ${isSelected ? 'bg-brand-500/10 text-brand-400' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
+                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-sm ${isSelected ? 'bg-brand-500/10 text-brand-400' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
                       >
                         {provider.name}
                         {isSelected && " ✓"}
@@ -694,7 +694,7 @@ const CompactModelTray = ({
                         onClick={() => {
                           if (onSetAnalystModel) onSetAnalystModel(provider.id);
                         }}
-                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-[13px] ${isSelected ? 'bg-intent-warning/10 text-intent-warning' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
+                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-sm ${isSelected ? 'bg-intent-warning/10 text-intent-warning' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
                       >
                         {provider.name}
                         {isSelected && " ✓"}

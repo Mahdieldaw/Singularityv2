@@ -134,7 +134,7 @@ const CodeText = ({ inline, className, children, ...props }: any) => {
   // IF BLOCK (Inside Pre): Just render clean text logic, parent <PreBlock> handles the box
   return (
     <code
-      className="text-[13px] leading-relaxed block font-mono whitespace-pre"
+      className="text-sm leading-relaxed block font-mono whitespace-pre"
       {...props}
     >
       {children}
@@ -150,7 +150,7 @@ interface MarkdownDisplayProps {
 
 const MarkdownDisplay: React.FC<MarkdownDisplayProps> = ({ content, components = {} }) => {
   return (
-    <div className="markdown-body text-sm leading-normal text-text-primary">
+    <div className="markdown-body text-[15px] leading-relaxed text-text-primary">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -183,29 +183,29 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = ({ content, components =
               <li className="mb-1">{children}</li>
             </ListContext.Provider>
           ),
-          h1: ({ children }) => <h1 className="text-2xl font-bold mt-2 mb-2 text-text-primary">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-xl font-bold mt-2 mb-2 text-text-primary">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-lg font-bold mt-2 mb-2 text-text-primary">{children}</h3>,
+          h1: ({ children }) => <h1 className="text-lg font-semibold mt-2 mb-2 text-text-primary">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-base font-semibold mt-2 mb-2 text-text-primary">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-2 text-text-primary">{children}</h3>,
           blockquote: ({ children }) => <blockquote className="border-l-4 border-border-subtle pl-4 ml-0 text-text-muted italic">{children}</blockquote>,
 
           // --- TABLE STYLING (Restored) ---
           table: ({ children }) => (
             <div className="overflow-x-auto my-4">
-              <table className="border-collapse w-full text-[13px]">
+              <table className="w-full border-collapse text-sm text-text-primary">
                 {children}
               </table>
             </div>
           ),
           thead: ({ children }) => <thead className="bg-chip-soft">{children}</thead>,
           tbody: ({ children }) => <tbody>{children}</tbody>,
-          tr: ({ children }) => <tr className="border-b border-border-subtle/40">{children}</tr>,
+          tr: ({ children }) => <tr className="border-b border-border-subtle">{children}</tr>,
           th: ({ children }) => (
-            <th className="px-3 py-2 text-left font-semibold text-text-primary">
+            <th className="px-3 py-2 text-left font-semibold text-text-secondary border-b border-border-subtle">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="px-3 py-2 text-text-primary">
+            <td className="px-3 py-2 align-top text-text-primary border-b border-border-subtle">
               {children}
             </td>
           ),

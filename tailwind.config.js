@@ -39,7 +39,7 @@ module.exports = {
                     subtle: '#020617',                  // compact tray / small bars
                 },
 
-                // Single overlay base color; use /70, /80 in classes for opacity
+                // Single overlay base color; use /70,/80 in classes for opacity
                 overlay: {
                     backdrop: '#020617',                 // use bg-overlay-backdrop/70 etc.
                 },
@@ -73,6 +73,11 @@ module.exports = {
                     danger: '#ef4444',
                     info: '#3498db',
                 },
+            },
+
+            fontFamily: {
+                sans: ['Inter', 'Inter Fallback', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                mono: ['DM Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
             },
 
             borderRadius: {

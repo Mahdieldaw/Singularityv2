@@ -3,14 +3,40 @@
 @tailwind utilities;
 
 @layer base {
-  /* Basic styles for Hybrid Thinking OS */
 
+  /* Font Face Declarations */
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/ui/fonts/Inter-Regular.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('/ui/fonts/Inter-SemiBold.woff2') format('woff2');
+  }
+
+  @font-face {
+    font-family: 'DM Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('https://fonts.gstatic.com/s/dmmono/v14/aFTU7PB1QTsUX8KYvrGyIYSnbKX9Rlk.woff2') format('woff2');
+  }
+
+  /* CSS Custom Properties */
+  :root {
+    --font-dm-mono: 'DM Mono';
+  }
+
+  /* Base Styles */
   body {
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #0f172a;
-    color: #f1f5f9;
+    @apply font-sans text-text-primary bg-surface text-[15px] leading-relaxed;
   }
 
   #root {
@@ -69,7 +95,7 @@
     box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
     font-size: 14px;
   }
-  
+
   /* Layout clamps */
   html,
   body,
@@ -86,7 +112,7 @@
     min-width: 0;
     overflow-x: hidden;
   }
-  
+
   /* Ensure long words/content wrap within the editor */
   .ProseMirror {
     overflow-wrap: anywhere;
@@ -161,11 +187,11 @@
     text-overflow: ellipsis;
     line-clamp: 3;
   }
-  
+
   .composer-toolbar {
     width: 100%;
   }
-  
+
   .chat-view,
   .chat-input-wrapper,
   .chat-main,
@@ -210,31 +236,64 @@
 
 @layer utilities {
   @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.5;
+    }
   }
-  
+
   @keyframes synthesisGlow {
-    0% { opacity: 0.5; }
-    100% { opacity: 1; }
+    0% {
+      opacity: 0.5;
+    }
+
+    100% {
+      opacity: 1;
+    }
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
-  
+
   @keyframes slideUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
   }
 
   @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
