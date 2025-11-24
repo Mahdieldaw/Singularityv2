@@ -2,6 +2,7 @@ import { UserTurn } from "../types";
 import { UserIcon, ChevronDownIcon, ChevronUpIcon } from "./Icons";
 import { useState, useCallback } from "react";
 import MarkdownDisplay from "./MarkdownDisplay";
+import clsx from "clsx";
 
 const CopyButton = ({
   text,
@@ -69,8 +70,10 @@ const UserTurnBlock = ({
       </div>
       <div className="user-content flex-1 min-w-0 flex flex-col overflow-visible min-h-[80px]">
         <div
-          className="flex justify-between items-center cursor-pointer"
-          style={{ marginBottom: isExpanded ? "8px" : "0px" }}
+          className={clsx(
+            "flex justify-between items-center cursor-pointer",
+            isExpanded ? "mb-2" : "mb-0"
+          )}
           onClick={onToggle}
         >
           <span className="text-xs font-semibold text-text-secondary">
@@ -108,8 +111,7 @@ const UserTurnBlock = ({
           </>
         ) : (
           <div
-            className="user-message-preview text-sm text-text-secondary overflow-hidden pt-1 mb-1 line-clamp-3"
-            title={userTurn.text}
+            className="user-message-preview text-[15px] text-text-secondary overflow-hidden pt-1 mb-1 line-clamp-3"
           >
             {userTurn.text}
           </div>

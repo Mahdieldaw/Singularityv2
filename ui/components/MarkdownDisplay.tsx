@@ -123,7 +123,7 @@ const CodeText = ({ inline, className, children, ...props }: any) => {
     return (
       <code
         className="bg-chip-soft text-text-primary rounded border border-border-subtle
-                   px-1 py-0.5 font-mono text-[0.9em] whitespace-pre-wrap break-words inline"
+                   px-1 py-0.5 font-mono font-medium whitespace-pre-wrap break-words inline"
         {...props}
       >
         {children}
