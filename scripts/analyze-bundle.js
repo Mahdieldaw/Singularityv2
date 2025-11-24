@@ -1,15 +1,7 @@
 const fs = require("fs");
-const path = require("path");
 
-// ANSI color codes
-const colors = {
-    reset: "\x1b[0m",
-    bright: "\x1b[1m",
-    cyan: "\x1b[36m",
-    yellow: "\x1b[33m",
-    green: "\x1b[32m",
-    red: "\x1b[31m",
-};
+// Check if we should save to file
+const saveToFile = process.argv.includes("--save");
 
 function formatBytes(bytes) {
     if (bytes === 0) return "0 B";
@@ -21,22 +13,19 @@ function formatBytes(bytes) {
 
 function analyzeMetafile(metaPath, bundleName) {
     if (!fs.existsSync(metaPath)) {
-        console.log(`${colors.red}✗ Metafile not found: ${metaPath}${colors.reset}`);
-        return;
+        return `\n${bundleName}: Metafile not found\n`;
     }
 
     const metafile = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+    let output = "";
 
-    console.log(`\n${colors.bright}${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-    console.log(`${colors.bright}📦 ${bundleName}${colors.reset}`);
-    console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
+    output += `\n${"=".repeat(80)}\n`;
+    output += `${bundleName}\n`;
+    output += `${"=".repeat(80)}\n\n`;
 
     // Analyze inputs
     const inputs = Object.entries(metafile.inputs)
-        .map(([path, info]) => ({
-            path,
-            bytes: info.bytes,
-        }))
+        .map(([path, info]) => ({ path, bytes: info.bytes }))
         .sort((a, b) => b.bytes - a.bytes);
 
     const totalInputBytes = inputs.reduce((sum, i) => sum + i.bytes, 0);
@@ -46,35 +35,34 @@ function analyzeMetafile(metaPath, bundleName) {
     const mainOutput = outputs.find(([_, info]) => !info.entryPoint) || outputs[0];
     const outputBytes = mainOutput ? mainOutput[1].bytes : 0;
 
-    console.log(`${colors.green}Total Input:${colors.reset}  ${formatBytes(totalInputBytes)}`);
-    console.log(`${colors.green}Bundle Size:${colors.reset}  ${formatBytes(outputBytes)}`);
-    console.log(`${colors.green}Compression:${colors.reset} ${((outputBytes / totalInputBytes) * 100).toFixed(1)}%\n`);
+    output += `Summary:\n`;
+    output += `  Total Input:  ${formatBytes(totalInputBytes)}\n`;
+    output += `  Bundle Size:  ${formatBytes(outputBytes)}\n`;
+    output += `  Compression:  ${((outputBytes / totalInputBytes) * 100).toFixed(1)}%\n\n`;
 
-    console.log(`${colors.bright}Top 20 Largest Modules:${colors.reset}`);
-    console.log(`${colors.cyan}${"─".repeat(80)}${colors.reset}`);
+    output += `Top 30 Largest Modules:\n`;
+    output += `${"─".repeat(80)}\n`;
 
-    inputs.slice(0, 20).forEach((item, idx) => {
+    inputs.slice(0, 30).forEach((item, idx) => {
         const percentage = ((item.bytes / totalInputBytes) * 100).toFixed(1);
-        const sizeStr = formatBytes(item.bytes).padStart(10);
-        const pctStr = `${percentage}%`.padStart(6);
+        const sizeStr = formatBytes(item.bytes).padEnd(12);
+        const pctStr = `${percentage}%`.padEnd(7);
 
         // Shorten path for readability
         let displayPath = item.path;
         if (displayPath.includes("node_modules")) {
             const parts = displayPath.split("node_modules/");
-            displayPath = "node_modules/" + parts[parts.length - 1];
+            displayPath = parts[parts.length - 1];
+        } else if (displayPath.includes("ui/")) {
+            displayPath = displayPath.substring(displayPath.indexOf("ui/"));
+        } else if (displayPath.includes("src/")) {
+            displayPath = displayPath.substring(displayPath.indexOf("src/"));
         }
 
-        // Color code by size
-        let color = colors.reset;
-        if (item.bytes > 100000) color = colors.red;
-        else if (item.bytes > 50000) color = colors.yellow;
-        else color = colors.green;
-
-        console.log(`${color}${(idx + 1).toString().padStart(2)}. ${sizeStr} ${pctStr}${colors.reset}  ${displayPath}`);
+        output += `${(idx + 1).toString().padStart(3)}. ${sizeStr} (${pctStr}) ${displayPath}\n`;
     });
 
-    // Find duplicate packages
+    // Find packages
     const pkgs = {};
     inputs.forEach((item) => {
         const match = item.path.match(/node_modules\/(@?[^\/]+(?:\/[^\/]+)?)/);
@@ -87,43 +75,57 @@ function analyzeMetafile(metaPath, bundleName) {
 
     const largestPkgs = Object.entries(pkgs)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 10);
+        .slice(0, 15);
 
     if (largestPkgs.length > 0) {
-        console.log(`\n${colors.bright}Top 10 Heaviest Packages:${colors.reset}`);
-        console.log(`${colors.cyan}${"─".repeat(80)}${colors.reset}`);
+        output += `\nTop 15 Heaviest Packages:\n`;
+        output += `${"─".repeat(80)}\n`;
         largestPkgs.forEach(([pkg, bytes], idx) => {
-            const sizeStr = formatBytes(bytes).padStart(10);
+            const sizeStr = formatBytes(bytes).padEnd(12);
             const percentage = ((bytes / totalInputBytes) * 100).toFixed(1);
-            const pctStr = `${percentage}%`.padStart(6);
+            const pctStr = `${percentage}%`.padEnd(7);
 
-            let color = colors.reset;
-            if (bytes > 200000) color = colors.red;
-            else if (bytes > 100000) color = colors.yellow;
-            else color = colors.green;
-
-            console.log(`${color}${(idx + 1).toString().padStart(2)}. ${sizeStr} ${pctStr}${colors.reset}  ${pkg}`);
+            output += `${(idx + 1).toString().padStart(3)}. ${sizeStr} (${pctStr}) ${pkg}\n`;
         });
     }
+
+    return output;
 }
 
 // Analyze all bundles
 const bundles = [
-    { file: "dist/analysis/meta-ui.json", name: "UI Bundle (Main)" },
-    { file: "dist/analysis/meta-bg.json", name: "Service Worker" },
-    { file: "dist/analysis/meta-cs-openai.json", name: "Content Script" },
-    { file: "dist/analysis/meta-offscreen.json", name: "Offscreen" },
-    { file: "dist/analysis/meta-oi.json", name: "OI Bundle" },
+    { file: "dist/analysis/meta-ui.json", name: "UI BUNDLE (Main Application)" },
+    { file: "dist/analysis/meta-bg.json", name: "SERVICE WORKER BUNDLE" },
+    { file: "dist/analysis/meta-cs-openai.json", name: "CONTENT SCRIPT BUNDLE" },
+    { file: "dist/analysis/meta-offscreen.json", name: "OFFSCREEN BUNDLE" },
+    { file: "dist/analysis/meta-oi.json", name: "OI BUNDLE" },
 ];
 
-console.log(`${colors.bright}${colors.cyan}
-╔═══════════════════════════════════════════╗
-║     📊 Bundle Size Analysis Report        ║
-╚═══════════════════════════════════════════╝
-${colors.reset}`);
+let fullReport = "";
+fullReport += `\n${"=".repeat(80)}\n`;
+fullReport += `BUNDLE SIZE ANALYSIS REPORT\n`;
+fullReport += `Generated: ${new Date().toLocaleString()}\n`;
+fullReport += `${"=".repeat(80)}\n`;
 
-bundles.forEach((bundle) => analyzeMetafile(bundle.file, bundle.name));
+bundles.forEach((bundle) => {
+    fullReport += analyzeMetafile(bundle.file, bundle.name);
+});
 
-console.log(`\n${colors.bright}${colors.green}For interactive visualization, run:${colors.reset}`);
-console.log(`${colors.cyan}  npx esbuild-visualizer --metadata dist/analysis/meta-ui.json${colors.reset}`);
-console.log(`${colors.cyan}Or visit: https://esbuild.github.io/analyze/${colors.reset}\n`);
+fullReport += `\n${"=".repeat(80)}\n`;
+fullReport += `RECOMMENDATIONS:\n`;
+fullReport += `${"=".repeat(80)}\n`;
+fullReport += `1. Focus on modules larger than 50 KB\n`;
+fullReport += `2. Consider lazy loading for heavy features\n`;
+fullReport += `3. Check if you're importing full libraries vs specific components\n`;
+fullReport += `4. Use dynamic imports for code splitting\n`;
+fullReport += `5. Review if all imported packages are actually used\n`;
+fullReport += `\nFor interactive visualization: npm run analyze:ui\n`;
+fullReport += `${"=".repeat(80)}\n\n`;
+
+// Output results
+if (saveToFile) {
+    fs.writeFileSync("bundle-analysis-report.txt", fullReport, "utf8");
+    console.log("✓ Report saved to: bundle-analysis-report.txt\n");
+} else {
+    console.log(fullReport);
+}

@@ -8,7 +8,7 @@
     "build:prod": "npm run build:css && node scripts/build-prod.js && node scripts/postbuild.js",
     "build:analyze": "npm run build:css && node scripts/build-with-analysis.js && node scripts/postbuild.js",
     "analyze": "node scripts/analyze-bundle.js",
-    "analyze:text": "node scripts/analyze-bundle-text.js",
+    "analyze:save": "node scripts/analyze-bundle.js --save",
     "analyze:ui": "npx esbuild-visualizer --metadata dist/analysis/meta-ui.json --open",
     "analyze:bg": "npx esbuild-visualizer --metadata dist/analysis/meta-bg.json --open",
     "build:css": "tailwindcss -i ./ui/styles.css -o ./ui/index.css --minify",
