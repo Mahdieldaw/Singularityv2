@@ -1,6 +1,6 @@
+import React, { useState, useCallback } from "react";
 import { UserTurn } from "../types";
 import { UserIcon, ChevronDownIcon, ChevronUpIcon } from "./Icons";
-import { useState, useCallback } from "react";
 import MarkdownDisplay from "./MarkdownDisplay";
 import clsx from "clsx";
 
@@ -130,4 +130,4 @@ const UserTurnBlock = ({
   );
 };
 
-export default UserTurnBlock;
+export default React.memo(UserTurnBlock);

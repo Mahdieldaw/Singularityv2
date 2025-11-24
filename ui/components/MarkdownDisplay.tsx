@@ -148,74 +148,77 @@ interface MarkdownDisplayProps {
   components?: Record<string, React.ElementType>;
 }
 
-const MarkdownDisplay: React.FC<MarkdownDisplayProps> = ({ content, components = {} }) => {
-  return (
-    <div className="markdown-body text-[16px] leading-relaxed text-text-primary">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          // Separate Block vs Inline logic explicitly
-          pre: PreBlock,
-          code: CodeText,
+const MarkdownDisplay: React.FC<MarkdownDisplayProps> = React.memo(
+  ({ content, components = {} }) => {
+    return (
+      <div className="markdown-body text-[16px] leading-relaxed text-text-primary">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            // Separate Block vs Inline logic explicitly
+            pre: PreBlock,
+            code: CodeText,
 
-          // Crash Fix: Map paragraphs to divs (or spans in lists)
-          p: ({ children }) => {
-            const inList = React.useContext(ListContext);
-            if (inList) {
-              // Force inline rendering for list items to prevent vertical stacking
+            // Crash Fix: Map paragraphs to divs (or spans in lists)
+            p: ({ children }) => {
+              const inList = React.useContext(ListContext);
+              if (inList) {
+                // Force inline rendering for list items to prevent vertical stacking
+                return (
+                  <span className="inline m-0">
+                    {children}
+                    <span className="inline-block w-[0.3em]"></span>
+                  </span>
+                );
+              }
               return (
-                <span className="inline m-0">
+                <div className="mb-4 mt-2">
                   {children}
-                  <span className="inline-block w-[0.3em]"></span>
-                </span>
+                </div>
               );
-            }
-            return (
-              <div className="mb-4 mt-2">
-                {children}
-              </div>
-            );
-          },
-          ul: ({ children }) => <ul className="pl-5 mb-4 list-disc">{children}</ul>,
-          ol: ({ children }) => <ol className="pl-5 mb-4 list-decimal">{children}</ol>,
-          li: ({ children }) => (
-            <ListContext.Provider value={true}>
-              <li className="mb-1">{children}</li>
-            </ListContext.Provider>
-          ),
-          h1: ({ children }) => <h1 className="text-xl font-semibold mt-2 mb-2 text-text-primary">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-[17px] font-semibold mt-2 mb-2 text-text-primary">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-[16px] font-semibold mt-2 mb-2 text-text-primary">{children}</h3>,
-          blockquote: ({ children }) => <blockquote className="border-l-4 border-border-subtle pl-4 ml-0 text-text-muted italic">{children}</blockquote>,
+            },
+            ul: ({ children }) => <ul className="pl-5 mb-4 list-disc">{children}</ul>,
+            ol: ({ children }) => <ol className="pl-5 mb-4 list-decimal">{children}</ol>,
+            li: ({ children }) => (
+              <ListContext.Provider value={true}>
+                <li className="mb-1">{children}</li>
+              </ListContext.Provider>
+            ),
+            h1: ({ children }) => <h1 className="text-xl font-semibold mt-2 mb-2 text-text-primary">{children}</h1>,
+            h2: ({ children }) => <h2 className="text-[17px] font-semibold mt-2 mb-2 text-text-primary">{children}</h2>,
+            h3: ({ children }) => <h3 className="text-[16px] font-semibold mt-2 mb-2 text-text-primary">{children}</h3>,
+            blockquote: ({ children }) => <blockquote className="border-l-4 border-border-subtle pl-4 ml-0 text-text-muted italic">{children}</blockquote>,
 
-          // --- TABLE STYLING (Restored) ---
-          table: ({ children }) => (
-            <div className="overflow-x-auto my-4">
-              <table className="w-full border-collapse text-sm text-text-primary">
+            // --- TABLE STYLING (Restored) ---
+            table: ({ children }) => (
+              <div className="overflow-x-auto my-4">
+                <table className="w-full border-collapse text-sm text-text-primary">
+                  {children}
+                </table>
+              </div>
+            ),
+            thead: ({ children }) => <thead className="bg-chip-soft">{children}</thead>,
+            tbody: ({ children }) => <tbody>{children}</tbody>,
+            tr: ({ children }) => <tr className="border-b border-border-subtle">{children}</tr>,
+            th: ({ children }) => (
+              <th className="px-3 py-2 text-left font-semibold text-text-secondary border-b border-border-subtle">
                 {children}
-              </table>
-            </div>
-          ),
-          thead: ({ children }) => <thead className="bg-chip-soft">{children}</thead>,
-          tbody: ({ children }) => <tbody>{children}</tbody>,
-          tr: ({ children }) => <tr className="border-b border-border-subtle">{children}</tr>,
-          th: ({ children }) => (
-            <th className="px-3 py-2 text-left font-semibold text-text-secondary border-b border-border-subtle">
-              {children}
-            </th>
-          ),
-          td: ({ children }) => (
-            <td className="px-3 py-2 align-top text-text-primary border-b border-border-subtle">
-              {children}
-            </td>
-          ),
-          ...components,
-        }}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
-  );
-};
+              </th>
+            ),
+            td: ({ children }) => (
+              <td className="px-3 py-2 align-top text-text-primary border-b border-border-subtle">
+                {children}
+              </td>
+            ),
+            ...components,
+          }}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
+    );
+  },
+  (prev, next) => prev.content === next.content
+);
 
 export default MarkdownDisplay;

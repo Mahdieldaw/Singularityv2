@@ -472,6 +472,7 @@ export function usePortMessageHandler() {
                       ...(aiTurn.synthesisResponses || {}),
                       [normalizedId]: arr as any,
                     };
+                    aiTurn.synthesisVersion = (aiTurn.synthesisVersion ?? 0) + 1;
                   } else if (stepType === "mapping") {
                     const arr = Array.isArray(
                       aiTurn.mappingResponses?.[normalizedId],
@@ -490,6 +491,7 @@ export function usePortMessageHandler() {
                       ...(aiTurn.mappingResponses || {}),
                       [normalizedId]: arr as any,
                     };
+                    aiTurn.mappingVersion = (aiTurn.mappingVersion ?? 0) + 1;
                   } else if (stepType === "batch") {
                     aiTurn.batchResponses = {
                       ...(aiTurn.batchResponses || {}),
@@ -594,6 +596,7 @@ export function usePortMessageHandler() {
                         ...(aiTurn.synthesisResponses || {}),
                         [providerId!]: arr as any,
                       };
+                      aiTurn.synthesisVersion = (aiTurn.synthesisVersion ?? 0) + 1;
                     } else if (stepType === "mapping") {
                       const arr = Array.isArray(
                         aiTurn.mappingResponses?.[providerId!],
@@ -621,6 +624,7 @@ export function usePortMessageHandler() {
                         ...(aiTurn.mappingResponses || {}),
                         [providerId!]: arr as any,
                       };
+                      aiTurn.mappingVersion = (aiTurn.mappingVersion ?? 0) + 1;
                     } else if (stepType === "batch") {
                       const existingBatch = (aiTurn.batchResponses || {})[
                         providerId!

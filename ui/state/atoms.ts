@@ -85,6 +85,55 @@ export const isContinuationModeAtom = atom((get) => {
 });
 
 // -----------------------------
+// Streaming performance optimization
+// -----------------------------
+/**
+ * Derived atom: represents the turn that should be "live" in the UI.
+ * Merges recompute targeting and normal streaming into a single source of truth.
+ */
+export const activeStreamingTurnIdAtom = atom<string | null>((get) => {
+  const recompute = get(activeRecomputeStateAtom);
+  if (recompute) return recompute.aiTurnId;
+  return get(activeAiTurnIdAtom);
+});
+
+/**
+ * Bundle all global streaming state for efficient subscription.
+ */
+const globalStreamingStateAtom = atom((get) => ({
+  activeId: get(activeStreamingTurnIdAtom),
+  isLoading: get(isLoadingAtom),
+  appStep: get(currentAppStepAtom),
+}));
+
+/**
+ * Shared idle state object: ensures reference equality for non-active turns.
+ * Critical: without this, every turn re-renders on every streaming tick.
+ */
+const idleStreamingState: { isLoading: boolean; appStep: AppStep } = {
+  isLoading: false,
+  appStep: "initial",
+};
+
+/**
+ * Per-turn derived streaming state. Only the active turn sees changing values.
+ * All other turns share the same idleStreamingState reference, preventing re-renders.
+ */
+export const turnStreamingStateFamily = atomFamily(
+  (turnId: string) =>
+    atom((get) => {
+      const { activeId, isLoading, appStep } = get(globalStreamingStateAtom);
+      if (activeId === turnId) {
+        // New object only for active turn – triggers re-render
+        return { isLoading, appStep };
+      }
+      // All non-active turns share this single, stable reference
+      return idleStreamingState;
+    }),
+  (a, b) => a === b,
+);
+
+// -----------------------------
 // UI visibility
 // -----------------------------
 export const isHistoryPanelOpenAtom = atom<boolean>(false);

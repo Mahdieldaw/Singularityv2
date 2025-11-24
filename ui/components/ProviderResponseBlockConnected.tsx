@@ -1,12 +1,11 @@
 import React, { useMemo, useCallback } from "react";
 import { useAtomValue } from "jotai";
 import {
-  isLoadingAtom,
-  currentAppStepAtom,
   isReducedMotionAtom,
   turnsMapAtom,
   currentSessionIdAtom,
   providerContextsAtom,
+  turnStreamingStateFamily,
 } from "../state/atoms";
 import { ProviderKey, ProviderResponse } from "../types";
 import ProviderResponseBlock from "./ProviderResponseBlock";
@@ -24,10 +23,12 @@ function ProviderResponseBlockConnected({
   aiTurnId,
   expectedProviders
 }: ProviderResponseBlockConnectedProps) {
-  // Global state
+  // Per-turn streaming state (only active turn sees changing values)
+  const streamingState = useAtomValue(turnStreamingStateFamily(aiTurnId));
+  const { isLoading, appStep: currentAppStep } = streamingState;
+
+  // Other global state
   const turnsMap = useAtomValue(turnsMapAtom);
-  const isLoading = useAtomValue(isLoadingAtom);
-  const currentAppStep = useAtomValue(currentAppStepAtom);
   const isReducedMotion = useAtomValue(isReducedMotionAtom);
   const sessionId = useAtomValue(currentSessionIdAtom);
   const providerContexts = useAtomValue(providerContextsAtom);

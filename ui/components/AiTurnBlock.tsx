@@ -209,7 +209,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
       out[pid] = normalizeResponseArray(resp);
     });
     return out;
-  }, [aiTurn.id, JSON.stringify(aiTurn.synthesisResponses)]);
+  }, [aiTurn.id, aiTurn.synthesisVersion]);
 
   const mappingResponses = useMemo(() => {
     const map = aiTurn.mappingResponses || {};
@@ -219,7 +219,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
       out[pid] = normalizeResponseArray(resp);
     });
     return out;
-  }, [aiTurn.id, JSON.stringify(aiTurn.mappingResponses)]);
+  }, [aiTurn.id, aiTurn.mappingVersion]);
 
   const allSources = useMemo(() => {
     const sources: Record<string, ProviderResponse> = {

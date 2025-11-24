@@ -72,20 +72,20 @@ export function useRoundActions() {
 
       const hasCompletedSynthesis = ai?.synthesisResponses
         ? Object.values(ai.synthesisResponses).some((resp) => {
-            const responses = Array.isArray(resp) ? resp : [resp];
-            return responses.some(
-              (r) => r.status === "completed" && r.text?.trim(),
-            );
-          })
+          const responses = Array.isArray(resp) ? resp : [resp];
+          return responses.some(
+            (r) => r.status === "completed" && r.text?.trim(),
+          );
+        })
         : false;
 
       const hasCompletedMapping = ai?.mappingResponses
         ? Object.values(ai.mappingResponses).some((resp) => {
-            const responses = Array.isArray(resp) ? resp : [resp];
-            return responses.some(
-              (r) => r.status === "completed" && r.text?.trim(),
-            );
-          })
+          const responses = Array.isArray(resp) ? resp : [resp];
+          return responses.some(
+            (r) => r.status === "completed" && r.text?.trim(),
+          );
+        })
         : false;
 
       const enoughOutputs =
@@ -105,8 +105,8 @@ export function useRoundActions() {
       const selected = providerIdOverride
         ? [providerIdOverride]
         : Object.entries(synthSelectionsByRound[userTurnId] || {})
-            .filter(([_, on]) => on)
-            .map(([pid]) => pid);
+          .filter(([_, on]) => on)
+          .map(([pid]) => pid);
 
       if (selected.length === 0) {
         console.warn(
@@ -141,6 +141,7 @@ export function useRoundActions() {
           next[pid] = arr;
         });
         aiTurn.synthesisResponses = next;
+        aiTurn.synthesisVersion = (aiTurn.synthesisVersion ?? 0) + 1;
       });
 
       // ✅ Set loading state
@@ -177,7 +178,7 @@ export function useRoundActions() {
         if (selected.length === 1) {
           try {
             localStorage.setItem("htos_last_synthesis_model", selected[0]);
-          } catch {}
+          } catch { }
         }
       } catch (err) {
         console.error("[RoundActions] Synthesis run failed:", err);
@@ -231,20 +232,20 @@ export function useRoundActions() {
 
       const hasCompletedSynthesis = ai?.synthesisResponses
         ? Object.values(ai.synthesisResponses).some((resp) => {
-            const responses = Array.isArray(resp) ? resp : [resp];
-            return responses.some(
-              (r) => r.status === "completed" && r.text?.trim(),
-            );
-          })
+          const responses = Array.isArray(resp) ? resp : [resp];
+          return responses.some(
+            (r) => r.status === "completed" && r.text?.trim(),
+          );
+        })
         : false;
 
       const hasCompletedMapping = ai?.mappingResponses
         ? Object.values(ai.mappingResponses).some((resp) => {
-            const responses = Array.isArray(resp) ? resp : [resp];
-            return responses.some(
-              (r) => r.status === "completed" && r.text?.trim(),
-            );
-          })
+          const responses = Array.isArray(resp) ? resp : [resp];
+          return responses.some(
+            (r) => r.status === "completed" && r.text?.trim(),
+          );
+        })
         : false;
 
       const enoughOutputs =
@@ -302,6 +303,7 @@ export function useRoundActions() {
         });
         next[effectiveMappingProvider] = arr;
         aiTurn.mappingResponses = next;
+        aiTurn.mappingVersion = (aiTurn.mappingVersion ?? 0) + 1;
       });
 
       // ✅ Set loading state

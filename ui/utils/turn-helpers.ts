@@ -162,6 +162,7 @@ export function applyStreamingUpdates(
       }
 
       aiTurn.synthesisResponses[providerId] = arr;
+      aiTurn.synthesisVersion = (aiTurn.synthesisVersion ?? 0) + 1;
     } else if (responseType === "mapping") {
       // Update mapping responses (array per provider)
       if (!aiTurn.mappingResponses) aiTurn.mappingResponses = {};
@@ -187,6 +188,7 @@ export function applyStreamingUpdates(
       }
 
       aiTurn.mappingResponses[providerId] = arr;
+      aiTurn.mappingVersion = (aiTurn.mappingVersion ?? 0) + 1;
     }
   });
 }

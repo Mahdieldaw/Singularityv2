@@ -100,6 +100,9 @@ export interface UserTurn {
 export interface AiTurn extends Omit<ContractAiTurn, "type"> {
   type: "ai";
   hiddenBatchOutputs?: Record<string, ProviderResponse>;
+  // UI-only fields for efficient dependency tracking in React hooks
+  synthesisVersion?: number;
+  mappingVersion?: number;
 }
 
 /** The union type for any message in the chat timeline. This is the main type for the `messages` state array. */

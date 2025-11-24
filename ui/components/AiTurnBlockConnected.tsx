@@ -1,22 +1,20 @@
 // ui/components/AiTurnBlockConnected.tsx
 import React, { useCallback } from "react";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import AiTurnBlock from "./AiTurnBlock";
 import ProviderResponseBlockConnected from "./ProviderResponseBlockConnected";
 
 import {
-  isLoadingAtom,
-  currentAppStepAtom,
   isReducedMotionAtom,
   showSourceOutputsFamily,
   activeClipsAtom,
-  activeAiTurnIdAtom,
   activeRecomputeStateAtom,
   aiTurnSynthesisExpandedFamily,
   aiTurnMappingExpandedFamily,
   aiTurnSynthExpandedFamily,
   aiTurnMapExpandedFamily,
   aiTurnMappingTabFamily,
+  turnStreamingStateFamily,
 } from "../state/atoms";
 import { useClipActions } from "../hooks/useClipActions";
 import { useEligibility } from "../hooks/useEligibility";
@@ -29,14 +27,15 @@ interface AiTurnBlockConnectedProps {
 export default function AiTurnBlockConnected({
   aiTurn,
 }: AiTurnBlockConnectedProps) {
-  const [isLoading] = useAtom(isLoadingAtom);
-  const [currentAppStep] = useAtom(currentAppStepAtom);
+  // Per-turn streaming state (only active turn sees changing values)
+  const streamingState = useAtomValue(turnStreamingStateFamily(aiTurn.id));
+  const { isLoading, appStep: currentAppStep } = streamingState;
+
   const [isReducedMotion] = useAtom(isReducedMotionAtom);
   const [showSourceOutputs, setShowSourceOutputs] = useAtom(
     showSourceOutputsFamily(aiTurn.id),
   );
   const [activeClips] = useAtom(activeClipsAtom);
-  const [activeAiTurnId] = useAtom(activeAiTurnIdAtom);
   const { handleClipClick } = useClipActions();
   const { eligibilityMaps } = useEligibility();
   const [activeRecomputeState] = useAtom(activeRecomputeStateAtom);
@@ -54,7 +53,8 @@ export default function AiTurnBlockConnected({
   );
   const [mappingTab, setMappingTab] = useAtom(aiTurnMappingTabFamily(aiTurn.id));
 
-  const isLive = !!activeAiTurnId && activeAiTurnId === aiTurn.id;
+  // Determine if this turn is currently streaming (for isLive prop)
+  const isLive = isLoading && currentAppStep !== "initial";
 
   const turnClips = activeClips[aiTurn.id] || {};
 
