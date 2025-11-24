@@ -80,8 +80,7 @@ export default function SettingsPanel() {
             >
               <div className="model-info flex items-center gap-2">
                 <div
-                  className={`model-logo ${provider.logoBgClass}`}
-                  style={{ width: "16px", height: "16px", borderRadius: "3px" }}
+                  className={`model-logo w-4 h-4 rounded ${provider.logoBgClass}`}
                 ></div>
                 <div className="flex flex-col">
                   <span className="text-text-secondary">{provider.name}</span>
@@ -94,8 +93,8 @@ export default function SettingsPanel() {
               </div>
               <div
                 className={`model-toggle relative w-10 h-5 rounded-full cursor-pointer transition-all duration-200 ${selectedModels[provider.id]
-                    ? "bg-brand-500"
-                    : "bg-border-strong"
+                  ? "bg-brand-500"
+                  : "bg-border-strong"
                   } ${!isAuth ? "cursor-not-allowed opacity-50" : ""}`}
                 onClick={() => isAuth && handleToggleModel(provider.id)}
               >

@@ -103,9 +103,6 @@ const ChatInput = ({
   const showMappingBtn = canShowMapping && !!prompt.trim() && !isRefinerOpen;
   const showAbortBtn = !!onAbort && isLoading;
 
-  // Status color for system pill
-  const statusColor = isLoading ? "#f59e0b" : "#10b981";
-
   return (
     <div className="w-full flex justify-center flex-col items-center pointer-events-auto">
       <div className="flex gap-2.5 items-center relative w-full max-w-[min(800px,calc(100%-32px))] p-3 bg-input backdrop-blur-xl border border-border-subtle rounded-3xl flex-wrap">
@@ -141,8 +138,7 @@ const ChatInput = ({
         >
           <span
             aria-hidden="true"
-            className={`inline-block w-2 h-2 rounded-full ${isLoading || !isReducedMotion ? 'animate-pulse' : ''}`}
-            style={{ backgroundColor: statusColor }}
+            className={`inline-block w-2 h-2 rounded-full ${isLoading ? 'bg-intent-warning animate-pulse' : 'bg-intent-success'} ${!isReducedMotion && !isLoading ? 'animate-pulse' : ''}`}
           />
           <span className="text-text-muted">System</span>
           <span>• {activeProviderCount}</span>

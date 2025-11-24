@@ -111,10 +111,9 @@ export default function ChatView() {
                 `[data-turn-id="${CSS.escape(targetTurnId)}"]`,
               );
             if (row && row instanceof HTMLElement) {
-              const prev = row.style.boxShadow;
-              row.style.boxShadow = "0 0 0 2px rgba(99,102,241,0.55)";
+              row.classList.add('shadow-glow-brand-soft');
               setTimeout(() => {
-                row.style.boxShadow = prev;
+                row.classList.remove('shadow-glow-brand-soft');
               }, 1200);
             }
             // Focus provider card if requested
@@ -172,7 +171,7 @@ export default function ChatView() {
         <WelcomeScreen />
       ) : (
         <Virtuoso
-          style={{ flex: 1 }}
+          className="flex-1"
           data={turnIds}
           followOutput={(isAtBottom: boolean) =>
             isAtBottom ? "smooth" : false
