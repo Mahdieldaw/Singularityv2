@@ -323,6 +323,21 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
     requestedSynth === undefined ? true : !!requestedSynth;
   const wasMapRequested = requestedMap === undefined ? true : !!requestedMap;
 
+  // Track previous mappingTab to detect changes
+  const prevMappingTabRef = useRef(mappingTab);
+  const [measurementPaused, setMeasurementPaused] = useState(false);
+
+  // When tab changes, pause measurement for one cycle to let panels show natural heights
+  useEffect(() => {
+    if (prevMappingTabRef.current !== mappingTab) {
+      prevMappingTabRef.current = mappingTab;
+      setMeasurementPaused(true);
+      // Resume measurement in next frame
+      const timeoutId = setTimeout(() => setMeasurementPaused(false), 0);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [mappingTab]);
+
   // --- REFS COME FROM HERE ---
   const contentVersion =
     (getLatestResponse(synthesisResponses[activeSynthPid || ""] || [])?.text || "").length +
@@ -333,7 +348,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
     hasSynthesis,
     hasMapping,
     contentVersion,
-    isLive || isLoading
+    isLive || isLoading || measurementPaused
   );
 
   const synthTruncated =
@@ -350,17 +365,10 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
   ): React.CSSProperties => {
     const isTruncated = section === "synthesis" ? synthTruncated : mapTruncated;
     const duringStreaming = isLive || isLoading;
+
     return {
-      flex: "1 1 0%",
-      minWidth: 0,
-      display: "flex",
-      flexDirection: "column",
-      minHeight: 150,
-      height: "auto",
-      boxSizing: "border-box",
       maxHeight: isTruncated && !isExpanded ? `${shorterHeight}px` : "none",
       overflow: duringStreaming ? "hidden" : "visible",
-      position: "relative",
     };
   };
 
@@ -485,22 +493,14 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
       <div className="ai-turn-block border border-border-subtle rounded-2xl p-3">
         <div className="ai-turn-content flex flex-col gap-3">
-          <div
-            className="primaries"
-            style={{ marginBottom: "1rem", position: "relative" }}
-          >
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "row",
-                gap: 12,
-                alignItems: "flex-start",
-              }}
-            >
+          <div className="primaries mb-4 relative">
+            <div className="flex flex-row gap-3 items-start">
               {/* Synthesis Section */}
               <div
                 ref={synthRef}
-                className="flex-1 bg-surface-raised border border-border-subtle rounded-3xl p-4 shadow-card-sm flex flex-col gap-3"
+                className="flex-1 min-w-0 flex flex-col min-h-[150px] relative
+                           bg-surface-raised border border-border-subtle
+                           rounded-3xl p-4 shadow-card-sm gap-3"
                 style={getSectionStyle("synthesis", synthExpanded)}
               >
                 <div className="section-header flex items-center justify-between flex-shrink-0">
@@ -596,16 +596,8 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                           isSynthesisTarget;
                         if (isGenerating)
                           return (
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 8,
-                                color: "#94a3b8",
-                              }}
-                            >
-                              <span style={{ fontStyle: "italic" }}>
+                            <div className="flex items-center justify-center gap-2 text-text-muted">
+                              <span className="italic">
                                 Synthesis generating
                               </span>
                               <span className="streaming-dots" />
@@ -639,16 +631,8 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                             );
                           return (
                             <div>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  gap: 8,
-                                  marginBottom: 8,
-                                }}
-                              >
-                                <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="text-xs text-text-muted">
                                   {activeSynthPid} · {take.status}
                                 </div>
                                 <button
@@ -659,7 +643,9 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                       String(take.text || "")
                                     );
                                   }}
-                                  className="bg-surface-raised border border-border-subtle rounded-md px-2 py-1 text-text-muted text-xs cursor-pointer hover:bg-surface-highlight transition-all"
+                                  className="bg-surface-raised border border-border-subtle rounded-md
+                                               px-2 py-1 text-text-muted text-xs cursor-pointer
+                                               hover:bg-surface-highlight transition-all flex items-center gap-1"
                                 >
                                   📋 Copy
                                 </button>
@@ -765,40 +751,21 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                     {synthTruncated && !synthExpanded && (
                       <>
                         <div
-                          style={{
-                            position: "absolute",
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            height: 60,
-                            background: "linear-gradient(transparent, #1e293b)",
-                            pointerEvents: "none",
-                            borderRadius: "0 0 8px 8px",
-                          }}
+                          className="absolute bottom-0 left-0 right-0 h-16
+                                     bg-gradient-to-t from-surface to-transparent
+                                     pointer-events-none rounded-b-3xl"
                         />
                         <button
                           type="button"
                           onClick={() => setSynthExpanded(true)}
-                          style={{
-                            position: "absolute",
-                            bottom: 12,
-                            left: "50%",
-                            transform: "translateX(-50%)",
-                            padding: "6px 12px",
-                            background: "#334155",
-                            border: "1px solid #475569",
-                            borderRadius: 6,
-                            color: "#e2e8f0",
-                            cursor: "pointer",
-                            fontSize: 12,
-                            zIndex: 1,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
+                          className="absolute bottom-3 left-1/2 -translate-x-1/2
+                                     bg-surface-raised border border-border-subtle
+                                     rounded-md px-3 py-1.5 text-text-secondary text-xs
+                                     cursor-pointer hover:bg-surface-highlight
+                                     transition-all flex items-center gap-1.5 z-10"
                         >
-                          Show full response{" "}
-                          <ChevronDownIcon style={{ width: 14, height: 14 }} />
+                          Show full response
+                          <ChevronDownIcon className="w-3.5 h-3.5" />
                         </button>
                       </>
                     )}
@@ -806,23 +773,12 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                       <button
                         type="button"
                         onClick={() => setSynthExpanded(false)}
-                        style={{
-                          marginTop: 12,
-                          padding: "6px 12px",
-                          background: "#334155",
-                          border: "1px solid #475569",
-                          borderRadius: 6,
-                          color: "#94a3b8",
-                          cursor: "pointer",
-                          fontSize: 12,
-                          alignSelf: "center",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
+                        className="mt-3 px-3 py-1.5 bg-surface-raised border border-border-subtle
+                                   rounded-md text-text-muted text-xs cursor-pointer
+                                   flex items-center gap-1.5 hover:bg-surface-highlight
+                                   transition-all self-center"
                       >
-                        <ChevronUpIcon style={{ width: 14, height: 14 }} />{" "}
-                        Collapse
+                        <ChevronUpIcon className="w-3.5 h-3.5" /> Collapse
                       </button>
                     )}
                   </div>
@@ -832,18 +788,37 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               {/* Mapping Section */}
               <div
                 ref={mapRef}
-                className="flex-1 bg-surface-raised border border-border-subtle rounded-3xl p-4 shadow-card-sm flex flex-col gap-3"
+                className="flex-1 min-w-0 flex flex-col min-h-[150px] relative
+                           bg-surface-raised border border-border-subtle
+                           rounded-3xl p-4 shadow-card-sm gap-3"
                 style={getSectionStyle("mapping", mapExpanded)}
               >
-                <div
-                  className="section-header flex items-center justify-between flex-shrink-0"
-                >
+                <div className="section-header flex items-center justify-between flex-shrink-0 min-h-[32px]">
                   <h4 className="m-0 text-sm font-semibold text-text-secondary mb-1.5">
                     Decision Map
                   </h4>
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
-                  >
+                  <div className="flex items-center gap-2">
+                    <div className="flex bg-surface-raised p-1 rounded-lg border border-border-subtle">
+                      <button
+                        onClick={() => onSetMappingTab && onSetMappingTab("map")}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mappingTab === "map"
+                          ? "bg-chip-active text-text-primary shadow-card-sm"
+                          : "text-text-muted hover:text-text-secondary"
+                          }`}
+                      >
+                        Decision Map
+                      </button>
+                      <button
+                        onClick={() => onSetMappingTab && onSetMappingTab("options")}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mappingTab === "options"
+                          ? "bg-chip-active text-text-primary shadow-card-sm"
+                          : "text-text-muted hover:text-text-secondary"
+                          }`}
+                      >
+                        All Options
+                      </button>
+                    </div>
+
                     <button
                       type="button"
                       onClick={async () => {
@@ -916,43 +891,28 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                           console.error("Copy All failed", err);
                         }
                       }}
+                      className="bg-surface-raised border border-border-subtle rounded-md
+                                 px-2 py-1 text-text-muted text-xs cursor-pointer
+                                 hover:bg-surface-highlight transition-all flex items-center gap-1"
                       title="Copy All"
-                      style={{
-                        padding: "4px 8px",
-                        background: "#334155",
-                        border: "1px solid #475569",
-                        borderRadius: 6,
-                        color: "#94a3b8",
-                        cursor: "pointer",
-                        fontSize: 12,
-                      }}
                     >
                       📦 Copy All
                     </button>
-                    <div
-                      style={{
-                        width: 1,
-                        height: 16,
-                        background: "#475569",
-                      }}
-                    />
+
+                    <div className="w-px h-4 bg-border-subtle" />
+
                     <button
                       type="button"
                       onClick={() =>
                         onToggleMappingExpanded && onToggleMappingExpanded()
                       }
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "#94a3b8",
-                        cursor: "pointer",
-                        padding: 4,
-                      }}
+                      className="bg-transparent border-none text-text-muted cursor-pointer p-1
+                                 hover:bg-surface-highlight rounded transition-colors"
                     >
                       {isMappingExpanded ? (
-                        <ChevronUpIcon style={{ width: 16, height: 16 }} />
+                        <ChevronUpIcon className="w-4 h-4" />
                       ) : (
-                        <ChevronDownIcon style={{ width: 16, height: 16 }} />
+                        <ChevronDownIcon className="w-4 h-4" />
                       )}
                     </button>
                   </div>
@@ -960,14 +920,8 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
                 {isMappingExpanded && (
                   <div
-                    style={{
-                      flex: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      overflow:
-                        mapTruncated && !mapExpanded ? "hidden" : "visible",
-                      minHeight: 0,
-                    }}
+                    className="flex-1 flex flex-col min-h-0"
+                    style={{ overflow: mapTruncated && !mapExpanded ? "hidden" : "visible" }}
                   >
                     <ClipsCarousel
                       providers={LLM_PROVIDERS_CONFIG}
@@ -976,61 +930,6 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                       onClipClick={(pid) => onClipClick?.("mapping", pid)}
                       type="mapping"
                     />
-
-                    {/* PILL TABS */}
-                    <div
-                      style={{
-                        display: "flex",
-                        background: "#1e293b",
-                        padding: 3,
-                        borderRadius: 8,
-                        marginTop: 8,
-                        alignSelf: "flex-start",
-                        border: "1px solid #334155",
-                      }}
-                    >
-                      <button
-                        onClick={() =>
-                          onSetMappingTab && onSetMappingTab("map")
-                        }
-                        style={{
-                          padding: "4px 12px",
-                          borderRadius: 6,
-                          fontSize: 12,
-                          fontWeight: 500,
-                          background:
-                            mappingTab === "map" ? "#475569" : "transparent",
-                          color: mappingTab === "map" ? "#f8fafc" : "#94a3b8",
-                          border: "none",
-                          cursor: "pointer",
-                          transition: "all 0.2s ease",
-                        }}
-                      >
-                        Decision Map
-                      </button>
-                      <button
-                        onClick={() =>
-                          onSetMappingTab && onSetMappingTab("options")
-                        }
-                        style={{
-                          padding: "4px 12px",
-                          borderRadius: 6,
-                          fontSize: 12,
-                          fontWeight: 500,
-                          background:
-                            mappingTab === "options"
-                              ? "#475569"
-                              : "transparent",
-                          color:
-                            mappingTab === "options" ? "#f8fafc" : "#94a3b8",
-                          border: "none",
-                          cursor: "pointer",
-                          transition: "all 0.2s ease",
-                        }}
-                      >
-                        All Options
-                      </button>
-                    </div>
 
                     <div
                       className="clip-content bg-surface border border-border-subtle rounded-2xl p-3 flex-1 min-w-0 break-words"
@@ -1080,7 +979,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                         const optionsInner = (() => {
                           if (!options)
                             return (
-                              <div style={{ color: "#64748b" }}>
+                              <div className="text-text-muted">
                                 {!activeMappingPid
                                   ? "Select a mapping provider."
                                   : "No options found."}
@@ -1088,16 +987,8 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                             );
                           return (
                             <div>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  gap: 8,
-                                  marginBottom: 8,
-                                }}
-                              >
-                                <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="text-xs text-text-muted">
                                   All Available Options • via {activeMappingPid}
                                 </div>
                                 <button
@@ -1106,15 +997,9 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                     e.stopPropagation();
                                     navigator.clipboard.writeText(options);
                                   }}
-                                  style={{
-                                    background: "#334155",
-                                    border: "1px solid #475569",
-                                    borderRadius: 6,
-                                    padding: "4px 8px",
-                                    color: "#94a3b8",
-                                    fontSize: 12,
-                                    cursor: "pointer",
-                                  }}
+                                  className="bg-surface-raised border border-border-subtle rounded-md
+                                               px-2 py-1 text-text-muted text-xs cursor-pointer
+                                               hover:bg-surface-highlight transition-all flex items-center gap-1"
                                 >
                                   📋 Copy
                                 </button>
@@ -1134,13 +1019,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                         const mapInner = (() => {
                           if (!wasMapRequested)
                             return (
-                              <div
-                                style={{
-                                  color: "#64748b",
-                                  fontStyle: "italic",
-                                  textAlign: "center",
-                                }}
-                              >
+                              <div className="text-text-muted italic text-center">
                                 Mapping not enabled.
                               </div>
                             );
@@ -1163,24 +1042,11 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                             const take = displayedMappingTake;
                             if (take && take.status === "error") {
                               return (
-                                <div
-                                  style={{
-                                    background: "#1f2937",
-                                    border: "1px solid #ef4444",
-                                    color: "#fecaca",
-                                    borderRadius: 8,
-                                    padding: 12,
-                                  }}
-                                >
-                                  <div
-                                    style={{ fontSize: 12, marginBottom: 8 }}
-                                  >
+                                <div className="bg-intent-danger/15 border border-intent-danger text-intent-danger rounded-lg p-3">
+                                  <div className="text-xs mb-2">
                                     {activeMappingPid} · error
                                   </div>
-                                  <div
-                                    className="prose prose-sm max-w-none dark:prose-invert"
-                                    style={{ lineHeight: 1.7, fontSize: 14 }}
-                                  >
+                                  <div className="text-sm leading-relaxed text-text-primary">
                                     <MarkdownDisplay
                                       content={String(
                                         take.text || "Mapping failed"
@@ -1192,24 +1058,14 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                             }
                             if (!take)
                               return (
-                                <div style={{ color: "#64748b" }}>
+                                <div className="text-text-muted">
                                   No mapping yet.
                                 </div>
                               );
                             return (
                               <div>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    gap: 8,
-                                    marginBottom: 8,
-                                  }}
-                                >
-                                  <div
-                                    style={{ fontSize: 12, color: "#94a3b8" }}
-                                  >
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                  <div className="text-xs text-text-muted">
                                     {activeMappingPid} · {take.status}
                                   </div>
                                   <button
@@ -1220,15 +1076,9 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                         displayedMappingText
                                       );
                                     }}
-                                    style={{
-                                      background: "#334155",
-                                      border: "1px solid #475569",
-                                      borderRadius: 6,
-                                      padding: "4px 8px",
-                                      color: "#94a3b8",
-                                      fontSize: 12,
-                                      cursor: "pointer",
-                                    }}
+                                    className="bg-surface-raised border border-border-subtle rounded-md
+                                               px-2 py-1 text-text-muted text-xs cursor-pointer
+                                               hover:bg-surface-highlight transition-all flex items-center gap-1"
                                   >
                                     📋 Copy
                                   </button>
@@ -1250,33 +1100,12 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
                                       {/* Artifact badges */}
                                       {artifacts.length > 0 && (
-                                        <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                        <div className="mt-3 flex flex-wrap gap-2">
                                           {artifacts.map((artifact, idx) => (
                                             <button
                                               key={idx}
                                               onClick={() => setSelectedArtifact(artifact)}
-                                              style={{
-                                                background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-                                                border: "1px solid #818cf8",
-                                                borderRadius: 8,
-                                                padding: "8px 12px",
-                                                color: "#ffffff",
-                                                fontSize: 13,
-                                                fontWeight: 500,
-                                                cursor: "pointer",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: 6,
-                                                transition: "all 0.2s ease",
-                                              }}
-                                              onMouseEnter={(e) => {
-                                                e.currentTarget.style.transform = "translateY(-1px)";
-                                                e.currentTarget.style.boxShadow = "0 4px 12px rgba(99, 102, 241, 0.4)";
-                                              }}
-                                              onMouseLeave={(e) => {
-                                                e.currentTarget.style.transform = "translateY(0)";
-                                                e.currentTarget.style.boxShadow = "none";
-                                              }}
+                                              className="bg-gradient-to-br from-brand-500 to-brand-600 border border-brand-400 rounded-lg px-3 py-2 text-text-primary text-sm font-medium cursor-pointer flex items-center gap-1.5 hover:-translate-y-px hover:shadow-glow-brand-soft transition-all"
                                             >
                                               📄 {artifact.title}
                                             </button>
@@ -1290,16 +1119,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                             );
                           }
                           return (
-                            <div
-                              style={{
-                                color: "#64748b",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                height: "100%",
-                                fontStyle: "italic",
-                              }}
-                            >
+                            <div className="flex items-center justify-center h-full text-text-muted italic">
                               Choose a model.
                             </div>
                           );
@@ -1331,40 +1151,21 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                     {mapTruncated && !mapExpanded && (
                       <>
                         <div
-                          style={{
-                            position: "absolute",
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            height: 60,
-                            background: "linear-gradient(transparent, #1e293b)",
-                            pointerEvents: "none",
-                            borderRadius: "0 0 8px 8px",
-                          }}
+                          className="absolute bottom-0 left-0 right-0 h-16
+                                     bg-gradient-to-t from-surface to-transparent
+                                     pointer-events-none rounded-b-3xl"
                         />
                         <button
                           type="button"
                           onClick={() => setMapExpanded(true)}
-                          style={{
-                            position: "absolute",
-                            bottom: 12,
-                            left: "50%",
-                            transform: "translateX(-50%)",
-                            padding: "6px 12px",
-                            background: "#334155",
-                            border: "1px solid #475569",
-                            borderRadius: 6,
-                            color: "#e2e8f0",
-                            cursor: "pointer",
-                            fontSize: 12,
-                            zIndex: 1,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
+                          className="absolute bottom-3 left-1/2 -translate-x-1/2
+                                     bg-surface-raised border border-border-subtle
+                                     rounded-md px-3 py-1.5 text-text-secondary text-xs
+                                     cursor-pointer hover:bg-surface-highlight
+                                     transition-all flex items-center gap-1.5 z-10"
                         >
-                          Show full response{" "}
-                          <ChevronDownIcon style={{ width: 14, height: 14 }} />
+                          Show full response
+                          <ChevronDownIcon className="w-3.5 h-3.5" />
                         </button>
                       </>
                     )}
@@ -1372,23 +1173,12 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                       <button
                         type="button"
                         onClick={() => setMapExpanded(false)}
-                        style={{
-                          marginTop: 12,
-                          padding: "6px 12px",
-                          background: "#334155",
-                          border: "1px solid #475569",
-                          borderRadius: 6,
-                          color: "#94a3b8",
-                          cursor: "pointer",
-                          fontSize: 12,
-                          alignSelf: "center",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
+                        className="mt-3 px-3 py-1.5 bg-surface-raised border border-border-subtle
+                                   rounded-md text-text-muted text-xs cursor-pointer
+                                   flex items-center gap-1.5 hover:bg-surface-highlight
+                                   transition-all self-center"
                       >
-                        <ChevronUpIcon style={{ width: 14, height: 14 }} />{" "}
-                        Collapse
+                        <ChevronUpIcon className="w-3.5 h-3.5" /> Collapse
                       </button>
                     )}
                   </div>
@@ -1398,36 +1188,23 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
             {/* Sources Section */}
             {hasSources && (
-              <div
-                className="batch-filler"
-                style={{
-                  border: "1px solid #475569",
-                  borderRadius: 8,
-                  padding: 12,
-                }}
-              >
+              <div className="batch-filler mt-3 bg-surface-raised border border-border-subtle rounded-2xl p-3">
                 <div className="sources-wrapper">
-                  <div
-                    className="sources-toggle"
-                    style={{ textAlign: "center", marginBottom: 8 }}
-                  >
+                  <div className="sources-toggle text-center mb-2">
                     <button
                       type="button"
                       onClick={() => onToggleSourceOutputs?.()}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: 8,
-                        border: "1px solid #334155",
-                        background: "#0b1220",
-                        color: "#e2e8f0",
-                        cursor: "pointer",
-                      }}
+                      className="px-3 py-1.5 rounded-lg border border-border-subtle
+                                 bg-surface text-text-primary cursor-pointer
+                                 hover:bg-surface-highlight transition-all text-sm"
                     >
                       {showSourceOutputs ? "Hide Sources" : "Show Sources"}
                     </button>
                   </div>
                   {showSourceOutputs && (
-                    <div className="sources-content">{children}</div>
+                    <div className="sources-content">
+                      {children}
+                    </div>
                   )}
                 </div>
               </div>

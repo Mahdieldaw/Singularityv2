@@ -183,9 +183,9 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = ({ content, components =
               <li className="mb-1">{children}</li>
             </ListContext.Provider>
           ),
-          h1: ({ children }) => <h1 className="text-lg font-semibold mt-2 mb-2 text-text-primary">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-base font-semibold mt-2 mb-2 text-text-primary">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-2 text-text-primary">{children}</h3>,
+          h1: ({ children }) => <h1 className="text-xl font-semibold mt-2 mb-2 text-text-primary">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-[17px] font-semibold mt-2 mb-2 text-text-primary">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-[15px] font-semibold mt-2 mb-2 text-text-primary">{children}</h3>,
           blockquote: ({ children }) => <blockquote className="border-l-4 border-border-subtle pl-4 ml-0 text-text-muted italic">{children}</blockquote>,
 
           // --- TABLE STYLING (Restored) ---
