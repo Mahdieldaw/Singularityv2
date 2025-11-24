@@ -967,7 +967,8 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
             draftPrompt,
             turnContext,
             authorModel,
-            analystModel
+            analystModel,
+            incomingContext.isInitialize
           );
 
           if (!result) {
@@ -982,7 +983,7 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
             success: true,
             data: {
               refinedPrompt: result.authored,
-              explanation: result.audit, // Backward compatibility
+              explanation: result.explanation, // Correctly map to Author's explanation
               audit: result.audit,
               variants: result.variants,
               originalPrompt: draftPrompt,

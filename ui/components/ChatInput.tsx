@@ -21,6 +21,7 @@ interface ChatInputProps {
   mappingActive?: boolean; // disable input and toggles while active
   onHeightChange?: (height: number) => void; // Callback for height changes
   isHistoryPanelOpen?: boolean;
+  hasRejectedRefinement?: boolean;
   // Refiner Props
   isRefinerOpen?: boolean;
   onUndoRefinement?: () => void;
@@ -49,6 +50,7 @@ const ChatInput = ({
   mappingActive = false,
   onHeightChange,
   isHistoryPanelOpen = false,
+  hasRejectedRefinement = false,
   isRefinerOpen = false,
   onUndoRefinement,
   onToggleAudit,
@@ -93,14 +95,14 @@ const ChatInput = ({
     // Only clear prompt if NOT refining (Launch clears it via parent)
     // Actually, parent handles clearing usually.
     // If isRefinerOpen, we are Launching.
-    if (!isRefinerOpen) {
+    if (!isRefinerOpen && !hasRejectedRefinement) {
       setPrompt("");
     }
   };
 
-  const buttonText = isRefinerOpen ? "Launch" : (isContinuationMode ? "Continue" : "Draft");
+  const buttonText = (isRefinerOpen || hasRejectedRefinement) ? "Launch" : (isContinuationMode ? "Continue" : "Draft");
   const isDisabled = isLoading || mappingActive || !prompt.trim();
-  const showMappingBtn = canShowMapping && !!prompt.trim() && !isRefinerOpen;
+  const showMappingBtn = canShowMapping && !!prompt.trim() && !isRefinerOpen && !hasRejectedRefinement;
   const showAbortBtn = !!onAbort && isLoading;
 
   return (
@@ -149,14 +151,14 @@ const ChatInput = ({
           type="button"
           onClick={handleSubmit}
           disabled={isDisabled}
-          className={`px-3.5 h-[38px] rounded-2xl text-white font-semibold cursor-pointer flex items-center gap-2 min-w-[90px] justify-center ${isDisabled ? 'opacity-50' : 'opacity-100'} ${isRefinerOpen ? 'bg-gradient-to-br from-brand-500 to-brand-400 shadow-card' : 'bg-gradient-to-r from-brand-500 to-brand-400'} ${isReducedMotion ? '' : 'transition-all duration-200 ease-out'}`}
+          className={`px-3.5 h-[38px] rounded-2xl text-white font-semibold cursor-pointer flex items-center gap-2 min-w-[90px] justify-center ${isDisabled ? 'opacity-50' : 'opacity-100'} ${(isRefinerOpen || hasRejectedRefinement) ? 'bg-gradient-to-br from-brand-500 to-brand-400 shadow-card' : 'bg-gradient-to-r from-brand-500 to-brand-400'} ${isReducedMotion ? '' : 'transition-all duration-200 ease-out'}`}
         >
           {isLoading ? (
             <div className="loading-spinner"></div>
           ) : (
             <>
               <span className="text-base">
-                {isRefinerOpen ? "🚀" : (isContinuationMode ? "💬" : "✨")}
+                {(isRefinerOpen || hasRejectedRefinement) ? "🚀" : (isContinuationMode ? "💬" : "✨")}
               </span>
               <span>{buttonText}</span>
             </>

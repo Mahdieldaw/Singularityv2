@@ -295,7 +295,7 @@ export const refineModelAtom = atomWithStorage<string>(
 );
 export const authorModelAtom = atomWithStorage<string>(
   "htos_author_model",
-  "gemini",
+  "qwen",
   undefined,
   { getOnInit: true }
 );
@@ -311,6 +311,7 @@ export const chatInputValueAtom = atomWithStorage<string>(
   undefined,
   { getOnInit: true }
 );
+export const hasRejectedRefinementAtom = atom<boolean>(false);
 
 // -----------------------------
 // Global Toast Notification

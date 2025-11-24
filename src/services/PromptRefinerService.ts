@@ -74,6 +74,51 @@ Principles:
 Begin with your internal reasoning, then output only the final composed prompt after "FINAL OUTPUT:"
 `;
 
+const INITIALIZE_SYSTEM_PROMPT = `You are a prompt refinement assistant analyzing a draft prompt before it's sent to 5 AI models for parallel synthesis.
+
+Your task: Infer the user's true intent by reading between the lines. Then refine their draft to maximize the quality of responses they'll receive.
+
+Analysis Framework:
+
+1. **Intent Inference**
+   - What is the user *actually* trying to do, beyond what they literally said?
+   - Are they exploring, deciding, clarifying, challenging, or building?
+   
+
+2. **Clarity Check**
+   - Is the ask unambiguous, or could models interpret it differently?
+   - Are there vague terms that need grounding?
+   - Is the scope clear (broad exploration vs. focused answer)?
+
+3. **Context Completeness**
+   - Are key constraints or requirements stated explicitly?
+   
+
+4. **Strategic Framing**
+   - Is the prompt framed to elicit depth rather than surface answers?
+   - Does it invite models to surface tensions and trade-offs?
+   - Would rephrasing unlock better responses?
+
+Output Format:
+
+REFINED_PROMPT:
+[Your improved version that captures the user's true intent and maximizes response quality. If no changes needed, return the original.]
+
+EXPLANATION:
+[2-4 sentences explaining:
+- What you inferred about the user's real intent
+- What you changed and why
+- How this will improve the responses they receive
+OR if unchanged: why the original already captures their intent effectively]
+
+Principles:
+- Preserve the user's voice and direction
+- Add clarity without adding verbosity
+- Make implicit intent explicit only when it helps models respond better
+- Don't over-engineer—sometimes the original is already optimal
+
+Begin your analysis.`;
+
 const ANALYST_SYSTEM_PROMPT = `You are not the Author. You are the mirror held up to the composed prompt before it launches.
 
 You see: the user's original fragment, the full prior turn (batches, synthesis, map, all options), and the composed prompt that emerged from them.
@@ -148,43 +193,49 @@ export class PromptRefinerService {
     fragment: string,
     turnContext: TurnContext | null,
     authorModelId?: string,
-    analystModelId?: string
+    analystModelId?: string,
+    isInitialize: boolean = false
   ): Promise<AuthorAnalystResult | null> {
     try {
       const authorId = authorModelId || this.authorModel;
       const analystId = analystModelId || this.analystModel;
 
-      // 1. Build Context
-      const contextSection = this._buildContextSection(turnContext);
+      // 1. Build Context (Force empty if initialize)
+      const contextSection = isInitialize ? "" : this._buildContextSection(turnContext);
 
       // 2. Run Author
-      const authorPrompt = this._buildAuthorPrompt(fragment, contextSection);
+      const authorPrompt = this._buildAuthorPrompt(fragment, contextSection, isInitialize);
       console.log(`[PromptRefinerService] Running Author (${authorId})...`);
       const authorResponseRaw = await this._callModel(authorId, authorPrompt);
       const authorText = this._extractPlainText(authorResponseRaw?.text || "");
 
-      const { authored, explanation } = this._parseAuthorResponse(authorText);
+      const { authored, explanation } = isInitialize
+        ? this._parseInitializeResponse(authorText)
+        : this._parseAuthorResponse(authorText);
 
       if (!authored) {
         console.warn("[PromptRefinerService] Author returned empty response");
         return null;
       }
 
-      // 3. Run Analyst
-      const analystPrompt = this._buildAnalystPrompt(fragment, contextSection, authored);
-      console.log(`[PromptRefinerService] Running Analyst (${analystId})...`);
-      let analystResponseRaw: any = null;
+      // 3. Run Analyst (Skip if initialize)
       let audit = "Audit unavailable";
       let variants: string[] = [];
+      let analystResponseRaw: any = null;
 
-      try {
-        analystResponseRaw = await this._callModel(analystId, analystPrompt);
-        const analystText = this._extractPlainText(analystResponseRaw?.text || "");
-        const parsedAnalyst = this._parseAnalystResponse(analystText);
-        audit = parsedAnalyst.audit;
-        variants = parsedAnalyst.variants;
-      } catch (e) {
-        console.warn("[PromptRefinerService] Analyst failed, returning Author result only:", e);
+      if (!isInitialize) {
+        const analystPrompt = this._buildAnalystPrompt(fragment, contextSection, authored);
+        console.log(`[PromptRefinerService] Running Analyst (${analystId})...`);
+
+        try {
+          analystResponseRaw = await this._callModel(analystId, analystPrompt);
+          const analystText = this._extractPlainText(analystResponseRaw?.text || "");
+          const parsedAnalyst = this._parseAnalystResponse(analystText);
+          audit = parsedAnalyst.audit;
+          variants = parsedAnalyst.variants;
+        } catch (e) {
+          console.warn("[PromptRefinerService] Analyst failed, returning Author result only:", e);
+        }
       }
 
       return {
@@ -238,6 +289,32 @@ export class PromptRefinerService {
     return result;
   }
 
+  private _parseInitializeResponse(text: string): { authored: string; explanation: string } {
+    const result = {
+      authored: text,
+      explanation: "",
+    };
+
+    try {
+      // Look for REFINED_PROMPT: and EXPLANATION:
+      const refinedRegex = /(?:^|\n)REFINED_PROMPT:\s*([\s\S]*?)(?=(?:^|\n)EXPLANATION:|$)/i;
+      const explanationRegex = /(?:^|\n)EXPLANATION:\s*([\s\S]*?)$/i;
+
+      const refinedMatch = text.match(refinedRegex);
+      const explanationMatch = text.match(explanationRegex);
+
+      if (refinedMatch && refinedMatch[1]) {
+        result.authored = refinedMatch[1].trim();
+      }
+      if (explanationMatch && explanationMatch[1]) {
+        result.explanation = explanationMatch[1].trim();
+      }
+    } catch (e) {
+      console.warn("[PromptRefinerService] Failed to parse initialize response:", e);
+    }
+    return result;
+  }
+
 
   private _buildContextSection(turnContext: TurnContext | null): string {
     if (!turnContext) return "";
@@ -259,7 +336,15 @@ export class PromptRefinerService {
     return section;
   }
 
-  private _buildAuthorPrompt(fragment: string, contextSection: string): string {
+  private _buildAuthorPrompt(fragment: string, contextSection: string, isInitialize: boolean): string {
+    if (isInitialize) {
+      return `${INITIALIZE_SYSTEM_PROMPT}
+
+<DRAFT_PROMPT>
+${fragment}
+</DRAFT_PROMPT>`;
+    }
+
     return `${AUTHOR_SYSTEM_PROMPT}
 
 ${contextSection}

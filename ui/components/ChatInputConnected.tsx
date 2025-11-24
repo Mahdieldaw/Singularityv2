@@ -10,12 +10,13 @@ import {
   isReducedMotionAtom,
   chatInputHeightAtom,
   isHistoryPanelOpenAtom,
-  isRefinerOpenAtom, // Import
+  isRefinerOpenAtom,
   refinerDataAtom,
   chatInputValueAtom,
+  hasRejectedRefinementAtom,
 } from "../state/atoms";
 import ChatInput from "./ChatInput";
-import RefinerBlock from "./RefinerBlock"; // Import
+import RefinerBlock from "./RefinerBlock";
 
 const ChatInputConnected = () => {
   const [isLoading] = useAtom(isLoadingAtom as any) as [boolean, any];
@@ -38,6 +39,7 @@ const ChatInputConnected = () => {
   const [isRefinerOpen, setIsRefinerOpen] = useAtom(isRefinerOpenAtom);
   const [refinerData, setRefinerData] = useAtom(refinerDataAtom);
   const [, setChatInputValue] = useAtom(chatInputValueAtom);
+  const [hasRejectedRefinement, setHasRejectedRefinement] = useAtom(hasRejectedRefinementAtom);
 
   const [showAudit, setShowAudit] = React.useState(false);
   const [showVariants, setShowVariants] = React.useState(false);
@@ -56,20 +58,34 @@ const ChatInputConnected = () => {
         setShowAudit(false);
         setShowVariants(false);
         setShowExplanation(false);
+      } else if (hasRejectedRefinement) {
+        // If user rejected refinement, launch immediately
+        sendMessage(prompt, "new");
       } else {
         // Otherwise, we are Draft-ing (refining)
         void refinePrompt(prompt);
       }
     },
-    [refinePrompt, isRefinerOpen, refinerData, sendMessage, setIsRefinerOpen, setRefinerData, setChatInputValue],
+    [refinePrompt, isRefinerOpen, refinerData, sendMessage, setIsRefinerOpen, setRefinerData, setChatInputValue, hasRejectedRefinement],
   );
 
   const handleCont = useCallback(
     (prompt: string) => {
-      // Continuation also triggers refinement by default
-      void refinePrompt(prompt);
+      if (isRefinerOpen && refinerData) {
+        sendMessage(prompt, "continuation");
+        setIsRefinerOpen(false);
+        setRefinerData(null);
+        setChatInputValue("");
+        setShowAudit(false);
+        setShowVariants(false);
+        setShowExplanation(false);
+      } else if (hasRejectedRefinement) {
+        sendMessage(prompt, "continuation");
+      } else {
+        void refinePrompt(prompt);
+      }
     },
-    [refinePrompt],
+    [refinePrompt, isRefinerOpen, refinerData, sendMessage, setIsRefinerOpen, setRefinerData, setChatInputValue, hasRejectedRefinement],
   );
 
   const handleAbort = useCallback(() => {
@@ -85,7 +101,8 @@ const ChatInputConnected = () => {
     setShowAudit(false);
     setShowVariants(false);
     setShowExplanation(false);
-  }, [refinerData, setChatInputValue, setIsRefinerOpen, setRefinerData]);
+    setHasRejectedRefinement(true);
+  }, [refinerData, setChatInputValue, setIsRefinerOpen, setRefinerData, setHasRejectedRefinement]);
 
   return (
     <ChatInput
@@ -100,6 +117,7 @@ const ChatInputConnected = () => {
       isContinuationMode={isContinuationMode}
       onHeightChange={setChatInputHeight}
       isHistoryPanelOpen={!!isHistoryOpen}
+      hasRejectedRefinement={hasRejectedRefinement}
       // Refiner Props
       isRefinerOpen={isRefinerOpen}
       onUndoRefinement={handleUndoRefinement}

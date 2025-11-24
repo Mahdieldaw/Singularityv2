@@ -26,6 +26,7 @@ import {
   authorModelAtom,
   analystModelAtom,
   chatInputValueAtom,
+  hasRejectedRefinementAtom,
 } from "../state/atoms";
 // Optimistic AI turn creation is now handled upon TURN_CREATED from backend
 import type {
@@ -70,10 +71,13 @@ export function useChat() {
   const setRefinerData = useSetAtom(refinerDataAtom);
   const setIsRefinerOpen = useSetAtom(isRefinerOpenAtom);
   const setIsRefining = useSetAtom(isRefiningAtom); // Set new atom
+  const setHasRejectedRefinement = useSetAtom(hasRejectedRefinementAtom);
 
   const sendMessage = useCallback(
     async (prompt: string, mode: "new" | "continuation") => {
       if (!prompt || !prompt.trim()) return;
+
+      setHasRejectedRefinement(false); // Reset rejection state on send
 
       setIsLoading(true);
       setUiPhase("streaming");
@@ -471,6 +475,7 @@ export function useChat() {
           authorModel,
           analystModel,
           sessionId: currentSessionId || null,
+          isInitialize: !currentSessionId || turnIds.length === 0,
         });
         if (result && result.refinedPrompt) {
           setRefinerData({

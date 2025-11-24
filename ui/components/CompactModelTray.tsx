@@ -166,23 +166,7 @@ const CompactModelTray = ({
   }, []);
 
   // Restore refine model from local storage
-  useEffect(() => {
-    try {
-      const savedRefineModel = localStorage.getItem("htos_refine_model");
-      if (savedRefineModel) {
-        onSetRefineModel(savedRefineModel);
-      }
-      // Restore Author/Analyst models
-      const savedAuthor = localStorage.getItem("htos_author_model");
-      if (savedAuthor && onSetAuthorModel) onSetAuthorModel(savedAuthor);
-      const savedAnalyst = localStorage.getItem("htos_analyst_model");
-      if (savedAnalyst && onSetAnalystModel) onSetAnalystModel(savedAnalyst);
-    } catch (err) {
-      console.warn("[CompactModelTray] failed to restore refine/draft models", err);
-    }
-    // run only once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Refine model restoration is handled by atomWithStorage in atoms.ts
 
   // Generate compact labels
   const getWitnessLabel = () => {
