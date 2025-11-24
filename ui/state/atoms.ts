@@ -168,6 +168,10 @@ export const aiTurnMappingTabFamily = atomFamily(
   (_turnId: string) => atom<"map" | "options">("map"),
   (a, b) => a === b,
 );
+export const aiTurnPrimaryViewFamily = atomFamily(
+  (_turnId: string) => atom<"synthesis" | "decision-map">("synthesis"),
+  (a, b) => a === b,
+);
 export const showScrollToBottomAtom = atom<boolean>(false);
 
 // -----------------------------

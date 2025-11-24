@@ -5,7 +5,6 @@ import React, {
   useCallback,
   useRef,
   useEffect,
-  useLayoutEffect,
 } from "react";
 import { AiTurn, ProviderResponse, AppStep } from "../types";
 import MarkdownDisplay from "./MarkdownDisplay";
@@ -80,59 +79,6 @@ function extractClaudeArtifacts(text: string | null | undefined): {
   };
 }
 
-// --- Height Measurement Hook (Stabilized) ---
-const useShorterHeight = (
-  hasSynthesis: boolean,
-  hasMapping: boolean,
-  contentVersion: string | number, // something that changes when either side's text changes
-  pause: boolean
-) => {
-  const synthRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [state, setState] = useState<{
-    shorterHeight: number | null;
-    shorterSection: "synthesis" | "mapping" | null;
-  }>({ shorterHeight: null, shorterSection: null });
-
-  useLayoutEffect(() => {
-    if (pause) return;
-
-    const s = synthRef.current;
-    const m = mapRef.current;
-
-    if (!hasSynthesis || !hasMapping || !s || !m) {
-      setState((prev) =>
-        prev.shorterHeight === null && prev.shorterSection === null
-          ? prev
-          : { shorterHeight: null, shorterSection: null }
-      );
-      return;
-    }
-
-    const synthH = s.scrollHeight;
-    const mapH = m.scrollHeight;
-    const isSynthShorter = synthH <= mapH;
-    const nextHeight = isSynthShorter ? synthH : mapH;
-    const nextSection = isSynthShorter ? "synthesis" : "mapping";
-
-    setState((prev) => {
-      if (
-        prev.shorterHeight === nextHeight &&
-        prev.shorterSection === nextSection
-      ) {
-        return prev; // no change, no re-render
-      }
-      return { shorterHeight: nextHeight, shorterSection: nextSection };
-    });
-  }, [contentVersion, hasSynthesis, hasMapping, pause]);
-
-  return {
-    synthRef,
-    mapRef,
-    shorterHeight: state.shorterHeight,
-    shorterSection: state.shorterSection,
-  };
-};
 
 interface AiTurnBlockProps {
   aiTurn: AiTurn;
@@ -160,6 +106,8 @@ interface AiTurnBlockProps {
   onSetMapExpanded?: (v: boolean) => void;
   mappingTab?: "map" | "options";
   onSetMappingTab?: (t: "map" | "options") => void;
+  primaryView?: "synthesis" | "decision-map";
+  onSetPrimaryView?: (view: "synthesis" | "decision-map") => void;
   children?: React.ReactNode;
 }
 
@@ -185,6 +133,8 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
   onSetMapExpanded,
   mappingTab = "map",
   onSetMappingTab,
+  primaryView = "synthesis",
+  onSetPrimaryView,
   children,
 }) => {
   const setSynthExpanded = onSetSynthExpanded || (() => { });
@@ -323,54 +273,13 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
     requestedSynth === undefined ? true : !!requestedSynth;
   const wasMapRequested = requestedMap === undefined ? true : !!requestedMap;
 
-  // Track previous mappingTab to detect changes
-  const prevMappingTabRef = useRef(mappingTab);
-  const [measurementPaused, setMeasurementPaused] = useState(false);
+  // Create refs for sections
+  const synthRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
 
-  // When tab changes, pause measurement for one cycle to let panels show natural heights
-  useEffect(() => {
-    if (prevMappingTabRef.current !== mappingTab) {
-      prevMappingTabRef.current = mappingTab;
-      setMeasurementPaused(true);
-      // Resume measurement in next frame
-      const timeoutId = setTimeout(() => setMeasurementPaused(false), 0);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [mappingTab]);
-
-  // --- REFS COME FROM HERE ---
-  const contentVersion =
-    (getLatestResponse(synthesisResponses[activeSynthPid || ""] || [])?.text || "").length +
-    ":" +
-    (mappingTab === "options" ? optionsText.length : displayedMappingText.length);
-
-  const { synthRef, mapRef, shorterHeight, shorterSection } = useShorterHeight(
-    hasSynthesis,
-    hasMapping,
-    contentVersion,
-    isLive || isLoading || measurementPaused
-  );
-
-  const synthTruncated =
-    hasSynthesis && hasMapping && shorterHeight && shorterSection === "mapping";
-  const mapTruncated =
-    hasSynthesis &&
-    hasMapping &&
-    shorterHeight &&
-    shorterSection === "synthesis";
-
-  const getSectionStyle = (
-    section: "synthesis" | "mapping",
-    isExpanded: boolean
-  ): React.CSSProperties => {
-    const isTruncated = section === "synthesis" ? synthTruncated : mapTruncated;
-    const duringStreaming = isLive || isLoading;
-
-    return {
-      maxHeight: isTruncated && !isExpanded ? `${shorterHeight}px` : "none",
-      overflow: duringStreaming ? "hidden" : "visible",
-    };
-  };
+  // No cross-panel truncation in single viewport mode
+  const synthTruncated = false;
+  const mapTruncated = false;
 
   // --- 1. DEFINITION: Citation Click Logic (First) ---
   const handleCitationClick = useCallback(
@@ -494,14 +403,39 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
       <div className="ai-turn-block border border-border-subtle rounded-2xl p-3">
         <div className="ai-turn-content flex flex-col gap-3">
           <div className="primaries mb-4 relative">
-            <div className="flex flex-row gap-3 items-start">
+            {/* Primary Toggle */}
+            <div className="primary-toggle flex gap-2 mb-3 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit">
+              <button
+                type="button"
+                onClick={() => onSetPrimaryView?.("synthesis")}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${primaryView === "synthesis"
+                  ? "bg-chip-active text-text-primary shadow-card-sm"
+                  : "text-text-muted hover:text-text-secondary"
+                  }`}
+              >
+                Synthesis
+              </button>
+              <button
+                type="button"
+                onClick={() => onSetPrimaryView?.("decision-map")}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${primaryView === "decision-map"
+                  ? "bg-chip-active text-text-primary shadow-card-sm"
+                  : "text-text-muted hover:text-text-secondary"
+                  }`}
+              >
+                Decision Map
+              </button>
+            </div>
+
+            {/* Single Content Viewport */}
+            <div className="content-viewport">
               {/* Synthesis Section */}
               <div
                 ref={synthRef}
-                className="flex-1 min-w-0 flex flex-col min-h-[150px] relative
+                className={`${primaryView === "synthesis" ? "flex" : "hidden"} flex-1 min-w-0 flex-col min-h-[150px] relative
                            bg-surface-raised border border-border-subtle
-                           rounded-3xl p-4 shadow-card-sm gap-3"
-                style={getSectionStyle("synthesis", synthExpanded)}
+                           rounded-3xl p-4 shadow-card-sm gap-3`}
+                style={synthExpanded ? {} : {}}
               >
                 <div className="section-header flex items-center justify-between flex-shrink-0">
                   <h4 className="m-0 text-sm font-semibold text-text-secondary mb-1.5">
@@ -788,10 +722,10 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               {/* Mapping Section */}
               <div
                 ref={mapRef}
-                className="flex-1 min-w-0 flex flex-col min-h-[150px] relative
+                className={`${primaryView === "decision-map" ? "flex" : "hidden"} flex-1 min-w-0 flex-col min-h-[150px] relative
                            bg-surface-raised border border-border-subtle
-                           rounded-3xl p-4 shadow-card-sm gap-3"
-                style={getSectionStyle("mapping", mapExpanded)}
+                           rounded-3xl p-4 shadow-card-sm gap-3`}
+                style={mapExpanded ? {} : {}}
               >
                 <div className="section-header flex items-center justify-between flex-shrink-0 min-h-[32px]">
                   <h4 className="m-0 text-sm font-semibold text-text-secondary mb-1.5">
@@ -1185,31 +1119,31 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                 )}
               </div>
             </div>
+          </div>
 
-            {/* Sources Section */}
-            {hasSources && (
-              <div className="batch-filler mt-3 bg-surface-raised border border-border-subtle rounded-2xl p-3">
-                <div className="sources-wrapper">
-                  <div className="sources-toggle text-center mb-2">
-                    <button
-                      type="button"
-                      onClick={() => onToggleSourceOutputs?.()}
-                      className="px-3 py-1.5 rounded-lg border border-border-subtle
+          {/* Sources Section */}
+          {hasSources && (
+            <div className="batch-filler mt-3 bg-surface-raised border border-border-subtle rounded-2xl p-3">
+              <div className="sources-wrapper">
+                <div className="sources-toggle text-center mb-2">
+                  <button
+                    type="button"
+                    onClick={() => onToggleSourceOutputs?.()}
+                    className="px-3 py-1.5 rounded-lg border border-border-subtle
                                  bg-surface text-text-primary cursor-pointer
                                  hover:bg-surface-highlight transition-all text-sm"
-                    >
-                      {showSourceOutputs ? "Hide Sources" : "Show Sources"}
-                    </button>
-                  </div>
-                  {showSourceOutputs && (
-                    <div className="sources-content">
-                      {children}
-                    </div>
-                  )}
+                  >
+                    {showSourceOutputs ? "Hide Sources" : "Show Sources"}
+                  </button>
                 </div>
+                {showSourceOutputs && (
+                  <div className="sources-content">
+                    {children}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

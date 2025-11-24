@@ -14,6 +14,7 @@ import {
   aiTurnSynthExpandedFamily,
   aiTurnMapExpandedFamily,
   aiTurnMappingTabFamily,
+  aiTurnPrimaryViewFamily,
   turnStreamingStateFamily,
 } from "../state/atoms";
 import { useClipActions } from "../hooks/useClipActions";
@@ -52,6 +53,7 @@ export default function AiTurnBlockConnected({
     aiTurnMapExpandedFamily(aiTurn.id),
   );
   const [mappingTab, setMappingTab] = useAtom(aiTurnMappingTabFamily(aiTurn.id));
+  const [primaryView, setPrimaryView] = useAtom(aiTurnPrimaryViewFamily(aiTurn.id));
 
   // Determine if this turn is currently streaming (for isLive prop)
   const isLive = isLoading && currentAppStep !== "initial";
@@ -110,6 +112,11 @@ export default function AiTurnBlockConnected({
           void handleClipClick(aiTurn.id, type, pid);
         },
         [handleClipClick, aiTurn.id],
+      )}
+      primaryView={primaryView}
+      onSetPrimaryView={useCallback(
+        (view: "synthesis" | "decision-map") => setPrimaryView(view),
+        [setPrimaryView],
       )}
     >
       <ProviderResponseBlockConnected aiTurnId={aiTurn.id}
