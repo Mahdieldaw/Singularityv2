@@ -519,12 +519,12 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                 title={primaryView === "synthesis" ? "Switch to Decision Map" : "Switch to Synthesis"}
                 aria-label={primaryView === "synthesis" ? "Switch to Decision Map" : "Switch to Synthesis"}
               >
-                {/* Status LED - Only show if NOT idle */}
-                {mapStatus !== "idle" && (
+                {/* Status LED */}
+                {(mapStatus !== "idle" || hasMapping) && (
                   <span
                     className={`inline-block w-2 h-2 rounded-full transition-colors ${mapStatus === "streaming"
                       ? "bg-intent-warning animate-pulse shadow-[0_0_4px_rgba(255,170,0,0.4)]"
-                      : mapStatus === "ready"
+                      : (mapStatus === "ready" || (mapStatus === "idle" && hasMapping))
                         ? "bg-intent-success shadow-[0_0_4px_rgba(0,255,170,0.3)]"
                         : mapStatus === "error"
                           ? "bg-intent-danger"
@@ -532,17 +532,14 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                       }`}
                   />
                 )}
-
                 <span>
                   {primaryView === "synthesis" ? "Synthesis" : "Decision Map"}
                 </span>
 
-                {/* Swap Icon - Only show if NOT idle */}
-                {mapStatus !== "idle" && (
-                  <span className="text-text-muted group-hover:text-text-secondary transition-colors text-xs">
-                    ↔
-                  </span>
-                )}
+                {/* Swap Icon */}
+                <span className="text-text-muted group-hover:text-text-secondary transition-colors text-xs">
+                  ↔
+                </span>
               </button>
               {primaryView === "synthesis" ? (
                 <ProviderSelector
@@ -563,7 +560,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               )}
             </div>
 
-            
+
 
             {/* Single Content Viewport */}
             <div className="content-viewport">
@@ -574,9 +571,9 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                            rounded-3xl p-4 gap-3`}
                 style={synthExpanded ? {} : {}}
               >
-            {isSynthesisExpanded && (
-              <div className="flex-1 flex flex-col min-h-0" style={{ overflow: synthTruncated && !synthExpanded ? "hidden" : "visible" }}>
-                <div className="mx-auto max-w-prose h-6 mb-1" />
+                {isSynthesisExpanded && (
+                  <div className="flex-1 flex flex-col min-h-0" style={{ overflow: synthTruncated && !synthExpanded ? "hidden" : "visible" }}>
+                    <div className="mx-auto max-w-prose h-6 mb-1" />
 
                     <div
                       className="clip-content rounded-2xl p-3 flex-1 min-w-0 break-words"
@@ -851,14 +848,14 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                            rounded-3xl p-4 gap-3`}
                 style={mapExpanded ? {} : {}}
               >
-                
+
 
                 {isMappingExpanded && (
                   <div
                     className="flex-1 flex flex-col min-h-0"
                     style={{ overflow: mapTruncated && !mapExpanded ? "hidden" : "visible" }}
                   >
-                    
+
 
                     <div
                       className="clip-content rounded-2xl p-3 flex-1 min-w-0 break-words"
