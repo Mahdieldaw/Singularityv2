@@ -9,6 +9,8 @@ import {
 } from "../state/atoms";
 import { ProviderKey, ProviderResponse } from "../types";
 import ProviderResponseBlock from "./ProviderResponseBlock";
+import { LLM_PROVIDERS_CONFIG } from "../constants";
+import { getLatestResponse, normalizeResponseArray } from "../utils/turn-helpers";
 import type { AiTurn } from "../types";
 import { normalizeProviderId } from "../utils/provider-id-mapper";
 import api from "../services/extension-api";
@@ -112,6 +114,86 @@ function ProviderResponseBlockConnected({
 
   if (!aiTurn) return null;
 
+  
+  // Build Copy All text: Synthesis, Mapping, All Options, then Batch Responses
+  const copyAllText = useMemo(() => {
+    if (!aiTurn) return "";
+    const ORDER = ["gemini-exp", "claude", "gemini-pro", "qwen", "chatgpt", "gemini"];
+    const nameMap = new Map(LLM_PROVIDERS_CONFIG.map((p) => [String(p.id), p.name]));
+
+    function parseMappingResponse(response?: string | null) {
+      if (!response) return { mapping: "", options: null as string | null };
+      const separator = "===ALL_AVAILABLE_OPTIONS===";
+      if (response.includes(separator)) {
+        const [mainMapping, optionsSection] = response.split(separator);
+        return { mapping: mainMapping.trim(), options: optionsSection.trim() };
+      }
+      const optionsPatterns = [
+        /\*\*All Available Options:\*\*/i,
+        /## All Available Options/i,
+        /All Available Options:/i,
+      ];
+      for (const pattern of optionsPatterns) {
+        const match = response.match(pattern);
+        if (match && typeof (match as any).index === "number") {
+          const idx = (match as any).index as number;
+          return {
+            mapping: response.substring(0, idx).trim(),
+            options: response.substring(idx).trim(),
+          };
+        }
+      }
+      return { mapping: response, options: null };
+    }
+
+    const lines: string[] = [];
+
+    // Synthesis
+    ORDER.forEach((pid) => {
+      const arr = aiTurn.synthesisResponses?.[pid] || [];
+      const take = getLatestResponse(normalizeResponseArray(arr));
+      const text = take?.text ? String(take.text) : "";
+      if (text && text.trim().length > 0) {
+        lines.push(`=== Synthesis • ${nameMap.get(pid) || pid} ===`);
+        lines.push(text.trim());
+        lines.push("\n---\n");
+      }
+    });
+
+    // Mapping + Options
+    ORDER.forEach((pid) => {
+      const arr = aiTurn.mappingResponses?.[pid] || [];
+      const take = getLatestResponse(normalizeResponseArray(arr));
+      const raw = take?.text ? String(take.text) : "";
+      if (raw && raw.trim().length > 0) {
+        const { mapping, options } = parseMappingResponse(raw);
+        if (mapping && mapping.trim().length > 0) {
+          lines.push(`=== Mapping • ${nameMap.get(pid) || pid} ===`);
+          lines.push(mapping.trim());
+          lines.push("\n---\n");
+        }
+        if (options && options.trim().length > 0) {
+          lines.push(`=== All Available Options • ${nameMap.get(pid) || pid} ===`);
+          lines.push(options.trim());
+          lines.push("\n---\n");
+        }
+      }
+    });
+
+    // Batch Responses
+    ORDER.forEach((pid) => {
+      const resp = aiTurn.batchResponses?.[pid];
+      const text = resp?.text ? String(resp.text) : "";
+      if (text && text.trim().length > 0) {
+        lines.push(`=== Batch Responses • ${nameMap.get(pid) || pid} ===`);
+        lines.push(text.trim());
+        lines.push("\n---\n");
+      }
+    });
+
+    return lines.join("\n");
+  }, [aiTurn]);
+
   return (
     <ProviderResponseBlock
       providerResponses={providerResponses}
@@ -122,6 +204,7 @@ function ProviderResponseBlockConnected({
       sessionId={sessionId || undefined}
       onRetryProvider={handleRetryProvider}
       userTurnId={aiTurn.userTurnId}
+      copyAllText={copyAllText}
     />
   );
 }

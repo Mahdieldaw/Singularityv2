@@ -64,6 +64,7 @@ interface ProviderResponseBlockProps {
   sessionId?: string;
   onRetryProvider?: (providerId: string) => void;
   userTurnId?: string;
+  copyAllText?: string;
 }
 
 const CopyButton = ({ text, label }: { text: string; label: string }) => {
@@ -106,6 +107,7 @@ const ProviderResponseBlock = ({
   sessionId,
   onRetryProvider,
   userTurnId,
+  copyAllText,
 }: ProviderResponseBlockProps) => {
   const providerContexts = useAtomValue(providerContextsAtom);
 
@@ -502,7 +504,7 @@ const ProviderResponseBlock = ({
             AI Responses ({allProviderIds.length})
           </div>
           <CopyButton
-            text={allProviderIds
+            text={copyAllText || allProviderIds
               .map((id) => {
                 const state = effectiveProviderStates[id];
                 const provider = getProviderConfig(id);

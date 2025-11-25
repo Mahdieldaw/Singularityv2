@@ -160,8 +160,12 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
           : "rounded-full shadow-sm"
           }`}
       >
+        {isOpen ? (
+          <ChevronUpIcon className="w-3 h-3" />
+        ) : (
+          <ChevronDownIcon className="w-3 h-3" />
+        )}
         <span>{activeProvider?.name || "Select Model"}</span>
-        {!isOpen && <span className="text-[10px] opacity-70">▶</span>}
       </button>
 
       {/* Horizontal Strip - Other Models + Arrow at End */}
@@ -191,16 +195,18 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
               </button>
             );
           })}
-          {/* Arrow at the end - clickable to close */}
+          {/* Close at the end - up chevron */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               setIsOpen(false);
             }}
-            className="text-[10px] opacity-70 ml-1 cursor-pointer hover:opacity-100 transition-opacity p-1"
+            className="opacity-70 ml-1 cursor-pointer hover:opacity-100 transition-opacity p-1"
+            aria-label="Collapse"
+            title="Collapse"
           >
-            ◀
+            <ChevronUpIcon className="w-3 h-3" />
           </button>
         </div>
       )}
@@ -505,7 +511,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
       <div className="ai-turn-block">
         <div className="ai-turn-content flex flex-col gap-3">
           <div className="primaries mb-4 relative">
-            <div className="controls-row mx-auto max-w-prose px-1 mb-2 flex items-center justify-between gap-3">
+            <div className="controls-row mx-auto max-w-prose px-1 mt-6 mb-1 flex items-center justify-start gap-2">
               <button
                 type="button"
                 onClick={() => onSetPrimaryView?.(primaryView === "synthesis" ? "decision-map" : "synthesis")}
@@ -538,51 +544,26 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                   </span>
                 )}
               </button>
-              <div className="flex-shrink-0">
-                {primaryView === "synthesis" ? (
-                  <ProviderSelector
-                    providers={LLM_PROVIDERS_CONFIG}
-                    responsesMap={synthesisResponses}
-                    activeProviderId={activeSynthPid}
-                    onSelect={(pid) => onClipClick?.("synthesis", pid)}
-                    type="synthesis"
-                  />
-                ) : (
-                  <ProviderSelector
-                    providers={LLM_PROVIDERS_CONFIG}
-                    responsesMap={mappingResponses}
-                    activeProviderId={activeMappingPid}
-                    onSelect={(pid) => onClipClick?.("mapping", pid)}
-                    type="mapping"
-                  />
-                )}
-              </div>
+              {primaryView === "synthesis" ? (
+                <ProviderSelector
+                  providers={LLM_PROVIDERS_CONFIG}
+                  responsesMap={synthesisResponses}
+                  activeProviderId={activeSynthPid}
+                  onSelect={(pid) => onClipClick?.("synthesis", pid)}
+                  type="synthesis"
+                />
+              ) : (
+                <ProviderSelector
+                  providers={LLM_PROVIDERS_CONFIG}
+                  responsesMap={mappingResponses}
+                  activeProviderId={activeMappingPid}
+                  onSelect={(pid) => onClipClick?.("mapping", pid)}
+                  type="mapping"
+                />
+              )}
             </div>
 
-            {primaryView === "decision-map" && (
-              <div className="mx-auto max-w-prose mb-2">
-                <div className="flex bg-surface-raised p-1 rounded-lg border border-border-subtle">
-                  <button
-                    onClick={() => onSetMappingTab && onSetMappingTab("map")}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mappingTab === "map"
-                      ? "bg-chip-active text-text-primary shadow-card-sm"
-                      : "text-text-muted hover:text-text-secondary"
-                      }`}
-                  >
-                    Decision Map
-                  </button>
-                  <button
-                    onClick={() => onSetMappingTab && onSetMappingTab("options")}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mappingTab === "options"
-                      ? "bg-chip-active text-text-primary shadow-card-sm"
-                      : "text-text-muted hover:text-text-secondary"
-                      }`}
-                  >
-                    All Options
-                  </button>
-                </div>
-              </div>
-            )}
+            
 
             {/* Single Content Viewport */}
             <div className="content-viewport">
@@ -593,9 +574,9 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                            rounded-3xl p-4 gap-3`}
                 style={synthExpanded ? {} : {}}
               >
-                {isSynthesisExpanded && (
-                  <div className="flex-1 flex flex-col min-h-0" style={{ overflow: synthTruncated && !synthExpanded ? "hidden" : "visible" }}>
-                    
+            {isSynthesisExpanded && (
+              <div className="flex-1 flex flex-col min-h-0" style={{ overflow: synthTruncated && !synthExpanded ? "hidden" : "visible" }}>
+                <div className="mx-auto max-w-prose h-6 mb-1" />
 
                     <div
                       className="clip-content rounded-2xl p-3 flex-1 min-w-0 break-words"
@@ -701,7 +682,6 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
                                 return (
                                   <>
-                                    {/* Main content - Prose wrapper constrains narrative text */}
                                     <div className="mx-auto max-w-prose">
                                       {/* Header Row: Model Info & Copy Button */}
                                       <div className="flex items-center justify-between gap-2 mb-2">
@@ -1019,7 +999,6 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
                                   return (
                                     <>
-                                      {/* Main mapping - Prose wrapper constrains narrative text */}
                                       <div className="mx-auto max-w-prose">
                                         <div className="flex items-center justify-between gap-2 mb-2">
                                           <div className="text-xs text-text-muted">
@@ -1079,20 +1058,28 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
                         return (
                           <>
-                            <div
-                              style={{
-                                display:
-                                  mappingTab === "options" ? "block" : "none",
-                              }}
-                            >
+                            {primaryView === "decision-map" && (
+                              <div className="mx-auto max-w-prose h-6 mb-1 flex items-center">
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => onSetMappingTab && onSetMappingTab("map")}
+                                    className={`px-2 py-0.5 text-xs font-medium rounded-md transition-all ${mappingTab === "map" ? "bg-chip-active text-text-primary shadow-card-sm" : "text-text-muted hover:text-text-secondary"}`}
+                                  >
+                                    landscape
+                                  </button>
+                                  <button
+                                    onClick={() => onSetMappingTab && onSetMappingTab("options")}
+                                    className={`px-2 py-0.5 text-xs font-medium rounded-md transition-all ${mappingTab === "options" ? "bg-chip-active text-text-primary shadow-card-sm" : "text-text-muted hover:text-text-secondary"}`}
+                                  >
+                                    All Options
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            <div style={{ display: mappingTab === "options" ? "block" : "none" }}>
                               {optionsInner}
                             </div>
-                            <div
-                              style={{
-                                display:
-                                  mappingTab === "map" ? "block" : "none",
-                              }}
-                            >
+                            <div style={{ display: mappingTab === "map" ? "block" : "none" }}>
                               {mapInner}
                             </div>
                           </>
