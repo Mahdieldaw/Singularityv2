@@ -282,7 +282,7 @@ const CompactModelTray = ({
                 onClick={(e) => e.stopPropagation()}
               >
                 {LLM_PROVIDERS_CONFIG.map((provider) => {
-                  const isSelected = selectedModels[provider.id];
+                  const isSelected = !!selectedModels[provider.id];
                   const isAuth = isProviderAvailable(provider.id);
                   return (
                     <label
@@ -751,7 +751,7 @@ const CompactModelTray = ({
 
             <div className="flex gap-2 flex-wrap">
               {LLM_PROVIDERS_CONFIG.map((provider: LLMProvider) => {
-                const isSelected = selectedModels[provider.id];
+                const isSelected = !!selectedModels[provider.id];
                 return (
                   <label
                     key={provider.id}

@@ -264,13 +264,10 @@ export class PromptRefinerService {
     };
 
     try {
-      // Look for "FINAL OUTPUT:" or similar delimiters
+      // Look for "FINAL OUTPUT:" or "FINAL\_OUTPUT:" or similar delimiters with markdown variations
       // We want to capture everything BEFORE it as explanation, and everything AFTER it as authored.
-      // Regex:
-      // [\s\S]*? : Non-greedy match for explanation
-      // (?:^|\n)[*#]*\s*FINAL OUTPUT[*]*:?\s* : The delimiter
-      // ([\s\S]*) : The rest is the authored prompt
-      const splitRegex = /([\s\S]*?)(?:^|\n)[*#]*\s*FINAL OUTPUT[*]*:?\s*([\s\S]*)$/i;
+      // Handle variations: FINAL OUTPUT, FINAL\_OUTPUT (escaped), with markdown formatting
+      const splitRegex = /([\s\S]*?)(?:^|\n)[*#]*\s*FINAL(?:_|\_)?\s*OUTPUT[*]*:?\s*([\s\S]*)$/i;
 
       const match = text.match(splitRegex);
       if (match) {
@@ -297,8 +294,9 @@ export class PromptRefinerService {
 
     try {
       // Look for REFINED_PROMPT: and EXPLANATION:
-      const refinedRegex = /(?:^|\n)REFINED_PROMPT:\s*([\s\S]*?)(?=(?:^|\n)EXPLANATION:|$)/i;
-      const explanationRegex = /(?:^|\n)EXPLANATION:\s*([\s\S]*?)$/i;
+      // Handle variations: REFINED_PROMPT, REFINED\_PROMPT (escaped), with markdown formatting
+      const refinedRegex = /(?:^|\n)[*#]*\s*REFINED(?:_|\\_)\s*PROMPT[*]*:?\s*([\\s\\S]*?)(?=(?:^|\n)[*#]*\s*EXPLANATION|$)/i;
+      const explanationRegex = /(?:^|\n)[*#]*\s*EXPLANATION[*]*:?\s*([\\s\\S]*?)$/i;
 
       const refinedMatch = text.match(refinedRegex);
       const explanationMatch = text.match(explanationRegex);

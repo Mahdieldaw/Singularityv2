@@ -45,21 +45,36 @@ import { PromptRefinerService } from "./services/PromptRefinerService.ts";
 const AUTH_COOKIES = [
   { provider: "chatgpt", domain: "chatgpt.com", name: "__Secure-next-auth.session-token", url: "https://chatgpt.com" },
   { provider: "claude", domain: "claude.ai", name: "sessionKey", url: "https://claude.ai" },
-  { provider: "gemini", domain: "google.com", name: "__Secure-1PSID", url: "https://gemini.google.com" }
+  { provider: "gemini", domain: "google.com", name: "__Secure-1PSID", url: "https://gemini.google.com" },
+  { provider: "qwen", domain: "qianwen.com", name: "tongyi_sso_ticket", url: "https://qianwen.com" }
 ];
 
 async function checkProviderLoginStatus() {
   const status = {};
-  // Default all to true first (optimistic), then overwrite with explicit false if check fails
-  // This ensures providers not in AUTH_COOKIES (like Qwen) remain enabled
 
   await Promise.all(AUTH_COOKIES.map(async (config) => {
     try {
       const cookie = await chrome.cookies.get({ url: config.url, name: config.name });
-      status[config.provider] = !!cookie;
+      const isAuthenticated = !!cookie;
+      status[config.provider] = isAuthenticated;
+
+      // Gemini has multiple variants (gemini, gemini-pro, gemini-exp) - set auth for all
+      if (config.provider === "gemini") {
+        status["gemini-pro"] = isAuthenticated;
+        status["gemini-exp"] = isAuthenticated;
+      }
+
+      // Log auth status for each provider
+      console.log(`[Auth] ${config.provider}: ${isAuthenticated ? 'authenticated' : 'not authenticated'}`);
     } catch (e) {
       console.warn(`[Auth] Failed to check ${config.provider}`, e);
       status[config.provider] = false;
+
+      // Also set variants to false on error
+      if (config.provider === "gemini") {
+        status["gemini-pro"] = false;
+        status["gemini-exp"] = false;
+      }
     }
   }));
 
@@ -87,10 +102,21 @@ chrome.cookies.onChanged.addListener((changeInfo) => {
   }
 });
 
-// Initial scan on startup
+// Check auth on browser startup
 chrome.runtime.onStartup.addListener(() => {
+  console.log('[Auth] Browser started - checking provider login status');
   checkProviderLoginStatus();
 });
+
+// Check auth on extension install/update/reload
+chrome.runtime.onInstalled.addListener((details) => {
+  console.log(`[Auth] Extension ${details.reason} - checking provider login status`);
+  checkProviderLoginStatus();
+});
+
+// Check auth immediately when service worker starts
+console.log('[Auth] Service worker started - checking provider login status');
+checkProviderLoginStatus();
 
 // ... rest of existing sw-entry.js code ...
 // ============================================================================

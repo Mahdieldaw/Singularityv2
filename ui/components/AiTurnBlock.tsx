@@ -1055,7 +1055,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                               </div>
                             );
                           return (
-                            <div>
+                            <div className="mx-auto max-w-prose">
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <div className="text-xs text-text-muted">
                                   All Available Options • via {activeMappingPid}
@@ -1073,16 +1073,13 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   📋 Copy
                                 </button>
                               </div>
-                              {/* Prose wrapper constrains narrative text */}
-                              <div className="mx-auto max-w-prose">
-                                <div
-                                  className="text-[16px] leading-relaxed text-text-primary"
-                                >
-                                  <MarkdownDisplay
-                                    content={transformCitations(options)}
-                                    components={markdownComponents}
-                                  />
-                                </div>
+                              <div
+                                className="text-[16px] leading-relaxed text-text-primary"
+                              >
+                                <MarkdownDisplay
+                                  content={transformCitations(options)}
+                                  components={markdownComponents}
+                                />
                               </div>
                             </div>
                           );
@@ -1136,25 +1133,6 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                               );
                             return (
                               <div>
-                                <div className="flex items-center justify-between gap-2 mb-2">
-                                  <div className="text-xs text-text-muted">
-                                    {activeMappingPid} · {take.status}
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      await navigator.clipboard.writeText(
-                                        displayedMappingText
-                                      );
-                                    }}
-                                    className="bg-surface-raised border border-border-subtle rounded-md
-                                               px-2 py-1 text-text-muted text-xs cursor-pointer
-                                               hover:bg-surface-highlight transition-all flex items-center gap-1"
-                                  >
-                                    📋 Copy
-                                  </button>
-                                </div>
                                 {(() => {
                                   // Extract Claude artifacts from mapping text
                                   const { cleanText, artifacts } = extractClaudeArtifacts(displayedMappingText);
@@ -1163,6 +1141,25 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                     <>
                                       {/* Main mapping - Prose wrapper constrains narrative text */}
                                       <div className="mx-auto max-w-prose">
+                                        <div className="flex items-center justify-between gap-2 mb-2">
+                                          <div className="text-xs text-text-muted">
+                                            {activeMappingPid} · {take.status}
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              await navigator.clipboard.writeText(
+                                                displayedMappingText
+                                              );
+                                            }}
+                                            className="bg-surface-raised border border-border-subtle rounded-md
+                                                         px-2 py-1 text-text-muted text-xs cursor-pointer
+                                                         hover:bg-surface-highlight transition-all flex items-center gap-1"
+                                          >
+                                            📋 Copy
+                                          </button>
+                                        </div>
                                         <div
                                           className="text-[16px] leading-relaxed text-text-primary"
                                         >
