@@ -69,7 +69,7 @@ const UserTurnBlock = ({
 
   return (
     <div
-      className="user-turn-block flex gap-3 p-3 bg-surface-raised border border-border-subtle rounded-2xl"
+      className="user-turn-block flex gap-3 p-3 bg-surface-raised border border-border-subtle rounded-2xl w-fit mx-auto max-w-3xl"
     >
       <div className="user-avatar w-8 h-8 rounded-lg bg-brand-500/20 flex items-center justify-center flex-shrink-0">
         <UserIcon className="w-4.5 h-4.5 text-brand-500" />
@@ -94,8 +94,11 @@ const UserTurnBlock = ({
 
         {isExpanded ? (
           <>
-            <div className="user-message text-[16px] leading-relaxed text-text-primary break-words mb-2">
-              <MarkdownDisplay content={String(userTurn.text || "")} />
+            {/* Prose wrapper for consistent line width */}
+            <div className="mx-auto max-w-prose">
+              <div className="user-message text-[16px] leading-relaxed text-text-primary break-words mb-2">
+                <MarkdownDisplay content={String(userTurn.text || "")} />
+              </div>
             </div>
             <div className="user-metadata flex items-center gap-3 text-[11px] text-text-muted">
               <span
@@ -116,10 +119,12 @@ const UserTurnBlock = ({
             </div>
           </>
         ) : (
-          <div
-            className="user-message-preview text-[16px] text-text-secondary overflow-hidden pt-1 mb-1 line-clamp-3"
-          >
-            {userTurn.text}
+          <div className="mx-auto max-w-prose">
+            <div
+              className="user-message-preview text-[16px] text-text-secondary overflow-hidden pt-1 mb-1 line-clamp-3"
+            >
+              {userTurn.text}
+            </div>
           </div>
         )}
 

@@ -6,10 +6,10 @@ import { useHistoryLoader } from "./hooks/useHistoryLoader";
 import { useResponsiveLoadingGuard } from "./hooks/useLoadingWatchdog";
 import ChatView from "./views/ChatView";
 import Header from "./components/Header";
-import HistoryPanelConnected from "./components/HistoryPanelConnected";
+const HistoryPanelConnected = React.lazy(() => import("./components/HistoryPanelConnected"));
 import BannerConnected from "./components/BannerConnected";
 import CompactModelTrayConnected from "./components/CompactModelTrayConnected";
-import SettingsPanel from "./components/SettingsPanel";
+const SettingsPanel = React.lazy(() => import("./components/SettingsPanel"));
 import { Toast } from "./components/Toast";
 import { isHistoryPanelOpenAtom } from "./state/atoms";
 import { useInitialization } from "./hooks/useInitialization"; // Import the new hook
@@ -70,14 +70,18 @@ export default function App() {
               ref={historyPanelRef}
               className="fixed top-0 left-0 w-[320px] h-screen z-[1100]"
             >
-              <HistoryPanelConnected />
+              <Suspense fallback={null}>
+                <HistoryPanelConnected />
+              </Suspense>
             </div>
           </>
         )}
       </div>
 
       {/* Settings Panel - Slides in from right */}
-      <SettingsPanel />
+      <Suspense fallback={null}>
+        <SettingsPanel />
+      </Suspense>
 
       {/* Global Toast Notifications */}
       <Toast />

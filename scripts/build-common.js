@@ -72,7 +72,8 @@ async function buildAll(isProduction = false, generateMeta = false) {
         ...commonOptions,
         entryPoints: ["ui/index.tsx"],
         format: "esm",
-        outfile: "dist/ui/index.js",
+        splitting: true,
+        outdir: "dist/ui",
         loader: { ".ts": "ts", ".tsx": "tsx" },
         jsx: "automatic",
     });

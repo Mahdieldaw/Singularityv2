@@ -400,7 +400,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
             User
           </div>
           {/* Prose wrapper for consistent line width */}
-          <div className="mx-auto max-w-[65ch]">
+          <div className="mx-auto max-w-prose">
             <div className="bg-surface border border-border-subtle rounded-lg p-3 text-text-secondary">
               {userPrompt}
             </div>
@@ -408,7 +408,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
         </div>
       )}
 
-      <div className="ai-turn-block border border-border-subtle rounded-2xl p-3">
+      <div className="ai-turn-block">
         <div className="ai-turn-content flex flex-col gap-3">
           <div className="primaries mb-4 relative">
             {/* Primary Toggle */}
@@ -455,8 +455,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               <div
                 ref={synthRef}
                 className={`${primaryView === "synthesis" ? "flex" : "hidden"} flex-1 min-w-0 flex-col min-h-[150px] relative
-                           bg-surface-raised border border-border-subtle
-                           rounded-3xl p-4 shadow-card-sm gap-3`}
+                           bg-surface rounded-3xl p-4 gap-3`}
                 style={synthExpanded ? {} : {}}
               >
                 <div className="section-header flex items-center justify-between flex-shrink-0">
@@ -491,7 +490,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                     </div>
 
                     <div
-                      className="clip-content bg-surface border border-border-subtle rounded-2xl p-3 flex-1 min-w-0 break-words"
+                      className="clip-content bg-surface rounded-2xl p-3 flex-1 min-w-0 break-words"
                       style={{
                         overflowY: isLive || isLoading ? "auto" : "visible",
                         maxHeight: isLive || isLoading ? "40vh" : "none",
@@ -587,31 +586,6 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                             );
                           return (
                             <div>
-                              <div className="flex items-center justify-between gap-2 mb-2">
-                                <div className="text-xs text-text-muted">
-                                  {activeSynthPid} · {take.status}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    try {
-                                      await navigator.clipboard.writeText(
-                                        String(take.text || "")
-                                      );
-                                      setToast({ id: Date.now(), message: 'Copied to clipboard', type: 'info' });
-                                    } catch (err) {
-                                      console.error("Failed to copy:", err);
-                                      setToast({ id: Date.now(), message: 'Failed to copy', type: 'error' });
-                                    }
-                                  }}
-                                  className="bg-surface-raised border border-border-subtle rounded-md
-                                               px-2 py-1 text-text-muted text-xs cursor-pointer
-                                               hover:bg-surface-highlight transition-all flex items-center gap-1"
-                                >
-                                  📋 Copy
-                                </button>
-                              </div>
                               {(() => {
                                 // Extract Claude artifacts
                                 const { cleanText, artifacts } = extractClaudeArtifacts(take.text);
@@ -620,7 +594,33 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 return (
                                   <>
                                     {/* Main content - Prose wrapper constrains narrative text */}
-                                    <div className="mx-auto max-w-[65ch] px-4">
+                                    <div className="mx-auto max-w-prose">
+                                      {/* Header Row: Model Info & Copy Button */}
+                                      <div className="flex items-center justify-between gap-2 mb-2">
+                                        <div className="text-xs text-text-muted">
+                                          {activeSynthPid} · {take.status}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                              await navigator.clipboard.writeText(
+                                                String(take.text || "")
+                                              );
+                                              setToast({ id: Date.now(), message: 'Copied to clipboard', type: 'info' });
+                                            } catch (err) {
+                                              console.error("Failed to copy:", err);
+                                              setToast({ id: Date.now(), message: 'Failed to copy', type: 'error' });
+                                            }
+                                          }}
+                                          className="bg-surface-raised border border-border-subtle rounded-md
+                                                           px-2 py-1 text-text-muted text-xs cursor-pointer
+                                                           hover:bg-surface-highlight transition-all flex items-center gap-1"
+                                        >
+                                          📋 Copy
+                                        </button>
+                                      </div>
                                       <div className="text-[16px] leading-relaxed text-text-primary">
                                         <MarkdownDisplay content={String(cleanText || take.text || "")} />
                                       </div>
@@ -760,8 +760,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               <div
                 ref={mapRef}
                 className={`${primaryView === "decision-map" ? "flex" : "hidden"} flex-1 min-w-0 flex-col min-h-[150px] relative
-                           bg-surface-raised border border-border-subtle
-                           rounded-3xl p-4 shadow-card-sm gap-3`}
+                           bg-surface rounded-3xl p-4 gap-3`}
                 style={mapExpanded ? {} : {}}
               >
                 <div className="section-header flex items-center justify-between flex-shrink-0 min-h-[32px]">
@@ -976,7 +975,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 </button>
                               </div>
                               {/* Prose wrapper constrains narrative text */}
-                              <div className="mx-auto max-w-[65ch] px-4">
+                              <div className="mx-auto max-w-prose">
                                 <div
                                   className="text-[16px] leading-relaxed text-text-primary"
                                 >
@@ -1064,7 +1063,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   return (
                                     <>
                                       {/* Main mapping - Prose wrapper constrains narrative text */}
-                                      <div className="mx-auto max-w-[65ch] px-4">
+                                      <div className="mx-auto max-w-prose">
                                         <div
                                           className="text-[16px] leading-relaxed text-text-primary"
                                         >

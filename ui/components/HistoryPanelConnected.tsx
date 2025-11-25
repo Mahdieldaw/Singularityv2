@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, Suspense } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   historySessionsAtom,
@@ -9,7 +9,7 @@ import {
 import { useChat } from "../hooks/useChat";
 import HistoryPanel from "./HistoryPanel";
 import api from "../services/extension-api";
-import RenameDialog from "./RenameDialog";
+const RenameDialog = React.lazy(() => import("./RenameDialog"));
 
 export default function HistoryPanelConnected() {
   const sessions = useAtomValue(historySessionsAtom);
@@ -222,13 +222,15 @@ export default function HistoryPanelConnected() {
         onConfirmBatchDelete={handleConfirmBatchDelete}
       />
 
-      <RenameDialog
-        isOpen={!!renameSessionId}
-        onClose={closeRenameDialog}
-        onRename={handleRenameChat}
-        defaultTitle={renameDefaultTitle}
-        isRenaming={isRenaming}
-      />
+      <Suspense fallback={null}>
+        <RenameDialog
+          isOpen={!!renameSessionId}
+          onClose={closeRenameDialog}
+          onRename={handleRenameChat}
+          defaultTitle={renameDefaultTitle}
+          isRenaming={isRenaming}
+        />
+      </Suspense>
     </>
   );
 }
