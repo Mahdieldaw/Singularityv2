@@ -29,6 +29,15 @@ if (fs.existsSync("src/offscreen.css"))
 if (fs.existsSync("src/oi.html"))
   fs.copyFileSync("src/oi.html", "dist/oi.html");
 
+// copy fonts
+if (fs.existsSync("ui/fonts")) {
+  fs.mkdirSync("dist/ui/fonts", { recursive: true });
+  const fonts = fs.readdirSync("ui/fonts");
+  for (const font of fonts) {
+    fs.copyFileSync(p.join("ui/fonts", font), p.join("dist/ui/fonts", font));
+  }
+}
+
 // icons
 const map = [
   ["icon-16.png", "icon16.png"],

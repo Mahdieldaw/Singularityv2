@@ -10,7 +10,7 @@
     font-style: normal;
     font-weight: 400;
     font-display: swap;
-    src: url('/ui/fonts/Inter-Regular.woff2') format('woff2');
+    src: url('./fonts/Inter-Regular.woff2') format('woff2');
   }
 
   @font-face {
@@ -18,7 +18,7 @@
     font-style: normal;
     font-weight: 600;
     font-display: swap;
-    src: url('/ui/fonts/Inter-SemiBold.woff2') format('woff2');
+    src: url('./fonts/Inter-SemiBold.woff2') format('woff2');
   }
 
   @font-face {
@@ -26,7 +26,7 @@
     font-style: normal;
     font-weight: 400;
     font-display: swap;
-    src: url('https://fonts.gstatic.com/s/dmmono/v14/aFTU7PB1QTsUX8KYvrGyIYSnbKX9Rlk.woff2') format('woff2');
+    src: url('./fonts/DMMono-Regular.ttf') format('truetype');
   }
 
   /* CSS Custom Properties */

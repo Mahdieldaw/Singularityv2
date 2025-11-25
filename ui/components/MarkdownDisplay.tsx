@@ -97,8 +97,7 @@ const PreBlock = ({ children }: any) => {
         <button
           onClick={handleCopy}
           title="Copy"
-          className={`bg-border-subtle border border-border-subtle rounded-md px-2 py-1
-                      text-xs cursor-pointer flex items-center transition-all
+          className={`inline-flex items-center gap-1 px-1.5 mx-0.5 bg-chip-active border border-border-brand rounded-pill text-text-primary text-sm font-bold leading-snug cursor-pointer no-underline transition-all
                       ${copied ? 'text-intent-success' : 'text-text-muted'}`}
         >
           {copied ? "✓" : "📋"}
@@ -192,7 +191,7 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = React.memo(
             // --- TABLE STYLING (Restored) ---
             table: ({ children }) => (
               <div className="overflow-x-auto my-4">
-                <table className="w-full border-collapse text-sm text-text-primary">
+                <table className="w-full border-collapse text-[16px] text-text-primary">
                   {children}
                 </table>
               </div>

@@ -123,7 +123,7 @@ const UserTurnBlock = ({
             <div
               className="user-message-preview text-[16px] text-text-secondary overflow-hidden pt-1 mb-1 line-clamp-3"
             >
-              {userTurn.text}
+              <MarkdownDisplay content={String(userTurn.text || "")} />
             </div>
           </div>
         )}

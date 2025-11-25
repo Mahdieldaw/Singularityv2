@@ -435,7 +435,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
           return (
             <button
               type="button"
-              className="inline-flex items-center gap-1 px-1.5 mx-0.5 bg-chip-active border border-border-brand rounded-pill text-text-primary text-xs font-bold leading-snug cursor-pointer no-underline"
+              className="inline-flex items-center gap-1 px-1.5 mx-0.5 bg-chip-active border border-border-brand rounded-pill text-text-primary text-sm font-bold leading-snug cursor-pointer no-underline"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
