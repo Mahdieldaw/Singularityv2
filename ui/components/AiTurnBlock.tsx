@@ -1287,7 +1287,8 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
           )}
         </div>
       </div>
-      );
+    </div>
+  );
 };
 
-      export default React.memo(AiTurnBlock);
+export default React.memo(AiTurnBlock);
