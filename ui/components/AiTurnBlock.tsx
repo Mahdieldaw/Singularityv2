@@ -132,63 +132,77 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const activeProvider = providers.find((p) => String(p.id) === activeProviderId);
 
+  // Filter out the active provider from the strip
+  const otherProviders = providers.filter((p) => String(p.id) !== activeProviderId);
+
   return (
-    <div className="relative inline-block">
+    <div className="relative inline-flex items-center">
+      {/* Backdrop to close on outside click */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(false);
+          }}
+        />
+      )}
+
+      {/* Trigger Button - Shows Active Model */}
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        className="flex items-center gap-1.5 px-2.5 py-1 bg-surface-raised hover:bg-surface-highlight border border-border-subtle rounded-full text-xs font-medium text-text-secondary transition-all shadow-sm"
+        className={`flex items-center gap-1.5 px-2.5 py-1 bg-surface-raised hover:bg-surface-highlight border border-border-subtle text-xs font-medium text-text-secondary transition-all ${isOpen
+          ? "rounded-l-full border-r-0"
+          : "rounded-full shadow-sm"
+          }`}
       >
         <span>{activeProvider?.name || "Select Model"}</span>
-        <span className="text-[10px] opacity-70">▶</span>
+        {!isOpen && <span className="text-[10px] opacity-70">▶</span>}
       </button>
 
+      {/* Horizontal Strip - Other Models + Arrow at End */}
       {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
+        <div className="relative z-50 inline-flex items-center gap-1 bg-surface-raised border border-border-subtle border-l-0 rounded-r-full pl-2 pr-2 py-1 shadow-lg animate-in slide-in-from-left-2 duration-200">
+          {otherProviders.map((p) => {
+            const pid = String(p.id);
+            const responses = responsesMap[pid] || [];
+            const latest = getLatestResponse(responses);
+            const isStreaming = latest?.status === "streaming";
+            const hasError = latest?.status === "error";
+
+            return (
+              <button
+                key={pid}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(pid);
+                  setIsOpen(false);
+                }}
+                className="px-2.5 py-0.5 rounded-full text-xs flex items-center gap-1.5 transition-all whitespace-nowrap text-text-secondary hover:bg-surface-highlight"
+              >
+                <span>{p.name}</span>
+                {isStreaming && <span className="w-1.5 h-1.5 rounded-full bg-intent-warning animate-pulse" />}
+                {hasError && <span className="w-1.5 h-1.5 rounded-full bg-intent-danger" />}
+              </button>
+            );
+          })}
+          {/* Arrow at the end - clickable to close */}
+          <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               setIsOpen(false);
             }}
-          />
-          <div className="absolute top-full left-0 mt-2 z-50 bg-surface-raised border border-border-subtle rounded-xl shadow-xl p-2 w-[320px] flex flex-row flex-wrap gap-2 animate-in fade-in zoom-in-95 duration-100">
-            {providers.map((p) => {
-              const pid = String(p.id);
-              const responses = responsesMap[pid] || [];
-              const latest = getLatestResponse(responses);
-              const isStreaming = latest?.status === "streaming";
-              const hasError = latest?.status === "error";
-
-              return (
-                <button
-                  key={pid}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelect(pid);
-                    setIsOpen(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-full text-xs flex items-center gap-2 transition-all border ${activeProviderId === pid
-                    ? "bg-chip-active border-border-brand text-text-primary font-medium shadow-sm"
-                    : "bg-surface border-border-subtle text-text-secondary hover:bg-surface-highlight hover:border-border-strong"
-                    }`}
-                >
-                  <span>{p.name}</span>
-                  {(isStreaming || hasError) && (
-                    <div className="flex items-center gap-1">
-                      {isStreaming && <span className="w-1.5 h-1.5 rounded-full bg-intent-warning animate-pulse" />}
-                      {hasError && <span className="w-1.5 h-1.5 rounded-full bg-intent-danger" />}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </>
+            className="text-[10px] opacity-70 ml-1 cursor-pointer hover:opacity-100 transition-opacity p-1"
+          >
+            ◀
+          </button>
+        </div>
       )}
     </div>
   );
