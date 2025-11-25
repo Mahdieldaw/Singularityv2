@@ -983,171 +983,88 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                     )}
                   </button>
                 </div>
-              </div>
 
-              {isMappingExpanded && (
-                <div
-                  className="flex-1 flex flex-col min-h-0"
-                  style={{ overflow: mapTruncated && !mapExpanded ? "hidden" : "visible" }}
-                >
-                  {/* Provider Selector - Moved to body for alignment */}
-                  <div className="mx-auto max-w-prose mb-4 px-1">
-                    <ProviderSelector
-                      providers={LLM_PROVIDERS_CONFIG}
-                      responsesMap={mappingResponses}
-                      activeProviderId={activeMappingPid}
-                      onSelect={(pid) => onClipClick?.("mapping", pid)}
-                      type="mapping"
-                    />
-                  </div>
-
+                {isMappingExpanded && (
                   <div
-                    className="clip-content rounded-2xl p-3 flex-1 min-w-0 break-words"
-                    style={{
-                      overflowY: isLive || isLoading ? "auto" : "visible",
-                      maxHeight: isLive || isLoading ? "40vh" : "none",
-                      minHeight: 0,
-                    }}
-                    // Scroll Props Only
-                    onWheelCapture={(e: React.WheelEvent<HTMLDivElement>) => {
-                      const el = e.currentTarget;
-                      const dy = e.deltaY ?? 0;
-                      const canDown =
-                        el.scrollTop + el.clientHeight < el.scrollHeight;
-                      const canUp = el.scrollTop > 0;
-                      if ((dy > 0 && canDown) || (dy < 0 && canUp)) {
-                        e.stopPropagation();
-                      }
-                    }}
-                    onWheel={(e: React.WheelEvent<HTMLDivElement>) => {
-                      const el = e.currentTarget;
-                      const dy = e.deltaY ?? 0;
-                      const canDown =
-                        el.scrollTop + el.clientHeight < el.scrollHeight;
-                      const canUp = el.scrollTop > 0;
-                      if ((dy > 0 && canDown) || (dy < 0 && canUp)) {
-                        e.stopPropagation();
-                      }
-                    }}
-                    onTouchStartCapture={(
-                      e: React.TouchEvent<HTMLDivElement>
-                    ) => {
-                      e.stopPropagation();
-                    }}
-                    onTouchMove={(e: React.TouchEvent<HTMLDivElement>) => {
-                      const el = e.currentTarget;
-                      const canDown =
-                        el.scrollTop + el.clientHeight < el.scrollHeight;
-                      const canUp = el.scrollTop > 0;
-                      if (canDown || canUp) {
-                        e.stopPropagation();
-                      }
-                    }}
+                    className="flex-1 flex flex-col min-h-0"
+                    style={{ overflow: mapTruncated && !mapExpanded ? "hidden" : "visible" }}
                   >
-                    {(() => {
-                      const options = getOptions();
-                      const optionsInner = (() => {
-                        if (!options)
-                          return (
-                            <div className="text-text-muted">
-                              {!activeMappingPid
-                                ? "Select a mapping provider."
-                                : "No options found."}
-                            </div>
-                          );
-                        return (
-                          <div>
-                            <div className="flex items-center justify-between gap-2 mb-2">
-                              <div className="text-xs text-text-muted">
-                                All Available Options • via {activeMappingPid}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(options);
-                                }}
-                                className="bg-surface-raised border border-border-subtle rounded-md
-                                               px-2 py-1 text-text-muted text-xs cursor-pointer
-                                               hover:bg-surface-highlight transition-all flex items-center gap-1"
-                              >
-                                📋 Copy
-                              </button>
-                            </div>
-                            {/* Prose wrapper constrains narrative text */}
-                            <div className="mx-auto max-w-prose">
-                              <div
-                                className="text-[16px] leading-relaxed text-text-primary"
-                              >
-                                <MarkdownDisplay
-                                  content={transformCitations(options)}
-                                  components={markdownComponents}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })();
+                    {/* Provider Selector - Moved to body for alignment */}
+                    <div className="mx-auto max-w-prose mb-4 px-1">
+                      <ProviderSelector
+                        providers={LLM_PROVIDERS_CONFIG}
+                        responsesMap={mappingResponses}
+                        activeProviderId={activeMappingPid}
+                        onSelect={(pid) => onClipClick?.("mapping", pid)}
+                        type="mapping"
+                      />
+                    </div>
 
-                      const mapInner = (() => {
-                        if (!wasMapRequested)
-                          return (
-                            <div className="text-text-muted italic text-center">
-                              Mapping not enabled.
-                            </div>
-                          );
-                        const latest = displayedMappingTake;
-                        const isGenerating =
-                          (latest &&
-                            (latest.status === "streaming" ||
-                              latest.status === "pending")) ||
-                          isMappingTarget;
-                        if (isGenerating)
-                          return (
-                            <div className="flex items-center justify-center gap-2 text-text-muted">
-                              <span className="italic">
-                                Conflict map generating
-                              </span>
-                              <span className="streaming-dots" />
-                            </div>
-                          );
-                        if (activeMappingPid) {
-                          const take = displayedMappingTake;
-                          if (take && take.status === "error") {
-                            return (
-                              <div className="bg-intent-danger/15 border border-intent-danger text-intent-danger rounded-lg p-3">
-                                <div className="text-xs mb-2">
-                                  {activeMappingPid} · error
-                                </div>
-                                <div className="text-sm leading-relaxed text-text-primary">
-                                  <MarkdownDisplay
-                                    content={String(
-                                      take.text || "Mapping failed"
-                                    )}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          }
-                          if (!take)
+                    <div
+                      className="clip-content rounded-2xl p-3 flex-1 min-w-0 break-words"
+                      style={{
+                        overflowY: isLive || isLoading ? "auto" : "visible",
+                        maxHeight: isLive || isLoading ? "40vh" : "none",
+                        minHeight: 0,
+                      }}
+                      // Scroll Props Only
+                      onWheelCapture={(e: React.WheelEvent<HTMLDivElement>) => {
+                        const el = e.currentTarget;
+                        const dy = e.deltaY ?? 0;
+                        const canDown =
+                          el.scrollTop + el.clientHeight < el.scrollHeight;
+                        const canUp = el.scrollTop > 0;
+                        if ((dy > 0 && canDown) || (dy < 0 && canUp)) {
+                          e.stopPropagation();
+                        }
+                      }}
+                      onWheel={(e: React.WheelEvent<HTMLDivElement>) => {
+                        const el = e.currentTarget;
+                        const dy = e.deltaY ?? 0;
+                        const canDown =
+                          el.scrollTop + el.clientHeight < el.scrollHeight;
+                        const canUp = el.scrollTop > 0;
+                        if ((dy > 0 && canDown) || (dy < 0 && canUp)) {
+                          e.stopPropagation();
+                        }
+                      }}
+                      onTouchStartCapture={(
+                        e: React.TouchEvent<HTMLDivElement>
+                      ) => {
+                        e.stopPropagation();
+                      }}
+                      onTouchMove={(e: React.TouchEvent<HTMLDivElement>) => {
+                        const el = e.currentTarget;
+                        const canDown =
+                          el.scrollTop + el.clientHeight < el.scrollHeight;
+                        const canUp = el.scrollTop > 0;
+                        if (canDown || canUp) {
+                          e.stopPropagation();
+                        }
+                      }}
+                    >
+                      {(() => {
+                        const options = getOptions();
+                        const optionsInner = (() => {
+                          if (!options)
                             return (
                               <div className="text-text-muted">
-                                No mapping yet.
+                                {!activeMappingPid
+                                  ? "Select a mapping provider."
+                                  : "No options found."}
                               </div>
                             );
                           return (
                             <div>
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <div className="text-xs text-text-muted">
-                                  {activeMappingPid} · {take.status}
+                                  All Available Options • via {activeMappingPid}
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={async (e) => {
+                                  onClick={(e) => {
                                     e.stopPropagation();
-                                    await navigator.clipboard.writeText(
-                                      displayedMappingText
-                                    );
+                                    navigator.clipboard.writeText(options);
                                   }}
                                   className="bg-surface-raised border border-border-subtle rounded-md
                                                px-2 py-1 text-text-muted text-xs cursor-pointer
@@ -1156,139 +1073,221 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   📋 Copy
                                 </button>
                               </div>
-                              {(() => {
-                                // Extract Claude artifacts from mapping text
-                                const { cleanText, artifacts } = extractClaudeArtifacts(displayedMappingText);
-
-                                return (
-                                  <>
-                                    {/* Main mapping - Prose wrapper constrains narrative text */}
-                                    <div className="mx-auto max-w-prose">
-                                      <div
-                                        className="text-[16px] leading-relaxed text-text-primary"
-                                      >
-                                        <MarkdownDisplay
-                                          content={transformCitations(cleanText || displayedMappingText)}
-                                          components={markdownComponents}
-                                        />
-                                      </div>
-                                    </div>
-
-                                    {/* Artifact badges */}
-                                    {artifacts.length > 0 && (
-                                      <div className="mt-3 flex flex-wrap gap-2">
-                                        {artifacts.map((artifact, idx) => (
-                                          <button
-                                            key={idx}
-                                            onClick={() => setSelectedArtifact(artifact)}
-                                            className="bg-gradient-to-br from-brand-500 to-brand-600 border border-brand-400 rounded-lg px-3 py-2 text-text-primary text-sm font-medium cursor-pointer flex items-center gap-1.5 hover:-translate-y-px hover:shadow-glow-brand-soft transition-all"
-                                          >
-                                            📄 {artifact.title}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </>
-                                );
-                              })()}
+                              {/* Prose wrapper constrains narrative text */}
+                              <div className="mx-auto max-w-prose">
+                                <div
+                                  className="text-[16px] leading-relaxed text-text-primary"
+                                >
+                                  <MarkdownDisplay
+                                    content={transformCitations(options)}
+                                    components={markdownComponents}
+                                  />
+                                </div>
+                              </div>
                             </div>
                           );
-                        }
+                        })();
+
+                        const mapInner = (() => {
+                          if (!wasMapRequested)
+                            return (
+                              <div className="text-text-muted italic text-center">
+                                Mapping not enabled.
+                              </div>
+                            );
+                          const latest = displayedMappingTake;
+                          const isGenerating =
+                            (latest &&
+                              (latest.status === "streaming" ||
+                                latest.status === "pending")) ||
+                            isMappingTarget;
+                          if (isGenerating)
+                            return (
+                              <div className="flex items-center justify-center gap-2 text-text-muted">
+                                <span className="italic">
+                                  Conflict map generating
+                                </span>
+                                <span className="streaming-dots" />
+                              </div>
+                            );
+                          if (activeMappingPid) {
+                            const take = displayedMappingTake;
+                            if (take && take.status === "error") {
+                              return (
+                                <div className="bg-intent-danger/15 border border-intent-danger text-intent-danger rounded-lg p-3">
+                                  <div className="text-xs mb-2">
+                                    {activeMappingPid} · error
+                                  </div>
+                                  <div className="text-sm leading-relaxed text-text-primary">
+                                    <MarkdownDisplay
+                                      content={String(
+                                        take.text || "Mapping failed"
+                                      )}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            }
+                            if (!take)
+                              return (
+                                <div className="text-text-muted">
+                                  No mapping yet.
+                                </div>
+                              );
+                            return (
+                              <div>
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                  <div className="text-xs text-text-muted">
+                                    {activeMappingPid} · {take.status}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      await navigator.clipboard.writeText(
+                                        displayedMappingText
+                                      );
+                                    }}
+                                    className="bg-surface-raised border border-border-subtle rounded-md
+                                               px-2 py-1 text-text-muted text-xs cursor-pointer
+                                               hover:bg-surface-highlight transition-all flex items-center gap-1"
+                                  >
+                                    📋 Copy
+                                  </button>
+                                </div>
+                                {(() => {
+                                  // Extract Claude artifacts from mapping text
+                                  const { cleanText, artifacts } = extractClaudeArtifacts(displayedMappingText);
+
+                                  return (
+                                    <>
+                                      {/* Main mapping - Prose wrapper constrains narrative text */}
+                                      <div className="mx-auto max-w-prose">
+                                        <div
+                                          className="text-[16px] leading-relaxed text-text-primary"
+                                        >
+                                          <MarkdownDisplay
+                                            content={transformCitations(cleanText || displayedMappingText)}
+                                            components={markdownComponents}
+                                          />
+                                        </div>
+                                      </div>
+
+                                      {/* Artifact badges */}
+                                      {artifacts.length > 0 && (
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                          {artifacts.map((artifact, idx) => (
+                                            <button
+                                              key={idx}
+                                              onClick={() => setSelectedArtifact(artifact)}
+                                              className="bg-gradient-to-br from-brand-500 to-brand-600 border border-brand-400 rounded-lg px-3 py-2 text-text-primary text-sm font-medium cursor-pointer flex items-center gap-1.5 hover:-translate-y-px hover:shadow-glow-brand-soft transition-all"
+                                            >
+                                              📄 {artifact.title}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="flex items-center justify-center h-full text-text-muted italic">
+                              Choose a model.
+                            </div>
+                          );
+                        })();
+
                         return (
-                          <div className="flex items-center justify-center h-full text-text-muted italic">
-                            Choose a model.
-                          </div>
+                          <>
+                            <div
+                              style={{
+                                display:
+                                  mappingTab === "options" ? "block" : "none",
+                              }}
+                            >
+                              {optionsInner}
+                            </div>
+                            <div
+                              style={{
+                                display:
+                                  mappingTab === "map" ? "block" : "none",
+                              }}
+                            >
+                              {mapInner}
+                            </div>
+                          </>
                         );
-                      })();
+                      })()}
+                    </div>
 
-                      return (
-                        <>
-                          <div
-                            style={{
-                              display:
-                                mappingTab === "options" ? "block" : "none",
-                            }}
-                          >
-                            {optionsInner}
-                          </div>
-                          <div
-                            style={{
-                              display:
-                                mappingTab === "map" ? "block" : "none",
-                            }}
-                          >
-                            {mapInner}
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  {mapTruncated && !mapExpanded && (
-                    <>
-                      <div
-                        className="absolute bottom-0 left-0 right-0 h-16
+                    {mapTruncated && !mapExpanded && (
+                      <>
+                        <div
+                          className="absolute bottom-0 left-0 right-0 h-16
                                      bg-gradient-to-t from-surface to-transparent
                                      pointer-events-none rounded-b-3xl"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setMapExpanded(true)}
-                        className="absolute bottom-3 left-1/2 -translate-x-1/2
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setMapExpanded(true)}
+                          className="absolute bottom-3 left-1/2 -translate-x-1/2
                                      bg-surface-raised border border-border-subtle
                                      rounded-md px-3 py-1.5 text-text-secondary text-xs
                                      cursor-pointer hover:bg-surface-highlight
                                      transition-all flex items-center gap-1.5 z-10"
-                      >
-                        Show full response
-                        <ChevronDownIcon className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  )}
-                  {mapExpanded && mapTruncated && (
-                    <button
-                      type="button"
-                      onClick={() => setMapExpanded(false)}
-                      className="mt-3 px-3 py-1.5 bg-surface-raised border border-border-subtle
+                        >
+                          Show full response
+                          <ChevronDownIcon className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                    {mapExpanded && mapTruncated && (
+                      <button
+                        type="button"
+                        onClick={() => setMapExpanded(false)}
+                        className="mt-3 px-3 py-1.5 bg-surface-raised border border-border-subtle
                                    rounded-md text-text-muted text-xs cursor-pointer
                                    flex items-center gap-1.5 hover:bg-surface-highlight
                                    transition-all self-center"
-                    >
-                      <ChevronUpIcon className="w-3.5 h-3.5" /> Collapse
-                    </button>
-                  )}
-                </div>
-              )}
+                      >
+                        <ChevronUpIcon className="w-3.5 h-3.5" /> Collapse
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Sources Section */}
-        {hasSources && (
-          <div className="batch-filler mt-3 bg-surface-raised border border-border-subtle rounded-2xl p-3">
-            <div className="sources-wrapper">
-              <div className="sources-toggle text-center mb-2">
-                <button
-                  type="button"
-                  onClick={() => onToggleSourceOutputs?.()}
-                  className="px-3 py-1.5 rounded-lg border border-border-subtle
+          {/* Sources Section */}
+          {hasSources && (
+            <div className="batch-filler mt-3 bg-surface-raised border border-border-subtle rounded-2xl p-3">
+              <div className="sources-wrapper">
+                <div className="sources-toggle text-center mb-2">
+                  <button
+                    type="button"
+                    onClick={() => onToggleSourceOutputs?.()}
+                    className="px-3 py-1.5 rounded-lg border border-border-subtle
                                  bg-surface text-text-primary cursor-pointer
                                  hover:bg-surface-highlight transition-all text-sm"
-                >
-                  {showSourceOutputs ? "Hide Sources" : "Show Sources"}
-                </button>
-              </div>
-              {showSourceOutputs && (
-                <div className="sources-content">
-                  {children}
+                  >
+                    {showSourceOutputs ? "Hide Sources" : "Show Sources"}
+                  </button>
                 </div>
-              )}
+                {showSourceOutputs && (
+                  <div className="sources-content">
+                    {children}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  );
+      );
 };
 
-export default React.memo(AiTurnBlock);
+      export default React.memo(AiTurnBlock);
