@@ -505,9 +505,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
       <div className="ai-turn-block">
         <div className="ai-turn-content flex flex-col gap-3">
           <div className="primaries mb-4 relative">
-            {/* Primary Toggle */}
-            {/* Primary Toggle */}
-            <div className="primary-toggle mx-auto max-w-prose px-1 mb-3">
+            <div className="controls-row mx-auto max-w-prose px-1 mb-2 flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => onSetPrimaryView?.(primaryView === "synthesis" ? "decision-map" : "synthesis")}
@@ -540,7 +538,51 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                   </span>
                 )}
               </button>
+              <div className="flex-shrink-0">
+                {primaryView === "synthesis" ? (
+                  <ProviderSelector
+                    providers={LLM_PROVIDERS_CONFIG}
+                    responsesMap={synthesisResponses}
+                    activeProviderId={activeSynthPid}
+                    onSelect={(pid) => onClipClick?.("synthesis", pid)}
+                    type="synthesis"
+                  />
+                ) : (
+                  <ProviderSelector
+                    providers={LLM_PROVIDERS_CONFIG}
+                    responsesMap={mappingResponses}
+                    activeProviderId={activeMappingPid}
+                    onSelect={(pid) => onClipClick?.("mapping", pid)}
+                    type="mapping"
+                  />
+                )}
+              </div>
             </div>
+
+            {primaryView === "decision-map" && (
+              <div className="mx-auto max-w-prose mb-2">
+                <div className="flex bg-surface-raised p-1 rounded-lg border border-border-subtle">
+                  <button
+                    onClick={() => onSetMappingTab && onSetMappingTab("map")}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mappingTab === "map"
+                      ? "bg-chip-active text-text-primary shadow-card-sm"
+                      : "text-text-muted hover:text-text-secondary"
+                      }`}
+                  >
+                    Decision Map
+                  </button>
+                  <button
+                    onClick={() => onSetMappingTab && onSetMappingTab("options")}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mappingTab === "options"
+                      ? "bg-chip-active text-text-primary shadow-card-sm"
+                      : "text-text-muted hover:text-text-secondary"
+                      }`}
+                  >
+                    All Options
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Single Content Viewport */}
             <div className="content-viewport">
@@ -551,39 +593,9 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                            rounded-3xl p-4 gap-3`}
                 style={synthExpanded ? {} : {}}
               >
-                <div className="section-header flex items-center justify-between flex-shrink-0">
-                  <h4 className="m-0 text-sm font-semibold text-text-secondary">
-                    Unified Synthesis
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onToggleSynthesisExpanded && onToggleSynthesisExpanded()
-                    }
-                    className="bg-transparent border-none text-text-muted cursor-pointer p-1"
-                  >
-                    {isSynthesisExpanded ? (
-                      <ChevronUpIcon className="w-4 h-4" />
-                    ) : (
-                      <ChevronDownIcon className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-
                 {isSynthesisExpanded && (
                   <div className="flex-1 flex flex-col min-h-0" style={{ overflow: synthTruncated && !synthExpanded ? "hidden" : "visible" }}>
-                    <div className="flex-shrink-0">
-                      {/* Provider Selector - Moved to body for alignment */}
-                      <div className="mx-auto max-w-prose mb-4 px-1">
-                        <ProviderSelector
-                          providers={LLM_PROVIDERS_CONFIG}
-                          responsesMap={synthesisResponses}
-                          activeProviderId={activeSynthPid}
-                          onSelect={(pid) => onClipClick?.("synthesis", pid)}
-                          type="synthesis"
-                        />
-                      </div>
-                    </div>
+                    
 
                     <div
                       className="clip-content rounded-2xl p-3 flex-1 min-w-0 break-words"
@@ -859,146 +871,14 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                            rounded-3xl p-4 gap-3`}
                 style={mapExpanded ? {} : {}}
               >
-                <div className="section-header mx-auto max-w-prose flex items-center justify-between flex-shrink-0 min-h-[32px]">
-                  <h4 className="m-0 text-sm font-semibold text-text-secondary">
-                    Decision Map
-                  </h4>
-                </div>
-                <div className="mx-auto max-w-prose flex items-center gap-2">
-                  <div className="flex bg-surface-raised p-1 rounded-lg border border-border-subtle">
-                    <button
-                      onClick={() => onSetMappingTab && onSetMappingTab("map")}
-                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mappingTab === "map"
-                        ? "bg-chip-active text-text-primary shadow-card-sm"
-                        : "text-text-muted hover:text-text-secondary"
-                        }`}
-                    >
-                      Decision Map
-                    </button>
-                    <button
-                      onClick={() => onSetMappingTab && onSetMappingTab("options")}
-                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${mappingTab === "options"
-                        ? "bg-chip-active text-text-primary shadow-card-sm"
-                        : "text-text-muted hover:text-text-secondary"
-                        }`}
-                    >
-                      All Options
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      // Copy All Logic
-                      try {
-                        const ORDER = [
-                          "gemini-exp",
-                          "claude",
-                          "gemini-pro",
-                          "qwen",
-                          "chatgpt",
-                          "gemini",
-                        ];
-                        const nameMap = new Map(
-                          LLM_PROVIDERS_CONFIG.map((p) => [
-                            String(p.id),
-                            p.name,
-                          ])
-                        );
-                        const lines: string[] = [];
-
-                        // Synthesis
-                        ORDER.forEach((pid) => {
-                          const take = getLatestResponse(
-                            synthesisResponses[pid] || []
-                          );
-                          const text = take?.text ? String(take.text) : "";
-                          if (text && text.trim().length > 0) {
-                            lines.push(
-                              `=== Synthesis • ${nameMap.get(pid) || pid} ===`
-                            );
-                            lines.push(text.trim());
-                            lines.push("\n---\n");
-                          }
-                        });
-
-                        // Mapping
-                        ORDER.forEach((pid) => {
-                          const take = getLatestResponse(
-                            mappingResponses[pid] || []
-                          );
-                          const text = take?.text ? String(take.text) : "";
-                          if (text && text.trim().length > 0) {
-                            lines.push(
-                              `=== Mapping • ${nameMap.get(pid) || pid} ===`
-                            );
-                            lines.push(text.trim());
-                            lines.push("\n---\n");
-                          }
-                        });
-
-                        // Sources
-                        ORDER.forEach((pid) => {
-                          const source = allSources[pid];
-                          const text = source?.text
-                            ? String(source.text)
-                            : "";
-                          if (text && text.trim().length > 0) {
-                            lines.push(`=== ${nameMap.get(pid) || pid} ===`);
-                            lines.push(text);
-                            lines.push("");
-                            lines.push("---");
-                            lines.push("");
-                          }
-                        });
-
-                        const payload = lines.join("\n");
-                        await navigator.clipboard.writeText(payload);
-                      } catch (err) {
-                        console.error("Copy All failed", err);
-                      }
-                    }}
-                    className="bg-surface-raised border border-border-subtle rounded-md
-                                 px-2 py-1 text-text-muted text-xs cursor-pointer
-                                 hover:bg-surface-highlight transition-all flex items-center gap-1"
-                    title="Copy All"
-                  >
-                    📦 Copy All
-                  </button>
-
-                  <div className="w-px h-4 bg-border-subtle" />
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onToggleMappingExpanded && onToggleMappingExpanded()
-                    }
-                    className="bg-transparent border-none text-text-muted cursor-pointer p-1
-                                 hover:bg-surface-highlight rounded transition-colors"
-                  >
-                    {isMappingExpanded ? (
-                      <ChevronUpIcon className="w-4 h-4" />
-                    ) : (
-                      <ChevronDownIcon className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
+                
 
                 {isMappingExpanded && (
                   <div
                     className="flex-1 flex flex-col min-h-0"
                     style={{ overflow: mapTruncated && !mapExpanded ? "hidden" : "visible" }}
                   >
-                    {/* Provider Selector - Moved to body for alignment */}
-                    <div className="mx-auto max-w-prose mb-4 px-1">
-                      <ProviderSelector
-                        providers={LLM_PROVIDERS_CONFIG}
-                        responsesMap={mappingResponses}
-                        activeProviderId={activeMappingPid}
-                        onSelect={(pid) => onClipClick?.("mapping", pid)}
-                        type="mapping"
-                      />
-                    </div>
+                    
 
                     <div
                       className="clip-content rounded-2xl p-3 flex-1 min-w-0 break-words"
