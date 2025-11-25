@@ -17,6 +17,7 @@ export default function HistoryPanelConnected() {
   const isOpen = useAtomValue(isHistoryPanelOpenAtom);
   const currentSessionId = useAtomValue(currentSessionIdAtom);
   const setHistorySessions = useSetAtom(historySessionsAtom);
+  const setIsHistoryPanelOpen = useSetAtom(isHistoryPanelOpenAtom);
   const { newChat, selectChat, deleteChat, deleteChats } = useChat();
 
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -25,6 +26,11 @@ export default function HistoryPanelConnected() {
   const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
   const [renameDefaultTitle, setRenameDefaultTitle] = useState<string>("");
   const [isRenaming, setIsRenaming] = useState<boolean>(false);
+
+  const handleNewChat = () => {
+    newChat();
+    setIsHistoryPanelOpen(false);
+  };
 
   const handleDeleteChat = async (sessionId: string) => {
     // Track pending deletion
@@ -208,7 +214,7 @@ export default function HistoryPanelConnected() {
         isOpen={isOpen}
         sessions={sessions}
         isLoading={isLoading}
-        onNewChat={newChat}
+        onNewChat={handleNewChat}
         onSelectChat={selectChat}
         onDeleteChat={handleDeleteChat}
         onRenameChat={(sessionId: string, currentTitle: string) =>
