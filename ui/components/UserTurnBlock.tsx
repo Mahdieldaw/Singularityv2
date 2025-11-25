@@ -69,7 +69,7 @@ const UserTurnBlock = ({
 
   return (
     <div
-      className="user-turn-block flex gap-3 p-3 bg-surface-raised border border-border-subtle rounded-2xl w-fit mx-auto max-w-3xl"
+      className="user-turn-block flex gap-3 p-3 bg-surface-raised border border-border-subtle rounded-2xl mx-auto max-w-prose"
     >
       <div className="user-avatar w-8 h-8 rounded-lg bg-brand-500/20 flex items-center justify-center flex-shrink-0">
         <UserIcon className="w-4.5 h-4.5 text-brand-500" />

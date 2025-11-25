@@ -258,22 +258,24 @@ const CompactModelTray = ({
       {!isExpanded && (
         <div className="bg-surface-raised backdrop-blur-md border border-border-subtle rounded-2xl p-2 px-4 flex items-center gap-4 text-sm text-text-secondary relative">
           {/* Models Label with Dropdown Arrow */}
-          <button
-            type="button"
-            className="relative flex items-center gap-1 cursor-pointer bg-chip-soft rounded-full px-3 py-1 hover:bg-surface-highlight transition-colors duration-200"
-            onClick={() => {
-              const opening = !showModelsDropdown;
-              setShowModelsDropdown(opening);
-              if (opening) {
-                // ensure only one dropdown is open at a time
-                setShowMapDropdown(false);
-                setShowUnifyDropdown(false);
-                setShowDraftDropdown(false);
-              }
-            }}
-          >
-            <span>{getWitnessLabel()}</span>
-            <span className="text-[10px] text-text-muted">▼</span>
+          <div className="relative">
+            <button
+              type="button"
+              className="flex items-center gap-1 cursor-pointer bg-chip-soft rounded-full px-3 py-1 hover:bg-surface-highlight transition-colors duration-200"
+              onClick={() => {
+                const opening = !showModelsDropdown;
+                setShowModelsDropdown(opening);
+                if (opening) {
+                  // ensure only one dropdown is open at a time
+                  setShowMapDropdown(false);
+                  setShowUnifyDropdown(false);
+                  setShowDraftDropdown(false);
+                }
+              }}
+            >
+              <span>{getWitnessLabel()}</span>
+              <span className="text-[10px] text-text-muted">▼</span>
+            </button>
             {showModelsDropdown && (
               <div
                 className="absolute bottom-full left-0 mb-2 bg-surface-highest backdrop-blur-md border border-border-subtle rounded-lg p-2 min-w-[160px] z-[1000] shadow-elevated cursor-default text-left"
@@ -305,30 +307,32 @@ const CompactModelTray = ({
                 })}
               </div>
             )}
-          </button>
+          </div>
 
           <span className="text-text-muted/50">•</span>
 
           {/* Map Label with Dropdown Arrow */}
-          <button
-            type="button"
-            className={`relative flex items-center gap-1 bg-chip-soft rounded-full px-3 py-1 transition-colors duration-200 ${canRefine ? 'cursor-pointer opacity-100 hover:bg-surface-highlight' : 'cursor-default opacity-50'}`}
-            onClick={
-              canRefine
-                ? () => {
-                  const opening = !showMapDropdown;
-                  setShowMapDropdown(opening);
-                  if (opening) {
-                    setShowModelsDropdown(false);
-                    setShowUnifyDropdown(false);
-                    setShowDraftDropdown(false);
+          <div className="relative">
+            <button
+              type="button"
+              className={`flex items-center gap-1 bg-chip-soft rounded-full px-3 py-1 transition-colors duration-200 ${canRefine ? 'cursor-pointer opacity-100 hover:bg-surface-highlight' : 'cursor-default opacity-50'}`}
+              onClick={
+                canRefine
+                  ? () => {
+                    const opening = !showMapDropdown;
+                    setShowMapDropdown(opening);
+                    if (opening) {
+                      setShowModelsDropdown(false);
+                      setShowUnifyDropdown(false);
+                      setShowDraftDropdown(false);
+                    }
                   }
-                }
-                : undefined
-            }
-          >
-            <span>{getMapLabel()}</span>
-            <span className="text-[10px] text-text-muted">▼</span>
+                  : undefined
+              }
+            >
+              <span>{getMapLabel()}</span>
+              <span className="text-[10px] text-text-muted">▼</span>
+            </button>
             {showMapDropdown && canRefine && (
               <div
                 className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-surface-highest text-text-secondary border border-border-subtle rounded-lg p-2 min-w-[170px] z-[1000] shadow-elevated cursor-default text-left"
@@ -419,30 +423,32 @@ const CompactModelTray = ({
                 })}
               </div>
             )}
-          </button>
+          </div>
 
           <span className="text-text-muted/50">•</span>
 
           {/* Unify Label with Dropdown Arrow */}
-          <button
-            type="button"
-            className={`relative flex items-center gap-1 bg-chip-soft rounded-full px-3 py-1 transition-colors duration-200 ${canRefine ? 'cursor-pointer opacity-100 hover:bg-surface-highlight' : 'cursor-default opacity-50'}`}
-            onClick={
-              canRefine
-                ? () => {
-                  const opening = !showUnifyDropdown;
-                  setShowUnifyDropdown(opening);
-                  if (opening) {
-                    setShowModelsDropdown(false);
-                    setShowMapDropdown(false);
-                    setShowDraftDropdown(false);
+          <div className="relative">
+            <button
+              type="button"
+              className={`flex items-center gap-1 bg-chip-soft rounded-full px-3 py-1 transition-colors duration-200 ${canRefine ? 'cursor-pointer opacity-100 hover:bg-surface-highlight' : 'cursor-default opacity-50'}`}
+              onClick={
+                canRefine
+                  ? () => {
+                    const opening = !showUnifyDropdown;
+                    setShowUnifyDropdown(opening);
+                    if (opening) {
+                      setShowModelsDropdown(false);
+                      setShowMapDropdown(false);
+                      setShowDraftDropdown(false);
+                    }
                   }
-                }
-                : undefined
-            }
-          >
-            <span>{getUnifyLabel()}</span>
-            <span className="text-[10px] text-text-muted">▼</span>
+                  : undefined
+              }
+            >
+              <span>{getUnifyLabel()}</span>
+              <span className="text-[10px] text-text-muted">▼</span>
+            </button>
             {showUnifyDropdown && canRefine && (
               <div
                 className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-surface-highest text-text-secondary border border-border-subtle rounded-lg p-2 min-w-[170px] z-[1000] shadow-elevated cursor-default text-left"
@@ -616,26 +622,28 @@ const CompactModelTray = ({
                   })}
               </div>
             )}
-          </button>
+          </div>
 
           <span className="text-text-muted/50">•</span>
 
           {/* Draft Label with Dropdown Arrow */}
-          <button
-            type="button"
-            className="relative flex items-center gap-1 cursor-pointer bg-chip-soft rounded-full px-3 py-1 hover:bg-surface-highlight transition-colors duration-200"
-            onClick={() => {
-              const opening = !showDraftDropdown;
-              setShowDraftDropdown(opening);
-              if (opening) {
-                setShowModelsDropdown(false);
-                setShowMapDropdown(false);
-                setShowUnifyDropdown(false);
-              }
-            }}
-          >
-            <span>{getDraftLabel()}</span>
-            <span className="text-[10px] text-text-muted">▼</span>
+          <div className="relative">
+            <button
+              type="button"
+              className="flex items-center gap-1 cursor-pointer bg-chip-soft rounded-full px-3 py-1 hover:bg-surface-highlight transition-colors duration-200"
+              onClick={() => {
+                const opening = !showDraftDropdown;
+                setShowDraftDropdown(opening);
+                if (opening) {
+                  setShowModelsDropdown(false);
+                  setShowMapDropdown(false);
+                  setShowUnifyDropdown(false);
+                }
+              }}
+            >
+              <span>{getDraftLabel()}</span>
+              <span className="text-[10px] text-text-muted">▼</span>
+            </button>
             {showDraftDropdown && (
               <div
                 className="absolute bottom-full right-0 mb-2 bg-surface-highest text-text-secondary border border-border-subtle rounded-lg p-3 min-w-[240px] z-[1000] shadow-elevated flex flex-col gap-3 animate-[slideUp_0.2s_ease-out] cursor-default text-left"
@@ -688,7 +696,7 @@ const CompactModelTray = ({
                 </div>
               </div>
             )}
-          </button>
+          </div>
           {/* Settings Button */}
           <button
             onClick={() => {

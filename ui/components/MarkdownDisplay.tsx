@@ -217,7 +217,7 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = React.memo(
       </div>
     );
   },
-  (prev, next) => prev.content === next.content
+  (prev, next) => prev.content === next.content && prev.components === next.components
 );
 
 export default MarkdownDisplay;
