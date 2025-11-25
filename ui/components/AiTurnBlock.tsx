@@ -455,7 +455,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               <div
                 ref={synthRef}
                 className={`${primaryView === "synthesis" ? "flex" : "hidden"} flex-1 min-w-0 flex-col min-h-[150px] relative
-                           bg-surface rounded-3xl p-4 gap-3`}
+                           rounded-3xl p-4 gap-3`}
                 style={synthExpanded ? {} : {}}
               >
                 <div className="section-header flex items-center justify-between flex-shrink-0">
@@ -490,7 +490,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                     </div>
 
                     <div
-                      className="clip-content bg-surface rounded-2xl p-3 flex-1 min-w-0 break-words"
+                      className="clip-content rounded-2xl p-3 flex-1 min-w-0 break-words"
                       style={{
                         overflowY: isLive || isLoading ? "auto" : "visible",
                         maxHeight: isLive || isLoading ? "40vh" : "none",
@@ -760,7 +760,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               <div
                 ref={mapRef}
                 className={`${primaryView === "decision-map" ? "flex" : "hidden"} flex-1 min-w-0 flex-col min-h-[150px] relative
-                           bg-surface rounded-3xl p-4 gap-3`}
+                           rounded-3xl p-4 gap-3`}
                 style={mapExpanded ? {} : {}}
               >
                 <div className="section-header flex items-center justify-between flex-shrink-0 min-h-[32px]">
