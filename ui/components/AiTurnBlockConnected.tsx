@@ -67,6 +67,44 @@ export default function AiTurnBlockConnected({
     turnClips.synthesis || aiTurn.meta?.synthesizer;
   const activeMappingClipProviderId = turnClips.mapping || aiTurn.meta?.mapper;
 
+  // Derive mapStatus for Decision Map indicator (per-turn, no new atoms)
+  const mapStatus: "idle" | "streaming" | "ready" | "error" = (() => {
+    if (!activeMappingClipProviderId) return "idle";
+
+    const mappingResponsesForProvider = aiTurn.mappingResponses?.[activeMappingClipProviderId];
+    if (!mappingResponsesForProvider || mappingResponsesForProvider.length === 0) {
+      return "idle";
+    }
+
+    // Get latest mapping response for active provider
+    const latestMapping = Array.isArray(mappingResponsesForProvider)
+      ? mappingResponsesForProvider[mappingResponsesForProvider.length - 1]
+      : mappingResponsesForProvider;
+
+    // Check if this turn's mapping is being recomputed
+    const isMappingTarget =
+      activeRecomputeState?.aiTurnId === aiTurn.id &&
+      activeRecomputeState?.stepType === "mapping" &&
+      activeRecomputeState?.providerId === activeMappingClipProviderId;
+
+    // Determine status
+    if (latestMapping.status === "error") return "error";
+
+    if (
+      latestMapping.status === "streaming" ||
+      latestMapping.status === "pending" ||
+      isMappingTarget
+    ) {
+      return "streaming";
+    }
+
+    if (latestMapping.status === "completed" && latestMapping.text) {
+      return "ready";
+    }
+
+    return "idle";
+  })();
+
   return (
     <AiTurnBlock
       aiTurn={aiTurn}
@@ -118,6 +156,7 @@ export default function AiTurnBlockConnected({
         (view: "synthesis" | "decision-map") => setPrimaryView(view),
         [setPrimaryView],
       )}
+      mapStatus={mapStatus}
     >
       <ProviderResponseBlockConnected aiTurnId={aiTurn.id}
         expectedProviders={aiTurn.meta?.expectedProviders} // ✅ Pass metadata

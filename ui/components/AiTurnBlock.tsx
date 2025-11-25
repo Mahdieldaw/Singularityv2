@@ -110,6 +110,7 @@ interface AiTurnBlockProps {
   onSetMappingTab?: (t: "map" | "options") => void;
   primaryView?: "synthesis" | "decision-map";
   onSetPrimaryView?: (view: "synthesis" | "decision-map") => void;
+  mapStatus?: "idle" | "streaming" | "ready" | "error";
   children?: React.ReactNode;
 }
 
@@ -137,6 +138,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
   onSetMappingTab,
   primaryView = "synthesis",
   onSetPrimaryView,
+  mapStatus = "idle",
   children,
 }) => {
   const setSynthExpanded = onSetSynthExpanded || (() => { });
@@ -397,8 +399,11 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
           <div className="text-xs text-text-muted mb-1.5">
             User
           </div>
-          <div className="bg-surface border border-border-subtle rounded-lg p-2 text-text-secondary">
-            {userPrompt}
+          {/* Prose wrapper for consistent line width */}
+          <div className="mx-auto max-w-[65ch]">
+            <div className="bg-surface border border-border-subtle rounded-lg p-3 text-text-secondary">
+              {userPrompt}
+            </div>
           </div>
         </div>
       )}
@@ -421,12 +426,26 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               <button
                 type="button"
                 onClick={() => onSetPrimaryView?.("decision-map")}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${primaryView === "decision-map"
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${primaryView === "decision-map"
                   ? "bg-chip-active text-text-primary shadow-card-sm"
                   : "text-text-muted hover:text-text-secondary"
                   }`}
               >
-                Decision Map
+                <span>Decision Map</span>
+                {/* Status LED indicator */}
+                {mapStatus !== "idle" && (
+                  <span
+                    className={`inline-block w-1.5 h-1.5 rounded-full ${mapStatus === "streaming"
+                      ? "bg-intent-warning animate-pulse"
+                      : mapStatus === "ready"
+                        ? "bg-intent-success"
+                        : mapStatus === "error"
+                          ? "bg-intent-danger"
+                          : ""
+                      }`}
+                    aria-label={`Status: ${mapStatus}`}
+                  />
+                )}
               </button>
             </div>
 
@@ -597,11 +616,14 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 // Extract Claude artifacts
                                 const { cleanText, artifacts } = extractClaudeArtifacts(take.text);
 
+
                                 return (
                                   <>
-                                    {/* Main content */}
-                                    <div className="text-[16px] leading-relaxed text-text-primary">
-                                      <MarkdownDisplay content={String(cleanText || take.text || "")} />
+                                    {/* Main content - Prose wrapper constrains narrative text */}
+                                    <div className="mx-auto max-w-[65ch] px-4">
+                                      <div className="text-[16px] leading-relaxed text-text-primary">
+                                        <MarkdownDisplay content={String(cleanText || take.text || "")} />
+                                      </div>
                                     </div>
 
                                     {/* Artifact badges */}
@@ -953,13 +975,16 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                   📋 Copy
                                 </button>
                               </div>
-                              <div
-                                className="text-[16px] leading-relaxed text-text-primary"
-                              >
-                                <MarkdownDisplay
-                                  content={transformCitations(options)}
-                                  components={markdownComponents}
-                                />
+                              {/* Prose wrapper constrains narrative text */}
+                              <div className="mx-auto max-w-[65ch] px-4">
+                                <div
+                                  className="text-[16px] leading-relaxed text-text-primary"
+                                >
+                                  <MarkdownDisplay
+                                    content={transformCitations(options)}
+                                    components={markdownComponents}
+                                  />
+                                </div>
                               </div>
                             </div>
                           );
@@ -1038,13 +1063,16 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
                                   return (
                                     <>
-                                      <div
-                                        className="text-[16px] leading-relaxed text-text-primary"
-                                      >
-                                        <MarkdownDisplay
-                                          content={transformCitations(cleanText || displayedMappingText)}
-                                          components={markdownComponents}
-                                        />
+                                      {/* Main mapping - Prose wrapper constrains narrative text */}
+                                      <div className="mx-auto max-w-[65ch] px-4">
+                                        <div
+                                          className="text-[16px] leading-relaxed text-text-primary"
+                                        >
+                                          <MarkdownDisplay
+                                            content={transformCitations(cleanText || displayedMappingText)}
+                                            components={markdownComponents}
+                                          />
+                                        </div>
                                       </div>
 
                                       {/* Artifact badges */}
