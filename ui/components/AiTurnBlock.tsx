@@ -507,7 +507,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
           <div className="primaries mb-4 relative">
             {/* Primary Toggle */}
             {/* Primary Toggle */}
-            <div className="primary-toggle mb-3">
+            <div className="primary-toggle mx-auto max-w-prose px-1 mb-3">
               <button
                 type="button"
                 onClick={() => onSetPrimaryView?.(primaryView === "synthesis" ? "decision-map" : "synthesis")}
@@ -859,12 +859,12 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                            rounded-3xl p-4 gap-3`}
                 style={mapExpanded ? {} : {}}
               >
-                <div className="section-header flex items-center justify-between flex-shrink-0 min-h-[32px]">
+                <div className="section-header mx-auto max-w-prose flex items-center justify-between flex-shrink-0 min-h-[32px]">
                   <h4 className="m-0 text-sm font-semibold text-text-secondary">
                     Decision Map
                   </h4>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="mx-auto max-w-prose flex items-center gap-2">
                   <div className="flex bg-surface-raised p-1 rounded-lg border border-border-subtle">
                     <button
                       onClick={() => onSetMappingTab && onSetMappingTab("map")}
