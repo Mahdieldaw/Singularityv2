@@ -143,7 +143,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
         className="flex items-center gap-1.5 px-2.5 py-1 bg-surface-raised hover:bg-surface-highlight border border-border-subtle rounded-full text-xs font-medium text-text-secondary transition-all shadow-sm"
       >
         <span>{activeProvider?.name || "Select Model"}</span>
-        <span className="text-[10px] opacity-70">▼</span>
+        <span className="text-[10px] opacity-70">▶</span>
       </button>
 
       {isOpen && (
@@ -522,7 +522,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                 {/* Swap Icon - Only show if NOT idle */}
                 {mapStatus !== "idle" && (
                   <span className="text-text-muted group-hover:text-text-secondary transition-colors text-xs">
-                    🔄
+                    ↔
                   </span>
                 )}
               </button>
@@ -1274,7 +1274,6 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
         )}
       </div>
     </div>
-  </div >
   );
 };
 
