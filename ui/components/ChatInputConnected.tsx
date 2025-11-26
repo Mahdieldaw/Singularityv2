@@ -49,43 +49,38 @@ const ChatInputConnected = () => {
 
   const handleSend = useCallback(
     (prompt: string) => {
-      // If refiner is open, we are Launching the refined prompt
-      if (isRefinerOpen && refinerData) {
-        sendMessage(prompt, "new");
+      // Always send message directly (Launch)
+      sendMessage(prompt, "new");
+
+      // If refiner was open, clear its state
+      if (isRefinerOpen) {
         setIsRefinerOpen(false);
         setRefinerData(null);
         setChatInputValue("");
         setShowAudit(false);
         setShowVariants(false);
         setShowExplanation(false);
-      } else if (hasRejectedRefinement) {
-        // If user rejected refinement, launch immediately
-        sendMessage(prompt, "new");
-      } else {
-        // Otherwise, we are Draft-ing (refining)
-        void refinePrompt(prompt);
       }
     },
-    [refinePrompt, isRefinerOpen, refinerData, sendMessage, setIsRefinerOpen, setRefinerData, setChatInputValue, hasRejectedRefinement],
+    [sendMessage, isRefinerOpen, setIsRefinerOpen, setRefinerData, setChatInputValue],
   );
 
   const handleCont = useCallback(
     (prompt: string) => {
-      if (isRefinerOpen && refinerData) {
-        sendMessage(prompt, "continuation");
+      // Always send message directly (Launch)
+      sendMessage(prompt, "continuation");
+
+      // If refiner was open, clear its state
+      if (isRefinerOpen) {
         setIsRefinerOpen(false);
         setRefinerData(null);
         setChatInputValue("");
         setShowAudit(false);
         setShowVariants(false);
         setShowExplanation(false);
-      } else if (hasRejectedRefinement) {
-        sendMessage(prompt, "continuation");
-      } else {
-        void refinePrompt(prompt);
       }
     },
-    [refinePrompt, isRefinerOpen, refinerData, sendMessage, setIsRefinerOpen, setRefinerData, setChatInputValue, hasRejectedRefinement],
+    [sendMessage, isRefinerOpen, setIsRefinerOpen, setRefinerData, setChatInputValue],
   );
 
   const handleAbort = useCallback(() => {
@@ -103,6 +98,20 @@ const ChatInputConnected = () => {
     setShowExplanation(false);
     setHasRejectedRefinement(true);
   }, [refinerData, setChatInputValue, setIsRefinerOpen, setRefinerData, setHasRejectedRefinement]);
+
+  const handleExplore = useCallback(
+    (prompt: string) => {
+      void refinePrompt(prompt, "author-analyst");
+    },
+    [refinePrompt],
+  );
+
+  const handleAsk = useCallback(
+    (prompt: string) => {
+      void refinePrompt(prompt, "refiner");
+    },
+    [refinePrompt],
+  );
 
   return (
     <ChatInput
@@ -134,6 +143,8 @@ const ChatInputConnected = () => {
           showExplanation={showExplanation}
         />
       }
+      onExplore={handleExplore}
+      onAsk={handleAsk}
     />
   );
 };

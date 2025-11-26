@@ -1,6 +1,9 @@
 import React, { useCallback, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+
 
 // --- 1. HELPER: Language Extractor ---
 const ListContext = React.createContext(false);
@@ -152,7 +155,8 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = React.memo(
     return (
       <div className="markdown-body text-[16px] leading-relaxed text-text-primary">
         <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[rehypeKatex]}
           components={{
             // Separate Block vs Inline logic explicitly
             pre: PreBlock,

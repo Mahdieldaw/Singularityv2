@@ -611,6 +611,60 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
         }
         return true;
       }
+
+      case "RUN_AUTHOR": {
+        (async () => {
+          try {
+            const { fragment, context, isInitialize } = message.payload;
+            const result = await services.promptRefinerService.runAuthor(
+              fragment,
+              context,
+              undefined, // Use default author model
+              isInitialize
+            );
+            sendResponse({ success: true, data: result });
+          } catch (e) {
+            console.error("[SW] RUN_AUTHOR failed:", e);
+            sendResponse({ success: false, error: e.message });
+          }
+        })();
+        return true;
+      }
+
+      case "RUN_ANALYST": {
+        (async () => {
+          try {
+            const { fragment, context, authoredPrompt } = message.payload;
+            const result = await services.promptRefinerService.runAnalyst(
+              fragment,
+              context,
+              authoredPrompt
+            );
+            sendResponse({ success: true, data: result });
+          } catch (e) {
+            console.error("[SW] RUN_ANALYST failed:", e);
+            sendResponse({ success: false, error: e.message });
+          }
+        })();
+        return true;
+      }
+
+      case "RUN_REFINER": {
+        (async () => {
+          try {
+            const { draftPrompt, context } = message.payload;
+            const result = await services.promptRefinerService.runRefiner(
+              draftPrompt,
+              context
+            );
+            sendResponse({ success: true, data: result });
+          } catch (e) {
+            console.error("[SW] RUN_REFINER failed:", e);
+            sendResponse({ success: false, error: e.message });
+          }
+        })();
+        return true;
+      }
       // ========================================================================
       // HISTORY OPERATIONS
       // ========================================================================

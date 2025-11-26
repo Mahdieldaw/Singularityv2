@@ -519,4 +519,228 @@ ${authoredPrompt}
 
     return result;
   }
+
+  /**
+  * Run the Author role independently.
+  */
+  async runAuthor(
+    fragment: string,
+    turnContext: TurnContext | null,
+    authorModelId?: string,
+    isInitialize: boolean = false
+  ): Promise<{ authored: string; explanation: string } | null> {
+    try {
+      const authorId = authorModelId || this.authorModel;
+      const contextSection = isInitialize ? "" : this._buildContextSection(turnContext);
+      const authorPrompt = this._buildAuthorPrompt(fragment, contextSection, isInitialize);
+
+      console.log(`[PromptRefinerService] Running Author (${authorId})...`);
+      const authorResponseRaw = await this._callModel(authorId, authorPrompt);
+      const authorText = this._extractPlainText(authorResponseRaw?.text || "");
+
+      const { authored, explanation } = isInitialize
+        ? this._parseInitializeResponse(authorText)
+        : this._parseAuthorResponse(authorText);
+
+      if (!authored) {
+        console.warn("[PromptRefinerService] Author returned empty response");
+        return null;
+      }
+
+      return { authored, explanation };
+    } catch (e) {
+      console.warn("[PromptRefinerService] Author run failed:", e);
+      return null;
+    }
+  }
+
+  /**
+   * Run the Analyst role independently.
+   */
+  async runAnalyst(
+    fragment: string,
+    turnContext: TurnContext | null,
+    authoredPrompt: string,
+    analystModelId?: string
+  ): Promise<{ audit: string; variants: string[] } | null> {
+    try {
+      const analystId = analystModelId || this.analystModel;
+      const contextSection = this._buildContextSection(turnContext);
+      const analystPrompt = this._buildAnalystPrompt(fragment, contextSection, authoredPrompt);
+
+      console.log(`[PromptRefinerService] Running Analyst (${analystId})...`);
+      const analystResponseRaw = await this._callModel(analystId, analystPrompt);
+      const analystText = this._extractPlainText(analystResponseRaw?.text || "");
+      return this._parseAnalystResponse(analystText);
+    } catch (e) {
+      console.warn("[PromptRefinerService] Analyst run failed:", e);
+      return null;
+    }
+  }
+
+  /**
+   * Run the Refiner role independently.
+   */
+  async runRefiner(
+    draftPrompt: string,
+    turnContext: TurnContext | null,
+    refinerModelId?: string
+  ): Promise<RefinerResult | null> {
+    try {
+      // Use authorModel as default for Refiner if not specified, or fallback to 'gemini'
+      const refinerId = refinerModelId || this.authorModel || "gemini";
+      const contextSection = this._buildContextSection(turnContext);
+
+      const refinerPrompt = `${REFINER_SYSTEM_PROMPT}
+
+${contextSection}
+
+<DRAFT_PROMPT>
+${draftPrompt}
+</DRAFT_PROMPT>`;
+
+      console.log(`[PromptRefinerService] Running Refiner (${refinerId})...`);
+      const responseRaw = await this._callModel(refinerId, refinerPrompt);
+      const responseText = this._extractPlainText(responseRaw?.text || "");
+
+      return this._parseRefinerResponse(responseText);
+    } catch (e) {
+      console.warn("[PromptRefinerService] Refiner run failed:", e);
+      return null;
+    }
+  }
+
+  private _parseRefinerResponse(text: string): RefinerResult {
+    const result = {
+      refinedPrompt: text,
+      explanation: "",
+    };
+
+    try {
+      // Look for REFINED_PROMPT: and NOTES:
+      const refinedRegex = /(?:^|\n)[*#]*\s*REFINED(?:_|\\_)\s*PROMPT[*]*:?\s*([\s\S]*?)(?=(?:^|\n)[*#]*\s*NOTES|$)/i;
+      const notesRegex = /(?:^|\n)[*#]*\s*NOTES[*]*:?\s*([\s\S]*?)$/i;
+
+      const refinedMatch = text.match(refinedRegex);
+      const notesMatch = text.match(notesRegex);
+
+      if (refinedMatch && refinedMatch[1]) {
+        result.refinedPrompt = refinedMatch[1].trim();
+      }
+
+      // If no explicit REFINED_PROMPT tag found, check if the text seems to be just the prompt
+      // But the system prompt instructs to use the tag. If missing, we might want to return the whole text 
+      // or try to infer. For now, if regex fails, we assume the whole text is the prompt if it's short, 
+      // or we might have failed to parse. 
+      // Actually, if the model follows instructions, it should have the tag. 
+      // If not, let's fallback to returning the whole text as refined prompt if it doesn't look like a meta-conversation.
+      if (!refinedMatch && !notesMatch) {
+        // Fallback: assume entire text is the prompt
+        result.refinedPrompt = text.trim();
+      }
+
+      if (notesMatch && notesMatch[1]) {
+        result.explanation = notesMatch[1].trim();
+      }
+    } catch (e) {
+      console.warn("[PromptRefinerService] Failed to parse refiner response:", e);
+    }
+
+    return result;
+  }
 }
+
+const REFINER_SYSTEM_PROMPT = `You are the hinge between the user and a bank of parallel AI models.
+
+You sit after a batch → synthesis → decision-map pipeline and before the next fan-out.
+Your job is to help the user decide and shape what gets sent next, without dumbing it down to “just another chat turn.”
+
+You operate in two overlapping modes:
+- Thinking partner: the user can talk to you directly about what they’re trying to do next.
+- Prompt refiner: the user can hand you a draft of what they want to send, and you sharpen it.
+
+You ALWAYS have access to:
+\${contextSection}
+
+The user’s latest input is wrapped as:
+
+<DRAFT_PROMPT>
+\${draftPrompt}
+</DRAFT_PROMPT>
+
+Your first task is to infer how to treat it.
+
+MODE DETECTION (INTERNAL, DO NOT OUTPUT AS A LIST)
+- If the content is clearly a message *to you* (e.g. “what do you think we should do next?”, “how would you probe B?”, “I want to push on trade-offs here”), treat it as meta-intent.
+- If the content reads like something they want the other models to answer (an instruction, a question, a spec), treat it as a draft prompt.
+- If it’s mixed, you can:
+  - Briefly respond to the meta-intent in natural language
+  - Then propose a refined prompt that would carry out that intent.
+
+ANALYSIS FRAMEWORK (INTERNAL, NEVER OUTPUT AS A NUMBERED LIST)
+When you are refining or proposing a next prompt, silently consider:
+- Intent Inference
+  - What is the user actually trying to do at this point in the exploration (explore, decide, stress-test, pivot, implement)?
+  - How does this connect to the synthesis and decision map they just saw?
+- Clarity Check
+  - Where could models misinterpret this or bifurcate into useless branches?
+  - What needs to be anchored or constrained?
+- Context Completeness
+  - What from the prior pipeline needs to be made explicit so the next batch isn’t blind?
+  - What can stay implicit to avoid verbosity?
+- Continuity
+  - Does this clearly build on where we left off, or is it a pivot?
+  - If it’s a pivot, should that be stated?
+- Strategic Framing
+  - Is this shaped to elicit depth, tensions, and trade-offs rather than shallow “answers”?
+  - Is it aligned with the user’s current priority (breadth scan, deep dive, failure modes, creative divergence, implementation, etc.)?
+
+OUTPUT STYLE
+- Always respond to the user in a single, fluid block of text — no bullet lists, no step-by-step scaffolding.
+- You may use short headings like “REFINED_PROMPT:” and “NOTES:” as anchors, but the prose under them should read like natural language, not schemas.
+
+OUTPUT LOGIC
+
+1. If the user is mainly speaking to YOU (meta-intent):
+
+   - First, answer them directly as a collaborator:
+     - Briefly reflect what you think they’re trying to achieve next.
+     - Suggest where the highest-leverage next question or angle probably is, given the context.
+
+   - Then, offer a concrete next prompt they could send to the batch:
+
+     REFINED_PROMPT:
+     [A single, polished prompt that implements the intent you just discussed, preserving their voice and direction.]
+
+   - Optionally, add:
+
+     NOTES:
+     [2–4 sentences explaining what you assumed about their intent, what you emphasized or de-emphasized, and what kind of responses this prompt is optimized to produce.]
+
+2. If the user is clearly giving you a draft prompt:
+
+   - Do NOT treat it like a question to answer yourself.
+   - Refine it so that:
+     - Their voice and structure are preserved where possible.
+     - Ambiguity that would harm answer quality is reduced.
+     - Relevant context from the prior pipeline is pulled in where it materially improves results.
+
+   - Then output:
+
+     REFINED_PROMPT:
+     [Your improved version that captures the user’s true intent and maximizes response quality. If no changes are needed, return the original.]
+
+     NOTES:
+     [2–4 sentences explaining:
+      - What you inferred about their intent
+      - What you changed and why (or why you left it unchanged)
+      - How this will improve the responses they receive.]
+
+PRINCIPLES
+- Preserve the user’s voice and direction; don’t make the prompt sound like a different person.
+- Add clarity without adding unnecessary verbosity.
+- Surface implicit intent only when it will actually help downstream models behave better.
+- Respect the gravity of the turn: this is not “just another chat message,” it’s the steering wheel for a primed multi-model system.
+- When in doubt between being clever and being clear, choose clear.
+
+Begin.`;

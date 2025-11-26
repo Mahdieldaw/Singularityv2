@@ -428,15 +428,13 @@ export function useChat() {
   const setChatInputValue = useSetAtom(chatInputValueAtom);
 
   const refinePrompt = useCallback(
-    async (draftPrompt: string) => {
+    async (draftPrompt: string, mode: "author-analyst" | "refiner" = "author-analyst") => {
       if (!draftPrompt || !draftPrompt.trim()) return;
 
       setIsRefining(true); // Set loading state
 
       try {
         const lastTurnId = turnIds[turnIds.length - 1];
-        // Allow refinement even if no previous turn (start of session)
-        // if (!lastTurnId) return; 
 
         let userPrompt = "";
         let synthesisText = "";
@@ -466,32 +464,76 @@ export function useChat() {
           }
         }
 
-        const result = await api.refinePrompt(draftPrompt, {
+        const context = {
           userPrompt,
           synthesisText,
           mappingText,
           batchText,
-          model: refineModel === "auto" ? null : refineModel, // Legacy/Fallback
-          authorModel,
-          analystModel,
           sessionId: currentSessionId || null,
           isInitialize: !currentSessionId || turnIds.length === 0,
-        });
-        if (result && result.refinedPrompt) {
-          setRefinerData({
-            refinedPrompt: result.refinedPrompt,
-            explanation: result.explanation || "",
-            audit: result.audit,
-            variants: result.variants,
-            originalPrompt: draftPrompt,
-          });
-          setChatInputValue(result.refinedPrompt); // Replace input with refined prompt
-          setIsRefinerOpen(true);
+        };
+
+        if (mode === "refiner") {
+          const result = await api.runRefiner(draftPrompt, context);
+          if (result) {
+            setRefinerData({
+              refinedPrompt: result.refinedPrompt,
+              explanation: result.explanation,
+              originalPrompt: draftPrompt,
+            });
+            setChatInputValue(result.refinedPrompt);
+            setIsRefinerOpen(true);
+          }
+        } else {
+          // Author -> Analyst flow
+          // 1. Run Author
+          const authorResult = await api.runAuthor(draftPrompt, context, context.isInitialize);
+
+          if (authorResult) {
+            // Update UI immediately with Author result
+            setRefinerData({
+              refinedPrompt: authorResult.authored,
+              explanation: authorResult.explanation,
+              originalPrompt: draftPrompt,
+              audit: undefined,
+              variants: undefined
+            });
+            setChatInputValue(authorResult.authored);
+            setIsRefinerOpen(true);
+
+            // 2. Run Analyst (if not initialize) - Independent async update
+            if (!context.isInitialize) {
+              // We don't await this if we want to return early, but here we are inside an async function
+              // that is void-returned to the UI. So we can await it to keep the loading state correct 
+              // OR we can let it run and clear loading state early.
+              // The user requested: "return authors output as soon as he reponds, and then analysys when he responds"
+              // So we should probably clear loading state after Author? 
+              // But `isRefining` controls the spinner. If we clear it, spinner stops.
+              // Maybe we want spinner to stop when Author is done, as the user can now interact?
+              // Yes, let's clear loading after Author.
+              setIsRefining(false);
+
+              try {
+                const analystResult = await api.runAnalyst(draftPrompt, context, authorResult.authored);
+                if (analystResult) {
+                  setRefinerData((prev) => prev ? ({
+                    ...prev,
+                    audit: analystResult.audit,
+                    variants: analystResult.variants
+                  }) : null);
+                }
+              } catch (e) {
+                console.warn("Analyst run failed in background:", e);
+              }
+              return; // Exit function
+            }
+          }
         }
+
       } catch (err) {
         console.error("Failed to refine prompt:", err);
       } finally {
-        setIsRefining(false); // Reset loading state
+        setIsRefining(false); // Ensure loading is cleared
       }
     },
     [
@@ -500,9 +542,6 @@ export function useChat() {
       setRefinerData,
       setIsRefinerOpen,
       setIsRefining,
-      refineModel,
-      authorModel,
-      analystModel,
       currentSessionId,
       setChatInputValue,
     ],

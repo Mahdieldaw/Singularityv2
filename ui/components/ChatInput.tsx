@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAtom } from "jotai";
 import { chatInputValueAtom } from "../state/atoms";
 import { LLM_PROVIDERS_CONFIG } from "../constants";
@@ -32,6 +32,9 @@ interface ChatInputProps {
   showVariants?: boolean;
   showExplanation?: boolean;
   refinerContent?: React.ReactNode;
+  // New Refiner Actions
+  onExplore?: (prompt: string) => void;
+  onAsk?: (prompt: string) => void;
 }
 
 const ChatInput = ({
@@ -60,11 +63,19 @@ const ChatInput = ({
   showVariants = false,
   showExplanation = false,
   refinerContent,
+  onExplore,
+  onAsk,
 }: ChatInputProps) => {
   const CHAT_INPUT_STORAGE_KEY = "htos_chat_input_value";
   const [prompt, setPrompt] = useAtom(chatInputValueAtom);
   // Removed showRefineDropdown and refineModel state
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Long-press state
+  const [showMenu, setShowMenu] = useState(false);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasTriggeredMenuRef = useRef(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -82,9 +93,31 @@ const ChatInput = ({
     }
   }, [prompt, onHeightChange, isRefinerOpen]);
 
+  // Close menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showMenu]);
+
   const handleSubmit = (e?: React.FormEvent | React.KeyboardEvent) => {
     if (e) e.preventDefault();
     if (isLoading || !prompt.trim()) return;
+
+    // Prevent send if menu was just triggered
+    if (hasTriggeredMenuRef.current) {
+      hasTriggeredMenuRef.current = false;
+      return;
+    }
 
     const trimmed = prompt.trim();
     if (isContinuationMode) {
@@ -92,22 +125,59 @@ const ChatInput = ({
     } else {
       onSendPrompt(trimmed);
     }
-    // Only clear prompt if NOT refining (Launch clears it via parent)
-    // Actually, parent handles clearing usually.
-    // If isRefinerOpen, we are Launching.
+
     if (!isRefinerOpen && !hasRejectedRefinement) {
       setPrompt("");
     }
   };
 
-  const buttonText = (isRefinerOpen || hasRejectedRefinement) ? "Launch" : (isContinuationMode ? "Continue" : "Draft");
+  const handleMouseDown = () => {
+    if (isLoading || !prompt.trim() || isRefinerOpen || hasRejectedRefinement) return;
+
+    hasTriggeredMenuRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      setShowMenu(true);
+      hasTriggeredMenuRef.current = true;
+    }, 400); // 0.4s long press
+  };
+
+  const handleMouseUp = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    // Note: We do NOT close the menu here. 
+    // If hasTriggeredMenuRef is true, the menu is open and should stay open 
+    // until the user clicks an option or clicks outside.
+  };
+
+  const handleMouseLeave = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleMenuAction = (action: "explore" | "ask") => {
+    setShowMenu(false);
+    const trimmed = prompt.trim();
+    if (!trimmed) return;
+
+    if (action === "explore") {
+      onExplore?.(trimmed);
+    } else if (action === "ask") {
+      onAsk?.(trimmed);
+    }
+  };
+
+  const buttonText = (isRefinerOpen || hasRejectedRefinement) ? "Launch" : (isContinuationMode ? "Continue" : "Send");
   const isDisabled = isLoading || mappingActive || !prompt.trim();
   const showMappingBtn = canShowMapping && !!prompt.trim() && !isRefinerOpen && !hasRejectedRefinement;
   const showAbortBtn = !!onAbort && isLoading;
 
   return (
     <div className="w-full flex justify-center flex-col items-center pointer-events-auto">
-      <div className="flex gap-2 items-center relative w-full max-w-[min(800px,calc(100%-32px))] px-3 py-2 bg-surface-raised/30 backdrop-blur-md border border-border-subtle/50 rounded-full flex-wrap shadow-sm">
+      <div className="flex gap-2.5 items-center relative w-full max-w-[min(800px,calc(100%-32px))] p-3 bg-input backdrop-blur-xl border border-border-subtle rounded-3xl flex-wrap">
         <div className="flex-1 relative min-w-[200px]">
           <textarea
             ref={textareaRef}
@@ -147,23 +217,49 @@ const ChatInput = ({
         </div>
 
         {/* Send/Draft/Launch Button */}
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={isDisabled}
-          className={`px-3.5 h-[38px] rounded-2xl text-white font-semibold cursor-pointer flex items-center gap-2 min-w-[90px] justify-center ${isDisabled ? 'opacity-50' : 'opacity-100'} ${(isRefinerOpen || hasRejectedRefinement) ? 'bg-gradient-to-br from-brand-500 to-brand-400 shadow-card' : 'bg-gradient-to-r from-brand-500 to-brand-400'} ${isReducedMotion ? '' : 'transition-all duration-200 ease-out'}`}
-        >
-          {isLoading ? (
-            <div className="loading-spinner"></div>
-          ) : (
-            <>
-              <span className="text-base">
-                {(isRefinerOpen || hasRejectedRefinement) ? "🚀" : (isContinuationMode ? "💬" : "✨")}
-              </span>
-              <span>{buttonText}</span>
-            </>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+            disabled={isDisabled}
+            className={`px-3.5 h-[38px] rounded-2xl text-white font-semibold cursor-pointer flex items-center gap-2 min-w-[90px] justify-center ${isDisabled ? 'opacity-50' : 'opacity-100'} ${(isRefinerOpen || hasRejectedRefinement) ? 'bg-gradient-to-br from-brand-500 to-brand-400 shadow-card' : 'bg-gradient-to-r from-brand-500 to-brand-400'} ${isReducedMotion ? '' : 'transition-all duration-200 ease-out'}`}
+          >
+            {isLoading ? (
+              <div className="loading-spinner"></div>
+            ) : (
+              <>
+                <span className="text-base">
+                  {(isRefinerOpen || hasRejectedRefinement) ? "🚀" : (isContinuationMode ? "💬" : "✨")}
+                </span>
+                <span>{buttonText}</span>
+              </>
+            )}
+          </button>
+
+          {/* Long-press Menu */}
+          {showMenu && (
+            <div
+              ref={menuRef}
+              className="absolute bottom-full right-0 mb-2 w-32 bg-surface-base border border-border-subtle rounded-xl shadow-lg overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200"
+            >
+              <button
+                onClick={() => handleMenuAction("explore")}
+                className="w-full px-4 py-2.5 text-left text-sm text-text-primary hover:bg-surface-highlight flex items-center gap-2 transition-colors"
+              >
+                <span>🧭</span> Explore
+              </button>
+              <button
+                onClick={() => handleMenuAction("ask")}
+                className="w-full px-4 py-2.5 text-left text-sm text-text-primary hover:bg-surface-highlight flex items-center gap-2 transition-colors"
+              >
+                <span>🤔</span> Ask
+              </button>
+            </div>
           )}
-        </button>
+        </div>
 
         {/* Abort/Stop Button - visible while loading */}
         {showAbortBtn && (

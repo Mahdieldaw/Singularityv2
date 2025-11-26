@@ -287,6 +287,38 @@ class ExtensionAPI {
     });
   }
 
+  runAuthor(
+    fragment: string,
+    context: any,
+    isInitialize: boolean = false
+  ): Promise<{ authored: string; explanation: string } | null> {
+    return this.queryBackend<{ authored: string; explanation: string } | null>({
+      type: "RUN_AUTHOR",
+      payload: { fragment, context, isInitialize },
+    });
+  }
+
+  runAnalyst(
+    fragment: string,
+    context: any,
+    authoredPrompt: string
+  ): Promise<{ audit: string; variants: string[] } | null> {
+    return this.queryBackend<{ audit: string; variants: string[] } | null>({
+      type: "RUN_ANALYST",
+      payload: { fragment, context, authoredPrompt },
+    });
+  }
+
+  runRefiner(
+    draftPrompt: string,
+    context: any
+  ): Promise<{ refinedPrompt: string; explanation: string } | null> {
+    return this.queryBackend<{ refinedPrompt: string; explanation: string } | null>({
+      type: "RUN_REFINER",
+      payload: { draftPrompt, context },
+    });
+  }
+
   async refreshAuthStatus(): Promise<Record<string, boolean>> {
     return this.queryBackend<Record<string, boolean>>({ type: REFRESH_AUTH_STATUS });
   }
