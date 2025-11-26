@@ -313,11 +313,12 @@ export class GeminiSessionApi {
     if (!obj || typeof obj !== "object") return;
 
     if (Array.isArray(obj)) {
-      // Check signature: [filename.md, id, title, null, content]
+      // Check signature: [filename, id, title, null, content]
+      // We relax the extension check to allow .txt, .md, etc.
       if (
         obj.length >= 5 &&
         typeof obj[0] === "string" &&
-        obj[0].endsWith(".md") &&
+        (obj[0].includes(".") || obj[0].length > 0) && // Basic filename check
         typeof obj[2] === "string" && // Title
         typeof obj[4] === "string" // Content
       ) {
