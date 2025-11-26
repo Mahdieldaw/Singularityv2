@@ -96,8 +96,15 @@ export class GeminiSessionApi {
     } = {},
     retrying = false,
   ) {
+    // ✅ NEW: Use prefetched token if available
+    if (!token && this.sharedState?.prefetchedToken) {
+      token = this.sharedState.prefetchedToken;
+      delete this.sharedState.prefetchedToken; // Consume once
+    }
     token || (token = await this._fetchToken());
-    const reqId = Math.floor(Math.random() * 900000) + 100000;
+
+    // ✅ NEW: Generate collision-resistant request ID
+    const reqId = Date.now() * 1000 + Math.floor(Math.random() * 1000);
     const url =
       "/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate";
 
@@ -166,6 +173,27 @@ export class GeminiSessionApi {
     } catch (e) {
       this._throw("failedToReadResponse", { step: "data", error: e });
     }
+
+    // ========================================================================
+    // ✅ NEW: Cold-Start Failure Detection (BEFORE error code check)
+    // ========================================================================
+    const hasColdStartSignature = parsedLines.some(line =>
+      line.some(entry =>
+        Array.isArray(entry) &&
+        entry[0] === "e" &&
+        entry[1] === 4
+      )
+    );
+
+    if (hasColdStartSignature) {
+      console.warn(`[Gemini] Cold start detected: [["e",4,...]] - retrying with fresh token`);
+
+      // Wait 500ms-2s for backend to stabilize
+      await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1500));
+
+      return retry("Cold start detected: [['e',4,...]] in response");
+    }
+    // ========================================================================
 
     // Check error code on FIRST parsed line only (before payload extraction)
     try {

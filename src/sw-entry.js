@@ -302,6 +302,46 @@ class FaultTolerantOrchestrator {
     const abortControllers = new Map();
     this.activeRequests.set(sessionId, { abortControllers });
 
+    // ========================================================================
+    // ✅ NEW: Staggered Dual-Token Prefetch for Gemini Variants
+    // ========================================================================
+    const GEMINI_VARIANT_IDS = ['gemini', 'gemini-pro', 'gemini-exp'];
+
+    const geminiProviders = providers.filter(pid =>
+      GEMINI_VARIANT_IDS.includes(String(pid).toLowerCase())
+    );
+
+    if (geminiProviders.length >= 2) {
+      console.log(`[Orchestrator] Prefetching ${geminiProviders.length} Gemini tokens with 75ms jitter`);
+
+      // Sequential token fetch with jitter
+      for (let i = 0; i < geminiProviders.length; i++) {
+        const pid = geminiProviders[i];
+        const controller = providerRegistry.getController(pid);
+
+        if (controller && typeof controller.geminiSession?._fetchToken === 'function') {
+          try {
+            const token = await controller.geminiSession._fetchToken();
+
+            // Store token for this provider's request
+            if (!providerMeta[pid]) providerMeta[pid] = {};
+            providerMeta[pid]._prefetchedToken = token;
+
+            console.log(`[Orchestrator] Token acquired for ${pid}`);
+
+            // Add 75ms jitter between fetches (except after last one)
+            if (i < geminiProviders.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 75));
+            }
+          } catch (e) {
+            console.warn(`[Orchestrator] Token prefetch failed for ${pid}:`, e.message);
+            // Non-fatal: provider will fetch its own token as fallback
+          }
+        }
+      }
+    }
+    // ========================================================================
+
     const providerPromises = providers.map((providerId) => {
       // This IIFE returns a promise that *always resolves*
       return (async () => {
@@ -377,6 +417,14 @@ class FaultTolerantOrchestrator {
               typeof chunk === "string" ? { text: chunk } : chunk,
             );
           };
+
+          // ✅ NEW: Inject prefetched token into adapter's shared state
+          if (providerMeta?.[providerId]?._prefetchedToken && adapter.controller?.geminiSession) {
+            adapter.controller.geminiSession.sharedState = {
+              ...adapter.controller.geminiSession.sharedState,
+              prefetchedToken: providerMeta[providerId]._prefetchedToken,
+            };
+          }
 
           let result;
           if (typeof adapter.ask === "function") {

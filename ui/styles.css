@@ -298,4 +298,10 @@
       transform: translateY(0);
     }
   }
+
+  /* Fix KaTeX interference with inline code */
+  .markdown-body code {
+    font-size: inherit !important;
+    font-family: var(--font-dm-mono), 'DM Mono', monospace !important;
+  }
 }
