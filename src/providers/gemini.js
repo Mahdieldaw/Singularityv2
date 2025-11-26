@@ -237,10 +237,34 @@ export class GeminiSessionApi {
       this._throw("failedToReadResponse", { step: "answer", error: p });
     }
 
+    // --- Immersive Content Extraction ---
+    // Look for hidden markdown content (stories, code, etc) in the response tree
+    const immersiveContent = [];
+    for (const L of parsedLines) {
+      L.forEach((entry) => {
+        try {
+          if (typeof entry[2] !== "string") return;
+          const t = JSON.parse(entry[2]);
+          this._findImmersiveContent(t, immersiveContent);
+        } catch (e) { }
+      });
+    }
+
+    // Append extracted content as Claude-style artifacts
+    if (immersiveContent.length > 0) {
+      immersiveContent.forEach((item) => {
+        // Avoid duplicates if multiple chunks contain the same item
+        if (!u.text.includes(`identifier="${item.identifier}"`)) {
+          u.text += `\n\n<document title="${item.title}" identifier="${item.identifier}">\n${item.content}\n</document>`;
+        }
+      });
+    }
+
     if (GEMINI_DEBUG)
       console.info("[Gemini] Response received:", {
         hasText: !!u?.text,
         textLength: u?.text?.length || 0,
+        immersiveItems: immersiveContent.length,
         status: response?.status || "unknown",
         model: modelConfig.name,
       });
@@ -251,6 +275,36 @@ export class GeminiSessionApi {
       token,
       modelName: modelConfig.name, // Include model name in response
     };
+  }
+
+  /**
+   * Recursively search for immersive content (e.g. markdown files)
+   * Structure: [filename.md, id, title, null, content]
+   */
+  _findImmersiveContent(obj, results) {
+    if (!obj || typeof obj !== "object") return;
+
+    if (Array.isArray(obj)) {
+      // Check signature: [filename.md, id, title, null, content]
+      if (
+        obj.length >= 5 &&
+        typeof obj[0] === "string" &&
+        obj[0].endsWith(".md") &&
+        typeof obj[2] === "string" && // Title
+        typeof obj[4] === "string" // Content
+      ) {
+        // Check if already added
+        if (!results.find((r) => r.identifier === obj[0])) {
+          results.push({
+            identifier: obj[0],
+            title: obj[2],
+            content: obj[4],
+          });
+        }
+      }
+      // Continue search
+      obj.forEach((child) => this._findImmersiveContent(child, results));
+    }
   }
 
   /**
