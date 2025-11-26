@@ -1125,7 +1125,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
           {/* Sources Section */}
           {hasSources && (
-            <div className="batch-filler mt-3 bg-surface-raised border border-border-subtle rounded-2xl p-3">
+            <div className="batch-filler mt-3">
               <div className="sources-wrapper">
                 <div className="sources-toggle text-center mb-2">
                   <button

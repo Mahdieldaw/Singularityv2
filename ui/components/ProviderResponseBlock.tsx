@@ -499,7 +499,7 @@ const ProviderResponseBlock = ({
       <BotIcon className="w-8 h-8 text-text-brand mr-3 flex-shrink-0 mt-1" />
       <div className="flex-1">
         {/* Global Controls Header */}
-        <div className="global-controls flex items-center justify-between mb-3 p-3 bg-surface-raised rounded-lg border border-border-subtle">
+        <div className="global-controls flex items-center justify-between mb-3 p-3">
           <div className="text-sm font-medium text-text-muted">
             AI Responses ({allProviderIds.length})
           </div>
@@ -524,7 +524,7 @@ const ProviderResponseBlock = ({
           </div>
 
           {/* Main Cards Container (3 slots) */}
-          <div className="flex gap-2 flex-1 justify-start min-w-0 flex-wrap w-full">
+          <div className="flex gap-4 flex-1 justify-center min-w-0 flex-wrap w-full">
             {/* Render only visible providers to reduce re-render cost */}
             {visibleSlots.map((id) => renderProviderCard(id, true))}
           </div>
