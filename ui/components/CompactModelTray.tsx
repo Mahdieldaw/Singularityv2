@@ -256,7 +256,7 @@ const CompactModelTray = ({
     >
       {/* Collapsed State */}
       {!isExpanded && (
-        <div className="bg-surface-raised backdrop-blur-md border border-border-subtle rounded-2xl p-2 px-4 flex items-center gap-4 text-sm text-text-secondary relative">
+        <div className="flex items-center gap-4 text-sm text-text-secondary">
           {/* Models Label with Dropdown Arrow */}
           <div className="relative">
             <button

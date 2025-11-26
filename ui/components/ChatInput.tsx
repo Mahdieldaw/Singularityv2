@@ -107,7 +107,7 @@ const ChatInput = ({
 
   return (
     <div className="w-full flex justify-center flex-col items-center pointer-events-auto">
-      <div className="flex gap-2.5 items-center relative w-full max-w-[min(800px,calc(100%-32px))] p-3 bg-input backdrop-blur-xl border border-border-subtle rounded-3xl flex-wrap">
+      <div className="flex gap-2 items-center relative w-full max-w-[min(800px,calc(100%-32px))] px-3 py-2 bg-surface-raised backdrop-blur-xl border border-border-subtle rounded-full flex-wrap shadow-sm">
         <div className="flex-1 relative min-w-[200px]">
           <textarea
             ref={textareaRef}
