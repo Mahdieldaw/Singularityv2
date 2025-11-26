@@ -74,7 +74,7 @@ async function buildAll(isProduction = false, generateMeta = false) {
         format: "esm",
         splitting: true,
         outdir: "dist/ui",
-        loader: { ".ts": "ts", ".tsx": "tsx" },
+        loader: { ".ts": "ts", ".tsx": "tsx", ".svg": "file" },
         jsx: "automatic",
     });
     results.push({ name: "ui", result: uiResult });

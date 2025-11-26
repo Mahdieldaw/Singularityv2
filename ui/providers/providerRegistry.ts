@@ -3,6 +3,12 @@ import type { LLMProvider } from "../types";
 // Provider icons are light-weight and color-driven via tokens to remain dark-mode safe
 import { ChatGPTIcon, ClaudeIcon, GeminiIcon, QwenIcon } from "./providerIcons";
 
+// Import SVG Logos
+import ChatGPTLogo from "../assets/chatgpt.svg";
+import ClaudeLogo from "../assets/claude.svg";
+import GeminiLogo from "../assets/gemini.svg";
+import QwenLogo from "../assets/qwen.svg";
+
 // Central registry for provider metadata used by the UI (lanes/rail)
 // - Do NOT hard-code hex colors inside Rail; colors live here (or in tokens)
 // - This module exposes addProvider for future dynamic extension
@@ -10,6 +16,7 @@ import { ChatGPTIcon, ClaudeIcon, GeminiIcon, QwenIcon } from "./providerIcons";
 export interface ProviderConfig extends LLMProvider {
   // Icon component for micro-cards and badges
   icon?: (props: { size?: number; style?: React.CSSProperties }) => JSX.Element;
+  logoSrc?: string;
 }
 
 // Initial providers (seeded). This is the only place you should edit to add a new provider by config-only.
@@ -21,6 +28,7 @@ export const INITIAL_PROVIDERS: ProviderConfig[] = [
     logoBgClass: "bg-green-500",
     hostnames: ["chat.openai.com", "chatgpt.com"],
     icon: ChatGPTIcon,
+    logoSrc: ChatGPTLogo,
   },
   {
     id: "claude",
@@ -29,6 +37,7 @@ export const INITIAL_PROVIDERS: ProviderConfig[] = [
     logoBgClass: "bg-orange-500",
     hostnames: ["claude.ai"],
     icon: ClaudeIcon,
+    logoSrc: ClaudeLogo,
   },
   {
     id: "gemini",
@@ -37,6 +46,7 @@ export const INITIAL_PROVIDERS: ProviderConfig[] = [
     logoBgClass: "bg-blue-500",
     hostnames: ["gemini.google.com"],
     icon: GeminiIcon,
+    logoSrc: GeminiLogo,
   },
   {
     id: "gemini-pro",
@@ -45,6 +55,7 @@ export const INITIAL_PROVIDERS: ProviderConfig[] = [
     logoBgClass: "bg-blue-600",
     hostnames: ["gemini.google.com"],
     icon: GeminiIcon,
+    logoSrc: GeminiLogo,
   },
   {
     id: "gemini-exp", // Must match the key in GeminiModels
@@ -53,6 +64,7 @@ export const INITIAL_PROVIDERS: ProviderConfig[] = [
     logoBgClass: "bg-purple-600",
     hostnames: ["gemini.google.com"],
     icon: GeminiIcon,
+    logoSrc: GeminiLogo,
   },
   {
     id: "qwen",
@@ -62,6 +74,7 @@ export const INITIAL_PROVIDERS: ProviderConfig[] = [
     hostnames: ["tongyi.aliyun.com"],
     icon: QwenIcon,
     emoji: "🤖",
+    logoSrc: QwenLogo,
   },
 ];
 

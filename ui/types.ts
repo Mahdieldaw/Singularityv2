@@ -77,6 +77,7 @@ export interface LLMProvider {
   color: string;
   logoBgClass: string;
   icon?: any;
+  logoSrc?: string;
   emoji?: string;
 }
 

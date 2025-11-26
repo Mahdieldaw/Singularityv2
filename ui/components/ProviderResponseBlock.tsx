@@ -327,10 +327,18 @@ const ProviderResponseBlock = ({
       >
         {/* Fixed Header */}
         <div className="flex items-center gap-2 mb-3 flex-shrink-0 h-6">
-          {provider && (
-            <div
-              className={`model-logo ${provider.logoBgClass} w-4 h-4 rounded`}
+          {provider?.logoSrc ? (
+            <img
+              src={provider.logoSrc}
+              alt={provider.name}
+              className="w-4 h-4 rounded object-contain"
             />
+          ) : (
+            provider && (
+              <div
+                className={`model-logo ${provider.logoBgClass} w-4 h-4 rounded`}
+              />
+            )
           )}
           <div className="font-medium text-xs text-text-muted">
             {provider?.name || providerId}
@@ -470,8 +478,16 @@ const ProviderResponseBlock = ({
         }
       >
         {/* Provider Logo */}
-        {provider && (
-          <div className={`model-logo ${provider.logoBgClass} w-5 h-5 rounded`} />
+        {provider?.logoSrc ? (
+          <img
+            src={provider.logoSrc}
+            alt={provider.name}
+            className="w-5 h-5 rounded object-contain"
+          />
+        ) : (
+          provider && (
+            <div className={`model-logo ${provider.logoBgClass} w-5 h-5 rounded`} />
+          )
         )}
 
         {/* Status + Name */}
