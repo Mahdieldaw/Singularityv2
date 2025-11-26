@@ -261,7 +261,7 @@ const CompactModelTray = ({
           <div className="relative">
             <button
               type="button"
-              className="flex items-center gap-1 cursor-pointer bg-chip-soft rounded-full px-3 py-1 hover:bg-surface-highlight transition-colors duration-200"
+              className="flex items-center gap-1 cursor-pointer bg-chip-soft/50 rounded-full px-3 py-1 hover:bg-surface-highlight transition-colors duration-200"
               onClick={() => {
                 const opening = !showModelsDropdown;
                 setShowModelsDropdown(opening);

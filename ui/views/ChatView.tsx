@@ -186,7 +186,7 @@ export default function ChatView() {
         />
       )}
       {/* Bottom Dock: Tray + Input */}
-      <div className="sticky bottom-0 left-0 w-full z-[2001] flex flex-col items-center gap-1 pointer-events-none pb-2">
+      <div className="sticky bottom-0 left-0 w-full z-[2001] flex flex-col items-center gap-1 pointer-events-none pb-2 bg-transparent">
         <CompactModelTrayConnected />
         <ChatInputConnected />
       </div>
