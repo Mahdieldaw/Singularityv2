@@ -1,11 +1,12 @@
 import React, { useMemo, useCallback } from "react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   isReducedMotionAtom,
   turnsMapAtom,
   currentSessionIdAtom,
   providerContextsAtom,
   turnStreamingStateFamily,
+  activeRecomputeStateAtom,
 } from "../state/atoms";
 import { ProviderKey, ProviderResponse } from "../types";
 import ProviderResponseBlock from "./ProviderResponseBlock";
@@ -41,7 +42,13 @@ function ProviderResponseBlockConnected({
   const providerResponses = useMemo(() => {
     if (!aiTurn) return undefined;
 
-    const base = { ...(aiTurn.batchResponses || {}) };
+    // Build a flat map of latest responses per provider from arrays
+    const base: Record<string, ProviderResponse> = {};
+
+    Object.entries(aiTurn.batchResponses || {}).forEach(([pid, arr]) => {
+      const latest = getLatestResponse(normalizeResponseArray(arr));
+      if (latest) base[pid] = latest as ProviderResponse;
+    });
 
     if (expectedProviders?.length && isLoading) {
       const now = Date.now();
@@ -55,8 +62,7 @@ function ProviderResponseBlockConnected({
             status: "pending" as const,
             createdAt: now,
             updatedAt: now,
-            meta: undefined
-          };
+          } as ProviderResponse;
         }
       });
     }
@@ -64,53 +70,43 @@ function ProviderResponseBlockConnected({
     return base;
   }, [aiTurn, expectedProviders, isLoading]);
 
-  // Retry handler for failed providers
+  // Retry handler for failed providers (recompute in-place)
+  const setActiveRecomputeState = useSetAtom(activeRecomputeStateAtom);
   const handleRetryProvider = useCallback(async (providerId: string) => {
     if (!sessionId || !aiTurn) {
       console.warn("[ProviderResponseBlock] Cannot retry: missing session or turn data");
       return;
     }
 
-    const userTurnId = aiTurn.userTurnId;
-    if (!userTurnId) {
-      console.warn("[ProviderResponseBlock] Cannot retry: no userTurnId found");
-      return;
-    }
-
-    // Get user turn to retrieve original message
-    const userTurn = turnsMap.get(userTurnId);
-    if (!userTurn || userTurn.type !== "user") {
-      console.warn("[ProviderResponseBlock] Cannot retry: user turn not found");
-      return;
-    }
-
-    // Get provider context to preserve conversation state
-    const context = providerContexts[providerId];
-
-    console.log(`[ProviderResponseBlock] Retrying provider: ${providerId}`, {
+    // Target existing AI turn for recompute
+    console.log(`[ProviderResponseBlock] Retrying provider via recompute-batch: ${providerId}`, {
       aiTurnId,
-      userTurnId,
-      hasContext: !!context,
+      sessionId,
     });
 
-    // Create extend primitive to retry just this provider with context
+    // Route streaming to the existing turn during recompute
+    try {
+      setActiveRecomputeState({ aiTurnId, stepType: "batch" as any, providerId });
+    } catch (_) { /* non-fatal */ }
+
+    // Use recompute primitive to update existing turn
     const primitive: PrimitiveWorkflowRequest = {
-      type: "extend",
+      type: "recompute",
       sessionId,
-      clientUserTurnId: userTurnId,
-      userMessage: userTurn.text,
-      providers: [providerId as ProviderKey],
-      providerMeta: context ? { [providerId]: context } : {},
-      includeSynthesis: false,
-      includeMapping: false,
-    };
+      sourceTurnId: aiTurnId,
+      stepType: "batch" as any,
+      targetProvider: providerId as ProviderKey,
+      useThinking: false,
+    } as any;
 
     try {
       await api.executeWorkflow(primitive);
     } catch (error) {
       console.error("[ProviderResponseBlock] Retry failed:", error);
+      // Clear recompute targeting on failure path in case backend didn't send failure yet
+      try { setActiveRecomputeState(null); } catch {}
     }
-  }, [sessionId, aiTurn, turnsMap, providerContexts]);
+  }, [sessionId, aiTurn, aiTurnId, setActiveRecomputeState]);
 
   if (!aiTurn) return null;
 
@@ -182,8 +178,9 @@ function ProviderResponseBlockConnected({
 
     // Batch Responses
     ORDER.forEach((pid) => {
-      const resp = aiTurn.batchResponses?.[pid];
-      const text = resp?.text ? String(resp.text) : "";
+      const arr = aiTurn.batchResponses?.[pid] || [];
+      const take = getLatestResponse(normalizeResponseArray(arr));
+      const text = take?.text ? String(take.text) : "";
       if (text && text.trim().length > 0) {
         lines.push(`=== Batch Responses • ${nameMap.get(pid) || pid} ===`);
         lines.push(text.trim());

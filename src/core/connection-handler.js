@@ -242,7 +242,7 @@ export class ConnectionHandler {
       // ========================================================================
       // TURN_CREATED message
       // ========================================================================
-      const createsNewTurn = hasBatch;
+      const createsNewTurn = executeRequest.type !== "recompute" && hasBatch;
       if (createsNewTurn) {
         const aiTurnId = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         workflowRequest.context = {

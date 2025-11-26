@@ -119,6 +119,24 @@ export class ContextResolver {
         `[ContextResolver] Source turn ${sourceTurnId} not found`,
       );
 
+    // NEW: batch recompute - single provider retry using original user message
+    if (stepType === "batch") {
+      const providerContextsAtSourceTurn = sourceTurn.providerContexts || {};
+      const sourceUserMessage = await this._getUserMessageForTurn(sourceTurn);
+      return {
+        type: "recompute",
+        sessionId,
+        sourceTurnId,
+        stepType,
+        targetProvider,
+        // No frozen outputs required for batch; we are re-running fresh for a single provider
+        frozenBatchOutputs: {},
+        providerContextsAtSourceTurn,
+        latestMappingOutput: null,
+        sourceUserMessage,
+      };
+    }
+
     // Build frozen outputs from provider_responses store, not embedded turn fields
     const responses = await this._getProviderResponsesForTurn(sourceTurnId);
     const frozenBatchOutputs = this._aggregateBatchOutputs(responses);

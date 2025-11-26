@@ -67,13 +67,15 @@ export function useClipActions() {
               PRIMARY_STREAMING_PROVIDER_IDS.includes(providerId)
                 ? "streaming"
                 : "pending";
-            (turn.batchResponses as any)[providerId] = {
-              providerId,
-              text: "",
-              status: initialStatus,
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-            } as any;
+            (turn.batchResponses as any)[providerId] = [
+              {
+                providerId,
+                text: "",
+                status: initialStatus,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              },
+            ] as any;
           }
         });
       }

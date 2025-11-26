@@ -288,18 +288,25 @@ export function useChat() {
           const hasProviderData = Object.keys(providers).length > 0;
 
           if (hasProviderData) {
-            // Transform providers object to batchResponses
-            const batchResponses: Record<string, ProviderResponse> = {};
+            // Transform providers object to batchResponses (arrays per provider)
+            const batchResponses: Record<string, ProviderResponse[]> = {};
             Object.entries(providers).forEach(
               ([providerId, data]: [string, any]) => {
-                batchResponses[providerId] = {
-                  providerId: providerId as ProviderKey,
-                  text: data?.text || "",
-                  status: "completed",
-                  createdAt: round.completedAt || round.createdAt || Date.now(),
-                  updatedAt: round.completedAt || round.createdAt || Date.now(),
-                  meta: data?.meta || {},
-                };
+                const arr: ProviderResponse[] = Array.isArray(data)
+                  ? (data as ProviderResponse[])
+                  : [
+                    {
+                      providerId: providerId as ProviderKey,
+                      text: (data?.text as string) || "",
+                      status: "completed",
+                      createdAt:
+                        round.completedAt || round.createdAt || Date.now(),
+                      updatedAt:
+                        round.completedAt || round.createdAt || Date.now(),
+                      meta: (data?.meta as any) || {},
+                    },
+                  ];
+                batchResponses[providerId] = arr;
               },
             );
 
@@ -458,8 +465,12 @@ export function useChat() {
               .map((r) => r.text)
               .join("\n\n");
 
-            batchText = Object.values(aiTurn.batchResponses || {})
-              .map((r) => `[${r.providerId}]: ${r.text}`)
+            batchText = Object.entries(aiTurn.batchResponses || {})
+              .map(([pid, v]: [string, any]) => {
+                const arr = Array.isArray(v) ? v : [v];
+                const last = arr[arr.length - 1];
+                return `[${pid}]: ${last?.text || ""}`;
+              })
               .join("\n\n");
           }
         }

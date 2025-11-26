@@ -267,7 +267,68 @@ export class SessionManager {
     if (!sourceTurn)
       throw new Error(`[SessionManager] Source turn ${sourceTurnId} not found`);
 
-    // 2) Derived AI turn (off-timeline)
+    // Branch by stepType
+    if (stepType === "batch") {
+      // Append/replace the provider response for the existing AI turn (in-place retry)
+      const output = result?.batchOutputs?.[targetProvider];
+      if (!output) {
+        console.warn(
+          `[SessionManager] Recompute-batch: no output for ${targetProvider}`,
+        );
+        return { sessionId };
+      }
+
+      const aiTurnId = sourceTurnId; // persist against the original AI turn
+      // Determine next responseIndex to avoid unique index collision on [sessionId, aiTurnId, providerId, responseType, responseIndex]
+      let nextIndex = 0;
+      try {
+        const existing = await this.adapter.getResponsesByTurnId(aiTurnId);
+        const mine = (existing || []).filter(
+          (r) => r && r.providerId === targetProvider && r.responseType === "batch",
+        );
+        if (mine.length > 0) {
+          const maxIdx = Math.max(
+            ...mine.map((r) => (typeof r.responseIndex === "number" ? r.responseIndex : 0)),
+          );
+          nextIndex = maxIdx + 1;
+        }
+      } catch (_) {}
+
+      const respId = `pr-${sessionId}-${aiTurnId}-${targetProvider}-batch-${nextIndex}-${now}`;
+      await this.adapter.put("provider_responses", {
+        id: respId,
+        sessionId,
+        aiTurnId,
+        providerId: targetProvider,
+        responseType: "batch",
+        responseIndex: nextIndex,
+        text: output?.text || "",
+        status: output?.status || "completed",
+        meta: output?.meta || {},
+        createdAt: now,
+        updatedAt: now,
+        completedAt: now,
+      });
+
+      // Update turn counters minimally
+      try {
+        const turn = await this.adapter.get("turns", aiTurnId);
+        if (turn) {
+          turn.updatedAt = now;
+          turn.batchResponseCount = (turn.batchResponseCount || 0) + 1;
+          // Merge providerContexts with latest meta
+          const contexts = turn.providerContexts || {};
+          const existing = contexts[targetProvider] || {};
+          contexts[targetProvider] = { ...(existing || {}), ...(output?.meta || {}) };
+          turn.providerContexts = contexts;
+          await this.adapter.put("turns", turn);
+        }
+      } catch (_) {}
+
+      return { sessionId };
+    }
+
+    // 2) Derived AI turn (off-timeline) for synthesis/mapping historical recomputes
     const aiTurnId = request.canonicalAiTurnId || `ai-recompute-${now}`;
     const aiTurnRecord = {
       id: aiTurnId,
@@ -355,18 +416,33 @@ export class SessionManager {
    */
   async _persistProviderResponses(sessionId, aiTurnId, result, now) {
     let count = 0;
-    // Batch
+    // Batch (versioned per provider)
     for (const [providerId, output] of Object.entries(
       result?.batchOutputs || {},
     )) {
-      const respId = `pr-${sessionId}-${aiTurnId}-${providerId}-batch-0-${now}-${count++}`;
+      // Determine next responseIndex for this provider/type
+      let nextIndex = 0;
+      try {
+        const existing = await this.adapter.getResponsesByTurnId(aiTurnId);
+        const mine = (existing || []).filter(
+          (r) => r && r.providerId === providerId && r.responseType === "batch",
+        );
+        if (mine.length > 0) {
+          const maxIdx = Math.max(
+            ...mine.map((r) => (typeof r.responseIndex === "number" ? r.responseIndex : 0)),
+          );
+          nextIndex = maxIdx + 1;
+        }
+      } catch (_) {}
+
+      const respId = `pr-${sessionId}-${aiTurnId}-${providerId}-batch-${nextIndex}-${now}-${count++}`;
       await this.adapter.put("provider_responses", {
         id: respId,
         sessionId,
         aiTurnId,
         providerId,
         responseType: "batch",
-        responseIndex: 0,
+        responseIndex: nextIndex,
         text: output?.text || "",
         status: output?.status || "completed",
         meta: output?.meta || {},

@@ -51,7 +51,34 @@ export class WorkflowCompiler {
         break;
 
       case "recompute":
-        console.log("[Compiler] Recompute: Skipping batch (frozen outputs)");
+        if (resolvedContext.stepType === "batch") {
+          // Generate a single-provider prompt step targeting the provider being retried
+          const provider = resolvedContext.targetProvider;
+          const stepId = `batch-retry-${Date.now()}`;
+          // Normalize provider context shape
+          const rawCtx = resolvedContext.providerContextsAtSourceTurn
+            ? resolvedContext.providerContextsAtSourceTurn[provider]
+            : undefined;
+          const meta = rawCtx && rawCtx.meta ? rawCtx.meta : rawCtx;
+          const providerContexts = meta
+            ? { [provider]: { meta, continueThread: true } }
+            : undefined;
+          const batchStep = {
+            stepId,
+            type: "prompt",
+            payload: {
+              prompt: resolvedContext.sourceUserMessage,
+              providers: [provider],
+              providerContexts,
+              hidden: false,
+              useThinking: !!request.useThinking,
+            },
+          };
+          steps.push(batchStep);
+          batchStepId = stepId;
+        } else {
+          console.log("[Compiler] Recompute: Skipping batch (frozen outputs)");
+        }
         break;
     }
 
@@ -362,12 +389,16 @@ export class WorkflowCompiler {
           throw new Error("[Compiler] Recompute: sessionId required");
         if (!context.sourceTurnId)
           throw new Error("[Compiler] Recompute: sourceTurnId required");
-        if (!context.frozenBatchOutputs)
-          throw new Error("[Compiler] Recompute: frozenBatchOutputs required");
         if (!context.stepType)
           throw new Error("[Compiler] Recompute: stepType required");
         if (!context.targetProvider)
           throw new Error("[Compiler] Recompute: targetProvider required");
+        // Only require frozenBatchOutputs for synthesis/mapping historical recomputes
+        if (context.stepType !== "batch" && !context.frozenBatchOutputs) {
+          throw new Error(
+            "[Compiler] Recompute: frozenBatchOutputs required for synthesis/mapping",
+          );
+        }
         break;
       }
     }

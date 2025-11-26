@@ -869,6 +869,7 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
               );
 
               // Aggregate provider responses across all AI turns for this user
+              // Batch providers assembled as arrays for uniform UI consumption
               const providers = {};
               const synthesisResponses = {};
               const mappingResponses = {};
@@ -890,7 +891,7 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
                   if (r.responseType === "batch") {
                     // Only take batch responses from the primary AI turn
                     if (ai.id === primaryAi.id) {
-                      providers[pid] = baseResp;
+                      (providers[pid] = providers[pid] || []).push(baseResp);
                     }
                   } else if (r.responseType === "synthesis") {
                     (synthesisResponses[pid] =

@@ -277,9 +277,15 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
   }, [aiTurn.id, aiTurn.mappingVersion]);
 
   const allSources = useMemo(() => {
-    const sources: Record<string, ProviderResponse> = {
-      ...(aiTurn.batchResponses || {}),
-    };
+    const sources: Record<string, ProviderResponse> = {};
+    // Take latest element from each provider's array
+    Object.entries(aiTurn.batchResponses || {}).forEach(([pid, resp]) => {
+      const arr = Array.isArray(resp) ? resp : [resp as any];
+      if (arr.length > 0) {
+        const latest = arr[arr.length - 1] as ProviderResponse;
+        sources[pid] = latest;
+      }
+    });
     if (aiTurn.hiddenBatchOutputs) {
       Object.entries(aiTurn.hiddenBatchOutputs).forEach(
         ([providerId, response]) => {

@@ -37,18 +37,20 @@ export function createOptimisticAiTurn(
 ): AiTurn {
   const now = timestamp || Date.now();
 
-  // Initialize batch responses for all active providers
-  const pendingBatch: Record<string, ProviderResponse> = {};
+  // Initialize batch responses for all active providers as arrays
+  const pendingBatch: Record<string, ProviderResponse[]> = {};
   activeProviders.forEach((pid) => {
-    pendingBatch[pid] = {
-      providerId: pid,
-      text: "",
-      status: PRIMARY_STREAMING_PROVIDER_IDS.includes(String(pid))
-        ? "streaming"
-        : "pending",
-      createdAt: now,
-      updatedAt: now,
-    };
+    pendingBatch[pid] = [
+      {
+        providerId: pid,
+        text: "",
+        status: PRIMARY_STREAMING_PROVIDER_IDS.includes(String(pid))
+          ? "streaming"
+          : "pending",
+        createdAt: now,
+        updatedAt: now,
+      },
+    ];
   });
 
   // Initialize synthesis responses if enabled
@@ -121,22 +123,33 @@ export function applyStreamingUpdates(
 ) {
   updates.forEach(({ providerId, text: delta, status, responseType }) => {
     if (responseType === "batch") {
-      // Update batch responses (single object per provider)
-      if (!aiTurn.batchResponses) aiTurn.batchResponses = {};
-      const existing = aiTurn.batchResponses[providerId] || {
-        providerId,
-        text: "",
-        status: PRIMARY_STREAMING_PROVIDER_IDS.includes(String(providerId))
-          ? "streaming"
-          : "pending",
-        createdAt: Date.now(),
-      };
-      aiTurn.batchResponses[providerId] = {
-        ...existing,
-        text: (existing.text || "") + delta,
-        status: status as any,
-        updatedAt: Date.now(),
-      };
+      // Update batch responses (array per provider)
+      if (!aiTurn.batchResponses) aiTurn.batchResponses = {} as any;
+      const arr = normalizeResponseArray(
+        (aiTurn as any).batchResponses[providerId],
+      );
+
+      if (arr.length > 0) {
+        // Update latest response
+        const latest = arr[arr.length - 1];
+        arr[arr.length - 1] = {
+          ...latest,
+          text: (latest.text || "") + delta,
+          status: status as any,
+          updatedAt: Date.now(),
+        } as any;
+      } else {
+        // Create new response
+        arr.push({
+          providerId: providerId as ProviderKey,
+          text: delta,
+          status: status as any,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        } as any);
+      }
+
+      (aiTurn as any).batchResponses[providerId] = arr as any;
     } else if (responseType === "synthesis") {
       // Update synthesis responses (array per provider)
       if (!aiTurn.synthesisResponses) aiTurn.synthesisResponses = {};

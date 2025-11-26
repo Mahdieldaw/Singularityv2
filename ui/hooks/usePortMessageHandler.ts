@@ -79,7 +79,7 @@ export function usePortMessageHandler() {
   const activeAiTurnIdRef = useRef<string | null>(null);
   const activeRecomputeRef = useRef<{
     aiTurnId: string;
-    stepType: "synthesis" | "mapping";
+    stepType: "synthesis" | "mapping" | "batch";
     providerId: string;
   } | null>(null);
   // Track whether we've already logged the first PARTIAL_RESULT for a given
@@ -231,7 +231,15 @@ export function usePortMessageHandler() {
               const existingAi = draft.get(aiTurnId) as AiTurn | undefined;
               if (!existingAi) {
                 // Fallback: if the AI turn wasn't created (should be rare), add it directly
-                draft.set(aiTurnId, turn.ai as AiTurn);
+                // Normalize batchResponses to arrays if needed
+                const incoming = turn.ai as any;
+                const normalizedBatch = Object.fromEntries(
+                  Object.entries(incoming.batchResponses || {}).map(([pid, val]: [string, any]) => [
+                    pid,
+                    Array.isArray(val) ? (val as any[]) : [val],
+                  ]),
+                );
+                draft.set(aiTurnId, { ...(turn.ai as AiTurn), batchResponses: normalizedBatch } as AiTurn);
               } else {
                 const mergedAi: AiTurn = {
                   ...existingAi,
@@ -240,10 +248,19 @@ export function usePortMessageHandler() {
                   userTurnId: turn.user?.id || existingAi.userTurnId,
                   // Merge responses: preserve existing data while accepting backend updates
                   // This is important for recompute scenarios where only some responses change
-                  batchResponses: {
-                    ...(existingAi.batchResponses || {}),
-                    ...((turn.ai as AiTurn)?.batchResponses || {}),
-                  },
+                  batchResponses: (() => {
+                    const incoming = (turn.ai as any)?.batchResponses || {};
+                    const normalizedIncoming = Object.fromEntries(
+                      Object.entries(incoming).map(([pid, val]: [string, any]) => [
+                        pid,
+                        Array.isArray(val) ? (val as any[]) : [val],
+                      ]),
+                    );
+                    return {
+                      ...(existingAi.batchResponses || {}),
+                      ...normalizedIncoming,
+                    } as any;
+                  })(),
                   synthesisResponses: {
                     ...(existingAi.synthesisResponses || {}),
                     ...((turn.ai as AiTurn)?.synthesisResponses || {}),
@@ -436,7 +453,9 @@ export function usePortMessageHandler() {
               ([providerId, data]: [string, any]) => {
                 // ✅ Normalize provider ID to canonical form
                 const normalizedId = normalizeProviderId(providerId);
-                const targetId = activeAiTurnIdRef.current;
+                const targetId = (message as any).isRecompute && (message as any).sourceTurnId
+                  ? (message as any).sourceTurnId
+                  : activeAiTurnIdRef.current;
                 if (!targetId) return;
                 _completedProviders.push(normalizedId);
 
@@ -493,16 +512,25 @@ export function usePortMessageHandler() {
                     };
                     aiTurn.mappingVersion = (aiTurn.mappingVersion ?? 0) + 1;
                   } else if (stepType === "batch") {
+                    const arr = Array.isArray(aiTurn.batchResponses?.[normalizedId])
+                      ? [...(aiTurn.batchResponses![normalizedId] as any[])]
+                      : [];
+                    const completedEntry = {
+                      providerId: normalizedId,
+                      text: data?.text || "",
+                      status: "completed" as const,
+                      createdAt: arr.length > 0 ? arr[arr.length - 1]?.createdAt || Date.now() : Date.now(),
+                      updatedAt: Date.now(),
+                      meta: data?.meta || {},
+                    } as any;
+                    if (arr.length > 0) {
+                      arr[arr.length - 1] = { ...(arr[arr.length - 1] as any), ...completedEntry } as any;
+                    } else {
+                      arr.push(completedEntry);
+                    }
                     aiTurn.batchResponses = {
                       ...(aiTurn.batchResponses || {}),
-                      [normalizedId]: {
-                        providerId: normalizedId,
-                        text: data?.text || "",
-                        status: "completed",
-                        createdAt: Date.now(),
-                        updatedAt: Date.now(),
-                        meta: data?.meta || {},
-                      },
+                      [normalizedId]: arr as any,
                     } as any;
                   }
 
@@ -553,9 +581,10 @@ export function usePortMessageHandler() {
                 if (providerId) {
                   providerId = normalizeProviderId(providerId);
                 }
-                const targetId =
-                  activeRecomputeRef.current?.aiTurnId ||
-                  activeAiTurnIdRef.current;
+                const targetId = (message as any).isRecompute && (message as any).sourceTurnId
+                  ? (message as any).sourceTurnId
+                  : activeRecomputeRef.current?.aiTurnId ||
+                    activeAiTurnIdRef.current;
                 if (targetId && providerId) {
                   setTurnsMap((draft: Map<string, TurnMessage>) => {
                     const existing = draft.get(targetId);
@@ -626,19 +655,29 @@ export function usePortMessageHandler() {
                       };
                       aiTurn.mappingVersion = (aiTurn.mappingVersion ?? 0) + 1;
                     } else if (stepType === "batch") {
-                      const existingBatch = (aiTurn.batchResponses || {})[
-                        providerId!
-                      ];
+                      const arr = Array.isArray(aiTurn.batchResponses?.[providerId!])
+                        ? [...(aiTurn.batchResponses![providerId!] as any[])]
+                        : [];
+                      if (arr.length > 0) {
+                        const latest = arr[arr.length - 1] as any;
+                        arr[arr.length - 1] = {
+                          ...latest,
+                          status: "error",
+                          text: errText || (latest?.text ?? ""),
+                          updatedAt: now,
+                        } as any;
+                      } else {
+                        arr.push({
+                          providerId: providerId!,
+                          text: errText || "",
+                          status: "error",
+                          createdAt: now,
+                          updatedAt: now,
+                        } as any);
+                      }
                       aiTurn.batchResponses = {
                         ...(aiTurn.batchResponses || {}),
-                        [providerId!]: {
-                          providerId: providerId!,
-                          text: errText || existingBatch?.text || "",
-                          status: "error",
-                          createdAt: existingBatch?.createdAt || now,
-                          updatedAt: now,
-                          meta: existingBatch?.meta || {},
-                        },
+                        [providerId!]: arr as any,
                       } as any;
                     }
                   });

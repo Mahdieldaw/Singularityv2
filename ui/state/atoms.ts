@@ -45,10 +45,17 @@ export const providerResponsesForTurnAtom = atom(
       const turn = get(turnsMapAtom).get(turnId);
       if (!turn || turn.type !== "ai") return {};
       const aiTurn = turn as AiTurn;
-      return {
-        ...(aiTurn.batchResponses || {}),
-        ...(aiTurn.hiddenBatchOutputs || {}),
-      };
+      const out: Record<string, ProviderResponse> = {};
+      // Flatten arrays for batch responses: take latest per provider
+      Object.entries(aiTurn.batchResponses || {}).forEach(([pid, val]: [string, any]) => {
+        const arr = Array.isArray(val) ? val : [val];
+        if (arr.length > 0) out[pid] = arr[arr.length - 1] as ProviderResponse;
+      });
+      // Merge any hidden outputs that are not present
+      Object.entries(aiTurn.hiddenBatchOutputs || {}).forEach(([pid, resp]) => {
+        if (!out[pid]) out[pid] = resp as ProviderResponse;
+      });
+      return out;
     },
 );
 
@@ -222,7 +229,7 @@ export const providerContextsAtom = atomWithImmer<Record<string, any>>({});
 // -----------------------------
 export const activeRecomputeStateAtom = atom<{
   aiTurnId: string;
-  stepType: "synthesis" | "mapping";
+  stepType: "synthesis" | "mapping" | "batch";
   providerId: string;
 } | null>(null);
 

@@ -60,10 +60,13 @@ export function useEligibility() {
 
       // More robust batch response checking
       const batchResponses = ai.batchResponses || {};
-      const completedBatchOutputs = Object.values(batchResponses).filter(
-        (r: any) =>
-          r && r.status === "completed" && r.text && r.text.trim().length > 0,
-      );
+      const completedBatchOutputs = Object.values(batchResponses)
+        .map((v: any) => (Array.isArray(v) ? v : [v]))
+        .map((arr: any[]) => arr[arr.length - 1])
+        .filter(
+          (r: any) =>
+            r && r.status === "completed" && r.text && r.text.trim().length > 0,
+        );
 
       // Check for any evidence of past successful runs
       const hasAnyCompletedResponses =

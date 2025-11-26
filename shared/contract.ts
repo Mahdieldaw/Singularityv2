@@ -62,7 +62,7 @@ export interface RecomputeRequest {
   type: "recompute";
   sessionId: string;
   sourceTurnId: string;
-  stepType: "synthesis" | "mapping";
+  stepType: "synthesis" | "mapping" | "batch";
   targetProvider: ProviderKey;
   useThinking?: boolean;
 }
@@ -150,7 +150,7 @@ export interface RecomputeContext {
   frozenBatchOutputs: Record<ProviderKey, ProviderResponse>;
   latestMappingOutput?: { providerId: string; text: string; meta: any } | null;
   providerContextsAtSourceTurn: Record<ProviderKey, { meta: any }>;
-  stepType: "synthesis" | "mapping";
+  stepType: "synthesis" | "mapping" | "batch";
   targetProvider: ProviderKey;
   sourceUserMessage: string;
 }
@@ -253,7 +253,8 @@ export interface AiTurn {
   userTurnId: string;
   createdAt: number;
   isComplete?: boolean;
-  batchResponses: Record<string, ProviderResponse>;
+  // Arrays for all response buckets for uniform handling
+  batchResponses: Record<string, ProviderResponse[]>;
   synthesisResponses: Record<string, ProviderResponse[]>;
   mappingResponses: Record<string, ProviderResponse[]>;
   meta?: {

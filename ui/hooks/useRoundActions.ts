@@ -66,9 +66,10 @@ export function useRoundActions() {
       }
 
       // ✅ Validate we have enough source data for synthesis
-      const outputsFromBatch = Object.values(ai.batchResponses || {}).filter(
-        (r: any) => r.status === "completed" && r.text?.trim(),
-      );
+      const outputsFromBatch = Object.values(ai.batchResponses || {})
+        .map((v: any) => (Array.isArray(v) ? v : [v]))
+        .map((arr: any[]) => arr[arr.length - 1])
+        .filter((r: any) => r && r.status === "completed" && r.text?.trim());
 
       const hasCompletedSynthesis = ai?.synthesisResponses
         ? Object.values(ai.synthesisResponses).some((resp) => {
