@@ -239,6 +239,24 @@ export const activeProviderTargetAtom = atom<{
 } | null>(null);
 
 // -----------------------------
+// Pill-menu provider swap state
+// -----------------------------
+/**
+ * Tracks which 3 providers are currently visible in the response block.
+ * Users can swap providers in/out via the pill menu UI.
+ */
+export const visibleProvidersAtom = atomWithStorage<string[]>(
+  "htos_visible_providers",
+  ["claude", "gemini", "chatgpt"], // Default visible trio
+);
+
+/**
+ * Tracks which hidden provider is currently selected for swapping.
+ * Null = no selection active. Two-click swap: select pill → click card/pill to swap.
+ */
+export const selectedHiddenProviderAtom = atom<string | null>(null);
+
+// -----------------------------
 // Round-level selections
 // -----------------------------
 export const synthSelectionsByRoundAtom = atomWithImmer<

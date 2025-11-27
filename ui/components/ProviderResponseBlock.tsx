@@ -9,7 +9,7 @@ import { BotIcon } from "./Icons";
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { ProviderPill } from "./ProviderPill";
 import { useAtomValue, useSetAtom, useAtom } from "jotai";
-import { providerContextsAtom, toastAtom, providerHistoryExpandedFamily, activeRecomputeStateAtom } from "../state/atoms";
+import { providerContextsAtom, toastAtom, providerHistoryExpandedFamily, activeRecomputeStateAtom, visibleProvidersAtom, selectedHiddenProviderAtom } from "../state/atoms";
 import MarkdownDisplay from "./MarkdownDisplay";
 import { normalizeProviderId } from "../utils/provider-id-mapper";
 import clsx from "clsx";
@@ -68,6 +68,7 @@ interface ProviderResponseBlockProps {
   copyAllText?: string;
   activeTarget?: { aiTurnId: string; providerId: string } | null;
   onToggleTarget?: (providerId: string) => void;
+  onBranchContinue?: (providerId: string, prompt: string) => void;
 }
 
 const CopyButton = ({ text, label }: { text: string; label: string }) => {
@@ -114,6 +115,7 @@ const ProviderResponseBlock = ({
   copyAllText,
   activeTarget,
   onToggleTarget,
+  onBranchContinue,
 }: ProviderResponseBlockProps) => {
   const providerContexts = useAtomValue(providerContextsAtom);
 
@@ -164,57 +166,64 @@ const ProviderResponseBlock = ({
     [effectiveProviderResponses],
   );
 
-  // --- SLOT MANAGEMENT (DERIVED STATE) ---
-  const [manualVisibleSlots, setManualVisibleSlots] = useState<string[]>([]);
-  const [rotationIndex, setRotationIndex] = useState(0);
+  // --- PILL-MENU SWAP SYSTEM ---
+  const [visibleProviders, setVisibleProviders] = useAtom(visibleProvidersAtom);
+  const [selectedHidden, setSelectedHidden] = useAtom(selectedHiddenProviderAtom);
 
-  // Calculate visible slots during render
+  // Calculate visible slots from atom, fallback to first 3 providers if none persisted
   const visibleSlots = useMemo(() => {
-    // 1. Filter manual slots to only valid ones (present in current response set)
-    const validManual = manualVisibleSlots.filter(id => allProviderIds.includes(id));
+    const validVisible = visibleProviders.filter(id => allProviderIds.includes(id));
 
-    // 2. If we have enough manual slots to fill the view (3), use them
-    if (validManual.length >= 3) {
-      return validManual.slice(0, 3);
+    // If we have 3 valid providers, use them
+    if (validVisible.length >= 3) {
+      return validVisible.slice(0, 3);
     }
 
-    // 3. Otherwise, fill remaining slots with available providers
-    const needed = 3 - validManual.length;
-    const used = new Set(validManual);
-
-    // Prioritize primary streaming providers for default slots if not already used
+    // Otherwise, fill with first available providers
+    const needed = 3 - validVisible.length;
+    const used = new Set(validVisible);
     const available = allProviderIds.filter(id => !used.has(id));
 
-    // Simple fill strategy: take the first available ones
-    // (allProviderIds is already sorted by config order)
-    const filled = [...validManual, ...available.slice(0, needed)];
-
-    return filled;
-  }, [manualVisibleSlots, allProviderIds]);
+    return [...validVisible, ...available.slice(0, needed)];
+  }, [visibleProviders, allProviderIds]);
 
   // Derive hidden providers
   const hiddenProviders = useMemo(() => {
     return allProviderIds.filter(id => !visibleSlots.includes(id));
   }, [allProviderIds, visibleSlots]);
 
-  // Split hidden into left/right for the UI
-  const hiddenLeft = useMemo(() => hiddenProviders.slice(0, 2), [hiddenProviders]);
-  const hiddenRight = useMemo(() => hiddenProviders.slice(2), [hiddenProviders]);
-
   const getProviderConfig = (providerId: string): LLMProvider | undefined => {
     return LLM_PROVIDERS_CONFIG.find((p) => p.id === providerId);
   };
 
-  const swapProviderIn = useCallback((providerId: string) => {
-    // Use the *current* visible slots as the base for modification
-    const nextSlots = [...visibleSlots];
+  // Pill click: Select hidden provider for swapping
+  const handlePillClick = useCallback((providerId: string) => {
+    if (selectedHidden === providerId) {
+      setSelectedHidden(null); // Deselect if clicking same pill
+    } else {
+      setSelectedHidden(providerId);
+    }
+  }, [selectedHidden, setSelectedHidden]);
 
-    // Replace the slot at the current rotation index
-    nextSlots[rotationIndex] = providerId;
+  // Card click: Complete swap if selection active
+  const handleCardSwap = useCallback((targetSlotProviderId: string) => {
+    if (!selectedHidden) return;
 
-    setManualVisibleSlots(nextSlots);
-    setRotationIndex((prev) => (prev + 1) % 3);
-  }, [visibleSlots, rotationIndex]);
+    setVisibleProviders(prev =>
+      prev.map(id => id === targetSlotProviderId ? selectedHidden : id)
+    );
+    setSelectedHidden(null);
+  }, [selectedHidden, setVisibleProviders, setSelectedHidden]);
+
+  // Visible pill click: Alternative swap target (pill-to-pill)
+  const handleVisiblePillClick = useCallback((visibleProviderId: string) => {
+    if (!selectedHidden) return;
+
+    setVisibleProviders(prev =>
+      prev.map(id => id === visibleProviderId ? selectedHidden : id)
+    );
+    setSelectedHidden(null);
+  }, [selectedHidden, setVisibleProviders, setSelectedHidden]);
 
   // Highlight target provider on citation click and scroll into view
   const [highlightedProviderId, setHighlightedProviderId] = useState<
@@ -231,18 +240,15 @@ const ProviderResponseBlock = ({
         if (aiTurnId && targetTurnId && targetTurnId !== aiTurnId) return;
 
         // Ensure target provider is brought into view
-        // We do this by forcing it into the first slot manually
-        setManualVisibleSlots(prev => {
-          // If already visible, don't change layout, just highlight
-          if (visibleSlots.includes(targetProviderId)) return prev;
-
-          // Otherwise, force it into slot 0
-          // We need to construct a new valid manual list.
-          // Best bet: take current visible, replace index 0.
-          const next = [...visibleSlots];
-          next[0] = targetProviderId;
-          return next;
-        });
+        // If already visible, don't change layout, just highlight
+        if (!visibleSlots.includes(targetProviderId)) {
+          // Force it into slot 0
+          setVisibleProviders(prev => {
+            const next = [...prev];
+            next[0] = targetProviderId;
+            return next;
+          });
+        }
 
         setHighlightedProviderId(targetProviderId);
         setTimeout(() => {
@@ -325,6 +331,23 @@ const ProviderResponseBlock = ({
       useMemo(() => providerHistoryExpandedFamily(`${aiTurnId}-${providerId}`), [aiTurnId, providerId])
     );
 
+    // Inline branch input state
+    const [branchInput, setBranchInput] = useState("");
+
+    // Reset branch input when card is untargeted
+    useEffect(() => {
+      if (!isTargeted) {
+        setBranchInput("");
+      }
+    }, [isTargeted]);
+
+    // Branch send handler
+    const handleBranchSend = useCallback(() => {
+      if (!branchInput.trim() || !onBranchContinue) return;
+      onBranchContinue(providerId, branchInput);
+      setBranchInput("");
+    }, [branchInput, onBranchContinue, providerId]);
+
     // Branching visual state
     const activeRecompute = useAtomValue(activeRecomputeStateAtom);
     const isBranching = isLoading &&
@@ -336,9 +359,15 @@ const ProviderResponseBlock = ({
         key={providerId}
         id={`provider-card-${aiTurnId || "unknown"}-${providerId}`}
         onClick={(e) => {
-          // Prevent targeting when clicking interactive elements
+          // Prevent when clicking interactive elements
           if ((e.target as HTMLElement).closest('button, a, .provider-card-scroll')) return;
-          onToggleTarget?.(providerId);
+
+          // If hidden provider selected, complete swap; otherwise toggle target
+          if (selectedHidden) {
+            handleCardSwap(providerId);
+          } else {
+            onToggleTarget?.(providerId);
+          }
         }}
         className={clsx(
           "flex flex-col bg-surface-raised border rounded-2xl p-3",
@@ -346,7 +375,9 @@ const ProviderResponseBlock = ({
           "flex-1 basis-[320px] min-w-[260px] max-w-[380px] w-full h-[300px]",
           "transition-[box-shadow,border-color] duration-300 cursor-pointer relative",
           isHighlighted ? "border-brand-500 shadow-glow-brand" :
-            isTargeted ? "border-brand-500 ring-2 ring-brand-500/50 shadow-glow-brand" : "border-border-subtle hover:border-border-strong",
+            isTargeted ? "border-brand-500 ring-2 ring-brand-500/50 shadow-glow-brand" :
+              selectedHidden ? "ring-2 ring-brand-300 shadow-glow-brand-soft" : // Swappable state
+                "border-border-subtle hover:border-border-strong",
           isBranching && "animate-pulse-ring",
           !isVisible && "hidden"
         )}
@@ -525,69 +556,7 @@ const ProviderResponseBlock = ({
     );
   };
 
-  // Render side indicator button (mimics ClipsCarousel style)
-  const renderSideIndicator = (providerId: string) => {
-    const state = effectiveProviderStates[providerId];
-    const provider = getProviderConfig(providerId);
-    const isStreaming = state?.status === "streaming";
-    const isCompleted = state?.status === "completed";
 
-    // State indicator similar to ClipsCarousel
-    const statusIcon = isStreaming ? "⏳" : isCompleted ? "◉" : "○";
-
-    const sideBaseClasses =
-      "flex flex-col items-center justify-center gap-1 p-3 min-w-[80px] rounded-2xl " +
-      "cursor-pointer flex-shrink-0 hover:-translate-y-0.5 hover:shadow-card-sm " +
-      "transition-all shadow-card-sm";
-
-    const sideClass = isCompleted
-      ? clsx(sideBaseClasses, "bg-chip-active border border-border-subtle")
-      : clsx(sideBaseClasses, "bg-chip border border-border-subtle");
-
-    return (
-      <button
-        key={providerId}
-        onClick={() => swapProviderIn(providerId)}
-        title={`Click to view ${provider?.name || providerId}`}
-        className={sideClass}
-        style={
-          isCompleted && provider?.color
-            ? { borderColor: provider.color }
-            : undefined
-        }
-      >
-        {/* Provider Logo */}
-        {provider?.logoSrc ? (
-          <img
-            src={provider.logoSrc}
-            alt={provider.name}
-            className="w-5 h-5 rounded object-contain"
-          />
-        ) : (
-          provider && (
-            <div className={`model-logo ${provider.logoBgClass} w-5 h-5 rounded`} />
-          )
-        )}
-
-        {/* Status + Name */}
-        <div className="text-[10px] font-medium text-text-secondary text-center leading-tight flex items-center gap-0.5">
-          <span className="text-xs">{statusIcon}</span>
-          <span>{provider?.name || providerId}</span>
-        </div>
-
-        {/* Streaming indicator dot */}
-        {isStreaming && (
-          <div
-            className={clsx(
-              "w-1.5 h-1.5 rounded-full",
-              getStatusClass(state?.status, !!state?.text),
-              !isReducedMotion && "animate-pulse"
-            )}
-          />
-        )}
-      </button>
-    );
-  };
 
   return (
     <div className="response-container mb-6 flex">
@@ -610,24 +579,53 @@ const ProviderResponseBlock = ({
           />
         </div>
 
-        {/* CAROUSEL LAYOUT: [Left Indicator] [3 Main Cards] [Right Indicator] */}
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col gap-2 flex-shrink-0">
-            {hiddenLeft.map((pid) => (
-              <div key={`left-${pid}`}>{renderSideIndicator(pid)}</div>
+        {/* PILL MENU + CARDS LAYOUT */}
+        <div className="flex flex-col gap-4">
+          {/* Pill Menu: Provider Swap Controls */}
+          <div className="pill-menu flex items-center gap-2 p-2 bg-surface-raised rounded-lg border border-border-subtle">
+            <span className="text-xs text-text-muted">Visible:</span>
+            {visibleSlots.map((pid: string) => (
+              <button
+                key={pid}
+                onClick={() => handleVisiblePillClick(pid)}
+                disabled={!selectedHidden}
+                className={clsx(
+                  "text-xs px-2 py-1 rounded border transition-all",
+                  selectedHidden
+                    ? "bg-surface-highlight border-brand-300 cursor-pointer hover:bg-brand-100"
+                    : "bg-chip-active border-border-subtle cursor-default"
+                )}
+              >
+                {LLM_PROVIDERS_CONFIG.find(p => p.id === pid)?.name || pid}
+              </button>
             ))}
+
+            {hiddenProviders.length > 0 && (
+              <>
+                <div className="h-4 w-px bg-border-subtle mx-2" />
+                <span className="text-xs text-text-muted">Hidden:</span>
+                {hiddenProviders.map((pid: string) => (
+                  <button
+                    key={pid}
+                    onClick={() => handlePillClick(pid)}
+                    className={clsx(
+                      "text-xs px-2 py-1 rounded border transition-all",
+                      selectedHidden === pid
+                        ? "bg-brand-500 text-white border-brand-600 shadow-glow-brand"
+                        : "bg-surface border-border-subtle hover:bg-surface-highlight"
+                    )}
+                  >
+                    {LLM_PROVIDERS_CONFIG.find(p => p.id === pid)?.name || pid}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
 
           {/* Main Cards Container (3 slots) */}
           <div className="flex gap-4 flex-1 justify-center min-w-0 flex-wrap w-full">
             {/* Render only visible providers to reduce re-render cost */}
-            {visibleSlots.map((id) => renderProviderCard(id, true))}
-          </div>
-
-          <div className="flex flex-col gap-2 flex-shrink-0">
-            {hiddenRight.map((pid) => (
-              <div key={`right-${pid}`}>{renderSideIndicator(pid)}</div>
-            ))}
+            {visibleSlots.map((id: string) => renderProviderCard(id, true))}
           </div>
         </div>
 
