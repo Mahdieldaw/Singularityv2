@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useChat } from "../hooks/useChat";
 import {
   isLoadingAtom,
@@ -14,7 +14,12 @@ import {
   refinerDataAtom,
   chatInputValueAtom,
   hasRejectedRefinementAtom,
+  activeProviderTargetAtom,
+  activeRecomputeStateAtom,
+  currentSessionIdAtom,
+  toastAtom,
 } from "../state/atoms";
+import api from "../services/extension-api";
 import ChatInput from "./ChatInput";
 import RefinerBlock from "./RefinerBlock";
 
@@ -40,12 +45,17 @@ const ChatInputConnected = () => {
   const [refinerData, setRefinerData] = useAtom(refinerDataAtom);
   const [, setChatInputValue] = useAtom(chatInputValueAtom);
   const [hasRejectedRefinement, setHasRejectedRefinement] = useAtom(hasRejectedRefinementAtom);
+  const setToast = useSetAtom(toastAtom);
 
   const [showAudit, setShowAudit] = React.useState(false);
   const [showVariants, setShowVariants] = React.useState(false);
   const [showExplanation, setShowExplanation] = React.useState(false);
 
   const { sendMessage, abort, refinePrompt } = useChat();
+
+  const [activeTarget, setActiveTarget] = useAtom(activeProviderTargetAtom);
+  const [currentSessionId] = useAtom(currentSessionIdAtom);
+  const setActiveRecomputeState = useSetAtom(activeRecomputeStateAtom);
 
   const handleSend = useCallback(
     (prompt: string) => {
@@ -66,8 +76,47 @@ const ChatInputConnected = () => {
   );
 
   const handleCont = useCallback(
-    (prompt: string) => {
-      // Always send message directly (Launch)
+    async (prompt: string) => {
+      // Check for targeted mode
+      if (activeTarget && currentSessionId) {
+        // Targeted Recompute (Branching)
+        try {
+          // Set UI state for streaming
+          setActiveRecomputeState({
+            aiTurnId: activeTarget.aiTurnId,
+            stepType: "batch",
+            providerId: activeTarget.providerId
+          });
+
+          const primitive: any = {
+            type: "recompute",
+            sessionId: currentSessionId,
+            sourceTurnId: activeTarget.aiTurnId,
+            stepType: "batch",
+            targetProvider: activeTarget.providerId,
+            userMessage: prompt, // Custom prompt for the branch
+            useThinking: false,
+          };
+
+          await api.executeWorkflow(primitive);
+
+          // Cleanup
+          setActiveTarget(null);
+          setChatInputValue("");
+        } catch (error: any) {
+          console.error("Failed to execute targeted recompute:", error);
+          setToast({
+            id: Date.now(),
+            message: `Failed to branch ${activeTarget.providerId}: ${error.message || "Unknown error"}`,
+            type: "error",
+          });
+          // Keep target active so user can retry
+          setActiveRecomputeState(null);
+        }
+        return;
+      }
+
+      // Standard Continuation
       sendMessage(prompt, "continuation");
 
       // If refiner was open, clear its state
@@ -80,7 +129,7 @@ const ChatInputConnected = () => {
         setShowExplanation(false);
       }
     },
-    [sendMessage, isRefinerOpen, setIsRefinerOpen, setRefinerData, setChatInputValue],
+    [sendMessage, isRefinerOpen, setIsRefinerOpen, setRefinerData, setChatInputValue, activeTarget, currentSessionId, setActiveTarget, setActiveRecomputeState],
   );
 
   const handleAbort = useCallback(() => {
@@ -145,6 +194,9 @@ const ChatInputConnected = () => {
       }
       onExplore={handleExplore}
       onAsk={handleAsk}
+      // Targeted Mode
+      activeTarget={activeTarget}
+      onCancelTarget={() => setActiveTarget(null)}
     />
   );
 };

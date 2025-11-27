@@ -8,8 +8,8 @@ import {
 import { BotIcon } from "./Icons";
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { ProviderPill } from "./ProviderPill";
-import { useAtomValue, useSetAtom } from "jotai";
-import { providerContextsAtom, toastAtom } from "../state/atoms";
+import { useAtomValue, useSetAtom, useAtom } from "jotai";
+import { providerContextsAtom, toastAtom, providerHistoryExpandedFamily, activeRecomputeStateAtom } from "../state/atoms";
 import MarkdownDisplay from "./MarkdownDisplay";
 import { normalizeProviderId } from "../utils/provider-id-mapper";
 import clsx from "clsx";
@@ -56,6 +56,7 @@ type ProviderStates = Record<string, ProviderState>;
 
 interface ProviderResponseBlockProps {
   providerResponses?: Record<string, ProviderResponse>;
+  providerResponseHistory?: Record<string, ProviderResponse[]>;
   providerStates?: ProviderStates;
   isLoading: boolean;
   currentAppStep: AppStep;
@@ -65,6 +66,8 @@ interface ProviderResponseBlockProps {
   onRetryProvider?: (providerId: string) => void;
   userTurnId?: string;
   copyAllText?: string;
+  activeTarget?: { aiTurnId: string; providerId: string } | null;
+  onToggleTarget?: (providerId: string) => void;
 }
 
 const CopyButton = ({ text, label }: { text: string; label: string }) => {
@@ -100,6 +103,7 @@ const CopyButton = ({ text, label }: { text: string; label: string }) => {
 
 const ProviderResponseBlock = ({
   providerResponses,
+  providerResponseHistory,
   providerStates,
   isLoading,
   isReducedMotion = false,
@@ -108,6 +112,8 @@ const ProviderResponseBlock = ({
   onRetryProvider,
   userTurnId,
   copyAllText,
+  activeTarget,
+  onToggleTarget,
 }: ProviderResponseBlockProps) => {
   const providerContexts = useAtomValue(providerContextsAtom);
 
@@ -311,20 +317,46 @@ const ProviderResponseBlock = ({
       ? context?.errorMessage || state?.text || "Provider error"
       : state?.text || (state?.status === "completed" ? "Empty Response" : getStatusText(state?.status));
 
+    const isTargeted = activeTarget?.providerId === providerId;
+    const history = providerResponseHistory?.[providerId] || [];
+
+    // Persisted history toggle
+    const [showHistory, setShowHistory] = useAtom(
+      useMemo(() => providerHistoryExpandedFamily(`${aiTurnId}-${providerId}`), [aiTurnId, providerId])
+    );
+
+    // Branching visual state
+    const activeRecompute = useAtomValue(activeRecomputeStateAtom);
+    const isBranching = isLoading &&
+      activeRecompute?.stepType === "batch" &&
+      activeRecompute?.providerId === providerId;
+
     return (
       <div
         key={providerId}
         id={`provider-card-${aiTurnId || "unknown"}-${providerId}`}
+        onClick={(e) => {
+          // Prevent targeting when clicking interactive elements
+          if ((e.target as HTMLElement).closest('button, a, .provider-card-scroll')) return;
+          onToggleTarget?.(providerId);
+        }}
         className={clsx(
           "flex flex-col bg-surface-raised border rounded-2xl p-3",
           "shadow-card-sm flex-shrink-0 overflow-hidden",
           "flex-1 basis-[320px] min-w-[260px] max-w-[380px] w-full h-[300px]",
-          "transition-[box-shadow,border-color] duration-300",
-          isHighlighted ? "border-brand-500 shadow-glow-brand" : "border-border-subtle",
+          "transition-[box-shadow,border-color] duration-300 cursor-pointer relative",
+          isHighlighted ? "border-brand-500 shadow-glow-brand" :
+            isTargeted ? "border-brand-500 ring-2 ring-brand-500/50 shadow-glow-brand" : "border-border-subtle hover:border-border-strong",
+          isBranching && "animate-pulse-ring",
           !isVisible && "hidden"
         )}
         aria-live="polite"
       >
+        {isBranching && (
+          <div className="absolute top-2 right-2 z-10 text-[10px] font-bold bg-brand-500 text-white px-2 py-0.5 rounded-full shadow-sm animate-in fade-in zoom-in duration-300">
+            Branching...
+          </div>
+        )}
         {/* Fixed Header */}
         <div className="flex items-center gap-2 mb-3 flex-shrink-0 h-6">
           {provider?.logoSrc ? (
@@ -343,6 +375,11 @@ const ProviderResponseBlock = ({
           <div className="font-medium text-xs text-text-muted">
             {provider?.name || providerId}
           </div>
+          {isTargeted && (
+            <div className="bg-brand-500 text-white text-[10px] px-1.5 py-0.5 rounded font-medium animate-in fade-in zoom-in duration-200">
+              Targeted
+            </div>
+          )}
           {context && (
             <div className="text-[10px] text-text-muted/70 ml-1">
               {context.rateLimitRemaining &&
@@ -361,7 +398,7 @@ const ProviderResponseBlock = ({
 
         {/* Scrollable Content Area */}
         <div
-          className="provider-card-scroll flex-1 overflow-y-auto overflow-x-hidden p-3 bg-surface-overlay rounded-lg min-h-0"
+          className="provider-card-scroll flex-1 overflow-y-auto overflow-x-hidden p-3 bg-surface-overlay rounded-lg min-h-0 relative group"
           onWheelCapture={(e: React.WheelEvent<HTMLDivElement>) => {
             const el = e.currentTarget;
             const dy = e.deltaY ?? 0;
@@ -411,11 +448,32 @@ const ProviderResponseBlock = ({
                     {artifacts.map((artifact, idx) => (
                       <button
                         key={idx}
-                        onClick={() => setSelectedArtifact(artifact)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedArtifact(artifact);
+                        }}
                         className="bg-gradient-to-br from-brand-500 to-brand-600 border border-brand-400 rounded-lg px-3 py-2 text-text-primary text-sm font-medium cursor-pointer flex items-center gap-1.5 hover:-translate-y-px hover:shadow-glow-brand-soft transition-all"
                       >
                         📄 {artifact.title}
                       </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* History Stack (Previous Attempts) */}
+                {showHistory && history.length > 1 && (
+                  <div className="mt-6 pt-4 border-t border-border-subtle space-y-4 animate-in slide-in-from-top-2 duration-200">
+                    <div className="text-xs font-medium text-text-muted uppercase tracking-wider">Previous Attempts</div>
+                    {history.slice(0, -1).reverse().map((resp, idx) => (
+                      <div key={idx} className="bg-surface p-3 rounded border border-border-subtle opacity-75 hover:opacity-100 transition-opacity">
+                        <div className="text-[10px] text-text-muted mb-1 flex justify-between">
+                          <span>Attempt {history.length - 1 - idx}</span>
+                          <span>{new Date(resp.createdAt).toLocaleTimeString()}</span>
+                        </div>
+                        <div className="prose prose-sm max-w-none dark:prose-invert text-xs text-text-secondary line-clamp-3 hover:line-clamp-none transition-all">
+                          <MarkdownDisplay content={resp.text} />
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -425,22 +483,43 @@ const ProviderResponseBlock = ({
         </div>
 
         {/* Fixed Footer with actions */}
-        <div className="mt-3 flex justify-end gap-2 flex-shrink-0 h-8">
-          {/* Retry Button - Only show for failed or empty completed responses */}
-          {(isError || (state?.status === "completed" && !state?.text?.trim())) && onRetryProvider && (
+        <div className="mt-3 flex justify-between items-center flex-shrink-0 h-8">
+          {/* Left: History Toggle */}
+          {history.length > 1 ? (
             <button
-              onClick={() => onRetryProvider(providerId)}
-              title="Retry this provider"
-              className="bg-intent-danger border border-intent-danger/80 rounded-md px-2 py-1 text-text-primary text-xs cursor-pointer flex items-center gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowHistory(!showHistory);
+              }}
+              className="text-[10px] text-text-muted hover:text-text-primary flex items-center gap-1 px-1.5 py-1 rounded hover:bg-surface-highlight transition-colors"
             >
-              🔄 Retry
+              {showHistory ? '▼' : '▶'} {history.length - 1} previous
             </button>
-          )}
-          <CopyButton
-            text={state?.text}
-            label={`Copy ${provider?.name || providerId}`}
-          />
-          <ProviderPill id={providerId as any} />
+          ) : <div />}
+
+          {/* Right: Actions */}
+          <div className="flex gap-2">
+            {/* Retry Button - Only show for failed or empty completed responses */}
+            {(isError || (state?.status === "completed" && !state?.text?.trim())) && onRetryProvider && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRetryProvider(providerId);
+                }}
+                title="Retry this provider"
+                className="bg-intent-danger border border-intent-danger/80 rounded-md px-2 py-1 text-text-primary text-xs cursor-pointer flex items-center gap-1"
+              >
+                🔄 Retry
+              </button>
+            )}
+            <div onClick={e => e.stopPropagation()}>
+              <CopyButton
+                text={state?.text}
+                label={`Copy ${provider?.name || providerId}`}
+              />
+            </div>
+            <ProviderPill id={providerId as any} />
+          </div>
         </div>
       </div >
     );

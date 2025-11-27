@@ -233,6 +233,11 @@ export const activeRecomputeStateAtom = atom<{
   providerId: string;
 } | null>(null);
 
+export const activeProviderTargetAtom = atom<{
+  aiTurnId: string;
+  providerId: string;
+} | null>(null);
+
 // -----------------------------
 // Round-level selections
 // -----------------------------
@@ -242,6 +247,13 @@ export const synthSelectionsByRoundAtom = atomWithImmer<
 export const mappingSelectionByRoundAtom = atomWithImmer<
   Record<string, string | null>
 >({});
+
+// Persist "show history" state per provider (aiTurnId-providerId)
+export const providerHistoryExpandedFamily = atomFamily(
+  (_key: string) => atom(false),
+  (a, b) => a === b,
+);
+
 export const thinkSynthByRoundAtom = atomWithImmer<Record<string, boolean>>({});
 export const thinkMappingByRoundAtom = atomWithImmer<Record<string, boolean>>(
   {},

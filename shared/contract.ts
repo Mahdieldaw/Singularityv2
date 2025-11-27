@@ -64,6 +64,7 @@ export interface RecomputeRequest {
   sourceTurnId: string;
   stepType: "synthesis" | "mapping" | "batch";
   targetProvider: ProviderKey;
+  userMessage?: string;
   useThinking?: boolean;
 }
 

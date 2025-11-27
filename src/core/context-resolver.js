@@ -119,10 +119,11 @@ export class ContextResolver {
         `[ContextResolver] Source turn ${sourceTurnId} not found`,
       );
 
-    // NEW: batch recompute - single provider retry using original user message
+    // NEW: batch recompute - single provider retry using original user message OR custom override
     if (stepType === "batch") {
       const providerContextsAtSourceTurn = sourceTurn.providerContexts || {};
-      const sourceUserMessage = await this._getUserMessageForTurn(sourceTurn);
+      // Prefer custom userMessage from request (targeted refinement), fallback to original turn text
+      const sourceUserMessage = request.userMessage || await this._getUserMessageForTurn(sourceTurn);
       return {
         type: "recompute",
         sessionId,
@@ -223,7 +224,9 @@ export class ContextResolver {
     const embedded = turn.batchResponses || turn.providerResponses || {};
     if (embedded && Object.keys(embedded).length > 0) {
       const frozen = {};
-      for (const [providerId, r] of Object.entries(embedded)) {
+      for (const [providerId, val] of Object.entries(embedded)) {
+        // Handle both array (new) and object (legacy) formats
+        const r = Array.isArray(val) ? val[val.length - 1] : val;
         if (r && r.text) {
           frozen[providerId] = {
             providerId,

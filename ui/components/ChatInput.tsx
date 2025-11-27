@@ -33,8 +33,12 @@ interface ChatInputProps {
   showExplanation?: boolean;
   refinerContent?: React.ReactNode;
   // New Refiner Actions
+  // New Refiner Actions
   onExplore?: (prompt: string) => void;
   onAsk?: (prompt: string) => void;
+  // Targeted Continuation
+  activeTarget?: { aiTurnId: string; providerId: string } | null;
+  onCancelTarget?: () => void;
 }
 
 const ChatInput = ({
@@ -65,6 +69,8 @@ const ChatInput = ({
   refinerContent,
   onExplore,
   onAsk,
+  activeTarget,
+  onCancelTarget,
 }: ChatInputProps) => {
   const CHAT_INPUT_STORAGE_KEY = "htos_chat_input_value";
   const [prompt, setPrompt] = useAtom(chatInputValueAtom);
@@ -87,11 +93,11 @@ const ChatInput = ({
       // Calculate total input area height (textarea + padding + borders + refiner content)
       // Note: refinerContent height is dynamic, so this might not be perfect, 
       // but onHeightChange is mostly for padding the chat history.
-      const totalHeight = newHeight + 24 + 2 + (isRefinerOpen ? 40 : 0);
+      const totalHeight = newHeight + 24 + 2 + (isRefinerOpen ? 40 : 0) + (activeTarget ? 30 : 0);
       onHeightChange?.(totalHeight);
 
     }
-  }, [prompt, onHeightChange, isRefinerOpen]);
+  }, [prompt, onHeightChange, isRefinerOpen, activeTarget]);
 
   // Close menu on click outside
   useEffect(() => {
@@ -175,9 +181,28 @@ const ChatInput = ({
   const showMappingBtn = canShowMapping && !!prompt.trim() && !isRefinerOpen && !hasRejectedRefinement;
   const showAbortBtn = !!onAbort && isLoading;
 
+  const providerName = activeTarget ? LLM_PROVIDERS_CONFIG.find(p => p.id === activeTarget.providerId)?.name || activeTarget.providerId : "";
+
   return (
     <div className="w-full flex justify-center flex-col items-center pointer-events-auto">
       <div className="flex gap-2.5 items-center relative w-full max-w-[min(800px,calc(100%-32px))] p-3 bg-input backdrop-blur-xl border border-border-subtle rounded-3xl flex-wrap">
+
+        {/* Targeted Mode Banner */}
+        {activeTarget && (
+          <div className="w-full flex items-center justify-between bg-brand-500/10 border border-brand-500/20 rounded-lg px-3 py-1.5 mb-1 animate-in slide-in-from-bottom-2 duration-200">
+            <div className="flex items-center gap-2 text-xs font-medium text-brand-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
+              Targeting {providerName}
+            </div>
+            <button
+              onClick={onCancelTarget}
+              className="text-[10px] text-text-muted hover:text-text-primary px-1.5 py-0.5 rounded hover:bg-surface-highlight transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 relative min-w-[200px]">
           <textarea
             ref={textareaRef}
@@ -186,9 +211,11 @@ const ChatInput = ({
               setPrompt(e.target.value)
             }
             placeholder={
-              isContinuationMode
-                ? "Continue the conversation with your follow-up message..."
-                : "Ask anything... Singularity will orchestrate multiple AI models for you."
+              activeTarget
+                ? `Continue conversation with ${providerName}...`
+                : isContinuationMode
+                  ? "Continue the conversation with your follow-up message..."
+                  : "Ask anything... Singularity will orchestrate multiple AI models for you."
             }
             rows={1}
             className={`w-full min-h-[38px] px-3 py-2 bg-transparent border-none text-text-primary text-[16px] font-inherit resize-none outline-none overflow-y-auto ${isReducedMotion ? '' : 'transition-all duration-200 ease-out'} placeholder:text-text-muted`}

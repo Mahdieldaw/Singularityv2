@@ -800,14 +800,14 @@ export class WorkflowEngine {
           case "prompt": {
             const resultsObj = result?.results || {};
             Object.entries(resultsObj).forEach(([providerId, r]) => {
-              batchResponses[providerId] = {
+              batchResponses[providerId] = [{
                 providerId,
                 text: r.text || "",
                 status: r.status || "completed",
                 createdAt: timestamp,
                 updatedAt: timestamp,
                 meta: r.meta || {},
-              };
+              }];
             });
             break;
           }

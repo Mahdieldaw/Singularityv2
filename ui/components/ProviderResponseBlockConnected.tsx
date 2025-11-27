@@ -7,7 +7,9 @@ import {
   providerContextsAtom,
   turnStreamingStateFamily,
   activeRecomputeStateAtom,
+  activeProviderTargetAtom,
 } from "../state/atoms";
+import { useAtom } from "jotai";
 import { ProviderKey, ProviderResponse } from "../types";
 import ProviderResponseBlock from "./ProviderResponseBlock";
 import { LLM_PROVIDERS_CONFIG } from "../constants";
@@ -104,13 +106,13 @@ function ProviderResponseBlockConnected({
     } catch (error) {
       console.error("[ProviderResponseBlock] Retry failed:", error);
       // Clear recompute targeting on failure path in case backend didn't send failure yet
-      try { setActiveRecomputeState(null); } catch {}
+      try { setActiveRecomputeState(null); } catch { }
     }
   }, [sessionId, aiTurn, aiTurnId, setActiveRecomputeState]);
 
   if (!aiTurn) return null;
 
-  
+
   // Build Copy All text: Synthesis, Mapping, All Options, then Batch Responses
   const copyAllText = useMemo(() => {
     if (!aiTurn) return "";
@@ -191,9 +193,32 @@ function ProviderResponseBlockConnected({
     return lines.join("\n");
   }, [aiTurn]);
 
+  // Targeting state
+  const [activeTarget, setActiveTarget] = useAtom(activeProviderTargetAtom);
+  const handleToggleTarget = useCallback((providerId: string) => {
+    if (activeTarget?.aiTurnId === aiTurnId && activeTarget?.providerId === providerId) {
+      setActiveTarget(null);
+    } else {
+      setActiveTarget({ aiTurnId, providerId });
+    }
+  }, [activeTarget, aiTurnId, setActiveTarget]);
+
+  // Compute full history for stacking
+  const providerResponseHistory = useMemo(() => {
+    if (!aiTurn) return undefined;
+    const history: Record<string, ProviderResponse[]> = {};
+    Object.entries(aiTurn.batchResponses || {}).forEach(([pid, arr]) => {
+      history[pid] = normalizeResponseArray(arr);
+    });
+    return history;
+  }, [aiTurn]);
+
   return (
     <ProviderResponseBlock
       providerResponses={providerResponses}
+      providerResponseHistory={providerResponseHistory}
+      activeTarget={activeTarget?.aiTurnId === aiTurnId ? activeTarget : null}
+      onToggleTarget={handleToggleTarget}
       isLoading={isLoading}
       currentAppStep={currentAppStep}
       isReducedMotion={isReducedMotion}
