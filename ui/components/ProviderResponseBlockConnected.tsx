@@ -98,6 +98,15 @@ function ProviderResponseBlockConnected({
       sourceTurnId: aiTurnId,
       stepType: "batch" as any,
       targetProvider: providerId as ProviderKey,
+      // For retries: send the frozen/original user prompt for this turn
+      userMessage: (() => {
+        try {
+          const u = turnsMap.get(aiTurn.userTurnId) as any;
+          return u && u.type === "user" && typeof u.text === "string" ? u.text : undefined;
+        } catch {
+          return undefined;
+        }
+      })(),
       useThinking: false,
     } as any;
 
@@ -227,6 +236,35 @@ function ProviderResponseBlockConnected({
       onRetryProvider={handleRetryProvider}
       userTurnId={aiTurn.userTurnId}
       copyAllText={copyAllText}
+      onBranchContinue={async (providerId: string, _prompt: string) => {
+        // Branch continuation: trigger recompute on this provider.
+        if (!sessionId || !aiTurn) {
+          console.warn("[ProviderResponseBlock] Cannot branch: missing session or turn");
+          return;
+        }
+
+        try {
+          setActiveRecomputeState({ aiTurnId, stepType: "batch" as any, providerId });
+        } catch (_) { /* non-fatal */ }
+
+        const primitive: PrimitiveWorkflowRequest = {
+          type: "recompute",
+          sessionId,
+          sourceTurnId: aiTurnId,
+          stepType: "batch" as any,
+          targetProvider: providerId as ProviderKey,
+          // For inline branching: send the inline prompt, never the original turn prompt
+          userMessage: _prompt,
+          useThinking: false,
+        } as any;
+
+        try {
+          await api.executeWorkflow(primitive);
+        } catch (error) {
+          console.error("[ProviderResponseBlock] Branch failed:", error);
+          try { setActiveRecomputeState(null); } catch { }
+        }
+      }}
     />
   );
 }

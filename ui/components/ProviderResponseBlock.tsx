@@ -159,11 +159,8 @@ const ProviderResponseBlock = ({
 
   // Get all provider IDs in order (excluding 'system')
   const allProviderIds = useMemo(
-    () =>
-      LLM_PROVIDERS_CONFIG.map((p) => p.id).filter(
-        (id) => id !== "system" && Object.prototype.hasOwnProperty.call(effectiveProviderResponses, id),
-      ),
-    [effectiveProviderResponses],
+    () => LLM_PROVIDERS_CONFIG.map((p) => p.id).filter((id) => id !== "system"),
+    [],
   );
 
   // --- PILL-MENU SWAP SYSTEM ---
@@ -198,12 +195,28 @@ const ProviderResponseBlock = ({
 
   // Pill click: Select hidden provider for swapping
   const handlePillClick = useCallback((providerId: string) => {
+    // If no selection active and provider has no response yet, auto-bring into view and target
+    const isHidden = !visibleSlots.includes(providerId);
+    const hasData = !!effectiveProviderStates[providerId];
+    if (!selectedHidden && isHidden && !hasData) {
+      // Place it into the center slot (index 1) for prominence
+      setVisibleProviders((prev) => {
+        const next = [...prev];
+        next[1] = providerId;
+        return next;
+      });
+      // Target it to reveal inline input
+      try { onToggleTarget?.(providerId); } catch { }
+      return;
+    }
+
+    // Default behavior: toggle hidden selection for two-click swap
     if (selectedHidden === providerId) {
       setSelectedHidden(null); // Deselect if clicking same pill
     } else {
       setSelectedHidden(providerId);
     }
-  }, [selectedHidden, setSelectedHidden]);
+  }, [selectedHidden, setSelectedHidden, visibleSlots, effectiveProviderStates, setVisibleProviders, onToggleTarget]);
 
   // Card click: Complete swap if selection active
   const handleCardSwap = useCallback((targetSlotProviderId: string) => {
@@ -311,7 +324,7 @@ const ProviderResponseBlock = ({
   }
 
   const renderProviderCard = (providerId: string, isVisible: boolean) => {
-    const state = effectiveProviderStates[providerId];
+    const state = effectiveProviderStates[providerId] || { text: "", status: "pending" } as any;
     const provider = getProviderConfig(providerId);
     const context = providerContexts[providerId];
     const isStreaming = state?.status === "streaming";
@@ -359,15 +372,14 @@ const ProviderResponseBlock = ({
         key={providerId}
         id={`provider-card-${aiTurnId || "unknown"}-${providerId}`}
         onClick={(e) => {
-          // Prevent when clicking interactive elements
-          if ((e.target as HTMLElement).closest('button, a, .provider-card-scroll')) return;
-
-          // If hidden provider selected, complete swap; otherwise toggle target
+          // If a hidden provider is selected for swap, allow clicking anywhere to drop it here
           if (selectedHidden) {
             handleCardSwap(providerId);
-          } else {
-            onToggleTarget?.(providerId);
+            return;
           }
+          // Otherwise, prevent when clicking interactive elements
+          if ((e.target as HTMLElement).closest('button, a, .provider-card-scroll')) return;
+          onToggleTarget?.(providerId);
         }}
         className={clsx(
           "flex flex-col bg-surface-raised border rounded-2xl p-3",
@@ -513,6 +525,43 @@ const ProviderResponseBlock = ({
           })()}
         </div>
 
+        {/* Inline Branch Input (only when targeted) */}
+        {isTargeted && (
+          <div className="mt-3 p-3 bg-brand-500/5 border border-brand-500/30 rounded-lg animate-in slide-in-from-bottom-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={branchInput}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setBranchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleBranchSend();
+                  }
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    onToggleTarget?.(providerId); // Untarget
+                  }
+                }}
+                placeholder={`Continue with ${provider?.name || providerId}...`}
+                className="flex-1 bg-surface border border-border-subtle rounded px-3 py-2 text-sm focus:outline-none focus:border-brand-500"
+                autoFocus
+              />
+              <button
+                onClick={(e) => { e.stopPropagation(); handleBranchSend(); }}
+                disabled={!branchInput.trim()}
+                className="bg-brand-500 text-white px-4 py-2 rounded text-sm disabled:opacity-50 hover:bg-brand-600"
+              >
+                Send
+              </button>
+            </div>
+            <div className="text-[10px] text-text-muted mt-1.5 px-1">
+              Enter to send • ESC to cancel
+            </div>
+          </div>
+        )}
+
         {/* Fixed Footer with actions */}
         <div className="mt-3 flex justify-between items-center flex-shrink-0 h-8">
           {/* Left: History Toggle */}
@@ -570,9 +619,9 @@ const ProviderResponseBlock = ({
           <CopyButton
             text={copyAllText || allProviderIds
               .map((id) => {
-                const state = effectiveProviderStates[id];
+                const state = effectiveProviderStates[id] || { text: "" } as any;
                 const provider = getProviderConfig(id);
-                return `${provider?.name || id}:\n${state.text}`;
+                return `${provider?.name || id}:\n${state?.text || ""}`;
               })
               .join("\n\n---\n\n")}
             label="Copy all responses"
@@ -580,52 +629,65 @@ const ProviderResponseBlock = ({
         </div>
 
         {/* PILL MENU + CARDS LAYOUT */}
-        <div className="flex flex-col gap-4">
-          {/* Pill Menu: Provider Swap Controls */}
-          <div className="pill-menu flex items-center gap-2 p-2 bg-surface-raised rounded-lg border border-border-subtle">
-            <span className="text-xs text-text-muted">Visible:</span>
-            {visibleSlots.map((pid: string) => (
-              <button
-                key={pid}
-                onClick={() => handleVisiblePillClick(pid)}
-                disabled={!selectedHidden}
-                className={clsx(
-                  "text-xs px-2 py-1 rounded border transition-all",
-                  selectedHidden
-                    ? "bg-surface-highlight border-brand-300 cursor-pointer hover:bg-brand-100"
-                    : "bg-chip-active border-border-subtle cursor-default"
-                )}
-              >
-                {LLM_PROVIDERS_CONFIG.find(p => p.id === pid)?.name || pid}
-              </button>
-            ))}
+        <div className="flex flex-col items-center gap-4 w-full">
+          {/* Hidden pills row (centered, styled like visible with black bg) */}
+          {hiddenProviders.length > 0 && (
+            <div className="hidden-pills grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-[1200px] px-2 justify-items-center">
+              {hiddenProviders.map((pid: string, idx: number) => {
+                // Centering logic for first row of hidden pills
+                let colClass = "";
+                if (idx < 3) {
+                  const len = hiddenProviders.length;
+                  if (len === 1) colClass = "sm:col-start-2";
+                  else if (len === 2) colClass = idx === 0 ? "sm:col-start-1" : "sm:col-start-3";
+                  else colClass = idx === 0 ? "sm:col-start-1" : idx === 1 ? "sm:col-start-2" : "sm:col-start-3";
+                }
+                return (
+                  <div key={pid} className={clsx("flex items-center justify-center", colClass)}>
+                    <button
+                      onClick={() => handlePillClick(pid)}
+                      className={clsx(
+                        "text-xs px-3 py-1.5 rounded-full border transition-all",
+                        selectedHidden === pid
+                          ? "bg-surface-highest border-border-strong text-text-primary shadow-glow-brand"
+                          : "bg-surface-highest border-border-subtle text-text-secondary hover:bg-surface-highlight"
+                      )}
+                    >
+                      {LLM_PROVIDERS_CONFIG.find(p => p.id === pid)?.name || pid}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-            {hiddenProviders.length > 0 && (
-              <>
-                <div className="h-4 w-px bg-border-subtle mx-2" />
-                <span className="text-xs text-text-muted">Hidden:</span>
-                {hiddenProviders.map((pid: string) => (
-                  <button
-                    key={pid}
-                    onClick={() => handlePillClick(pid)}
-                    className={clsx(
-                      "text-xs px-2 py-1 rounded border transition-all",
-                      selectedHidden === pid
-                        ? "bg-brand-500 text-white border-brand-600 shadow-glow-brand"
-                        : "bg-surface border-border-subtle hover:bg-surface-highlight"
-                    )}
-                  >
-                    {LLM_PROVIDERS_CONFIG.find(p => p.id === pid)?.name || pid}
-                  </button>
-                ))}
-              </>
-            )}
+          {/* Visible pills row (centered, aligned to cards) */}
+          <div className="visible-pills grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-[1200px] px-2 justify-items-center">
+            {visibleSlots.map((pid: string) => (
+              <div key={pid} className="flex items-center justify-center">
+                <button
+                  onClick={() => handleVisiblePillClick(pid)}
+                  disabled={!selectedHidden}
+                  className={clsx(
+                    "text-xs px-3 py-1.5 rounded-full border transition-all",
+                    selectedHidden
+                      ? "bg-surface-highlight border-brand-300 cursor-pointer hover:bg-brand-100"
+                      : "bg-chip-active border-border-subtle cursor-default"
+                  )}
+                >
+                  {LLM_PROVIDERS_CONFIG.find(p => p.id === pid)?.name || pid}
+                </button>
+              </div>
+            ))}
           </div>
 
-          {/* Main Cards Container (3 slots) */}
-          <div className="flex gap-4 flex-1 justify-center min-w-0 flex-wrap w-full">
-            {/* Render only visible providers to reduce re-render cost */}
-            {visibleSlots.map((id: string) => renderProviderCard(id, true))}
+          {/* Cards grid (aligned under visible pills) */}
+          <div className="cards-grid grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-[1200px]">
+            {visibleSlots.map((id: string) => (
+              <div key={id} className="flex items-stretch justify-center">
+                {renderProviderCard(id, true)}
+              </div>
+            ))}
           </div>
         </div>
 
