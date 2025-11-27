@@ -260,8 +260,8 @@ export class ConnectionHandler {
             aiTurnId,
             // ✅ Include actual providers being used so UI doesn't guess from stale state
             providers: executeRequest.providers || [],
-            synthesisProvider: executeRequest.synthesis?.providers?.[0] || null,
-            mappingProvider: executeRequest.mapping?.providers?.[0] || null,
+            synthesisProvider: executeRequest.synthesizer || null,
+            mappingProvider: executeRequest.mapper || null,
           });
         } catch (_) { }
 

@@ -824,6 +824,8 @@ export class WorkflowEngine {
               updatedAt: timestamp,
               meta: result?.meta || {},
             });
+            // Set the primary synthesizer for this turn
+            aiTurn.meta.synthesizer = providerId;
             break;
           }
           case "mapping": {
@@ -839,6 +841,8 @@ export class WorkflowEngine {
               updatedAt: timestamp,
               meta: result?.meta || {},
             });
+            // Set the primary mapper for this turn
+            aiTurn.meta.mapper = providerId;
             break;
           }
         }
@@ -935,7 +939,7 @@ export class WorkflowEngine {
             workflowContexts[providerId],
           ).join(",")}`,
         );
-      } catch (_) {}
+      } catch (_) { }
       return providerContexts;
     }
 
@@ -952,7 +956,7 @@ export class WorkflowEngine {
           wdbg(
             `[WorkflowEngine] ${stepType} using historical context from ResolvedContext for ${providerId}`,
           );
-        } catch (_) {}
+        } catch (_) { }
         return providerContexts;
       }
     }
@@ -971,7 +975,7 @@ export class WorkflowEngine {
             wdbg(
               `[WorkflowEngine] ${stepType} continuing conversation for ${providerId} via batch step`,
             );
-          } catch (_) {}
+          } catch (_) { }
           return providerContexts;
         }
       }
@@ -995,10 +999,10 @@ export class WorkflowEngine {
               persistedMeta,
             ).join(",")}`,
           );
-        } catch (_) {}
+        } catch (_) { }
         return providerContexts;
       }
-    } catch (_) {}
+    } catch (_) { }
 
     return providerContexts;
   }
@@ -1027,7 +1031,7 @@ export class WorkflowEngine {
           console.warn("[WorkflowEngine] Deferred persistence failed:", e);
         }
       }, 0);
-    } catch (_) {}
+    } catch (_) { }
   }
 
   /**
@@ -1063,7 +1067,7 @@ export class WorkflowEngine {
               status: "partial_failure",
               error: error?.message || String(error),
             });
-          } catch (_) {}
+          } catch (_) { }
           reject(error);
         },
         onAllComplete: (results, errors) => {
@@ -1088,7 +1092,7 @@ export class WorkflowEngine {
                 )}`,
               );
             }
-          } catch (_) {}
+          } catch (_) { }
 
           // ✅ CRITICAL: Update in-memory cache SYNCHRONOUSLY
           this.sessionManager.updateProviderContextsBatch(
@@ -1178,7 +1182,7 @@ export class WorkflowEngine {
             }
           }
         }
-      } catch (_) {}
+      } catch (_) { }
 
       // Fallback: resolve from current session memory
       if (!aiTurn && session && Array.isArray(session.turns)) {
@@ -1230,7 +1234,7 @@ export class WorkflowEngine {
               break;
             }
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       if (!aiTurn || aiTurn.type !== "ai") {
@@ -1432,8 +1436,7 @@ export class WorkflowEngine {
     }
 
     wdbg(
-      `[WorkflowEngine] Running synthesis with ${
-        sourceData.length
+      `[WorkflowEngine] Running synthesis with ${sourceData.length
       } sources: ${sourceData.map((s) => s.providerId).join(", ")}`,
     );
 
@@ -1463,15 +1466,14 @@ export class WorkflowEngine {
           break;
         } else {
           wdbg(
-            `[WorkflowEngine] Mapping step ${mappingStepId} not suitable: status=${
-              mappingStepResult?.status
+            `[WorkflowEngine] Mapping step ${mappingStepId} not suitable: status=${mappingStepResult?.status
             }, hasResult=${!!mappingStepResult?.result}, hasText=${!!mappingStepResult
               ?.result?.text}`,
           );
         }
       }
-       // Prefer mapping result when declared, but continue gracefully if absent
-       if (!mappingResult || !String(mappingResult.text || "").trim()) {
+      // Prefer mapping result when declared, but continue gracefully if absent
+      if (!mappingResult || !String(mappingResult.text || "").trim()) {
         console.warn(
           `[WorkflowEngine] No valid mapping result found; proceeding without Map input`,
           mappingResult,
@@ -1565,12 +1567,11 @@ export class WorkflowEngine {
               if (finalResult?.meta) {
                 workflowContexts[payload.synthesisProvider] = finalResult.meta;
                 wdbg(
-                  `[WorkflowEngine] Updated workflow context for ${
-                    payload.synthesisProvider
+                  `[WorkflowEngine] Updated workflow context for ${payload.synthesisProvider
                   }: ${Object.keys(finalResult.meta).join(",")}`,
                 );
               }
-            } catch (_) {}
+            } catch (_) { }
 
             resolve({
               providerId: payload.synthesisProvider,
@@ -1608,8 +1609,7 @@ export class WorkflowEngine {
     }
 
     wdbg(
-      `[WorkflowEngine] Running mapping with ${
-        sourceData.length
+      `[WorkflowEngine] Running mapping with ${sourceData.length
       } sources: ${sourceData.map((s) => s.providerId).join(", ")}`,
     );
 
@@ -1737,12 +1737,11 @@ export class WorkflowEngine {
                 workflowContexts[payload.mappingProvider] =
                   finalResultWithMeta.meta;
                 wdbg(
-                  `[WorkflowEngine] Updated workflow context for ${
-                    payload.mappingProvider
+                  `[WorkflowEngine] Updated workflow context for ${payload.mappingProvider
                   }: ${Object.keys(finalResultWithMeta.meta).join(",")}`,
                 );
               }
-            } catch (_) {}
+            } catch (_) { }
 
             resolve({
               providerId: payload.mappingProvider,
