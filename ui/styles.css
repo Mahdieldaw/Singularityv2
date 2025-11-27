@@ -1,6 +1,14 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Import Math Styles (Lazy-loaded logic handled by component, but styles here for now) */
+@import './styles/math-styles.css';
+
+/* CSS Custom Properties */
+:root {
+  --font-dm-mono: 'DM Mono';
+}
 
 @layer base {
 

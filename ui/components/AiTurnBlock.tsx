@@ -1129,26 +1129,13 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
             </div>
           </div>
 
-          {/* Sources Section */}
+          {/* Sources Section - Always Visible */}
           {hasSources && (
             <div className="batch-filler mt-3">
               <div className="sources-wrapper">
-                <div className="sources-toggle text-center mb-2">
-                  <button
-                    type="button"
-                    onClick={() => onToggleSourceOutputs?.()}
-                    className="px-3 py-1.5 rounded-lg border border-border-subtle
-                                 bg-surface text-text-primary cursor-pointer
-                                 hover:bg-surface-highlight transition-all text-sm"
-                  >
-                    {showSourceOutputs ? "Hide Sources" : "Show Sources"}
-                  </button>
+                <div className="sources-content">
+                  {children}
                 </div>
-                {showSourceOutputs && (
-                  <div className="sources-content">
-                    {children}
-                  </div>
-                )}
               </div>
             </div>
           )}

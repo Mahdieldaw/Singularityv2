@@ -635,29 +635,12 @@ const ProviderResponseBlock = ({
 
 
   return (
-    <div className="response-container mb-6 flex">
-      <BotIcon className="w-8 h-8 text-text-brand mr-3 flex-shrink-0 mt-1" />
-      <div className="flex-1">
-        {/* Global Controls Header */}
-        <div className="global-controls flex items-center justify-between mb-3 p-3">
-          <div className="text-sm font-medium text-text-muted">
-            AI Responses ({allProviderIds.length})
-          </div>
-          <CopyButton
-            text={copyAllText || allProviderIds
-              .map((id) => {
-                const state = effectiveProviderStates[id] || { text: "" } as any;
-                const provider = getProviderConfig(id);
-                return `${provider?.name || id}:\n${state?.text || ""}`;
-              })
-              .join("\n\n---\n\n")}
-            label="Copy all responses"
-          />
-        </div>
+    <div className="response-container mb-6">
+      <div className="w-full">
 
         {/* PILL MENU + CARDS LAYOUT */}
         <div className="flex flex-col items-center gap-4 w-full">
-          {/* Hidden pills row (centered, styled like visible with black bg) */}
+          {/* Hidden pills row (centered, greyed out inactive providers) */}
           {hiddenProviders.length > 0 && (
             <div className="hidden-pills grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-[1200px] px-2 justify-items-center">
               {hiddenProviders.map((pid: string, idx: number) => {
@@ -676,8 +659,8 @@ const ProviderResponseBlock = ({
                       className={clsx(
                         "text-xs px-3 py-1.5 rounded-full border transition-all",
                         selectedHidden === pid
-                          ? "bg-surface-highest border-border-strong text-text-primary shadow-glow-brand"
-                          : "bg-surface-highest border-border-subtle text-text-secondary hover:bg-surface-highlight"
+                          ? "bg-chip-active border-border-strong text-text-primary shadow-glow-brand"
+                          : "bg-chip-active border-border-subtle text-text-muted hover:bg-surface-highlight opacity-60"
                       )}
                     >
                       {LLM_PROVIDERS_CONFIG.find(p => p.id === pid)?.name || pid}
@@ -699,7 +682,7 @@ const ProviderResponseBlock = ({
                     "text-xs px-3 py-1.5 rounded-full border transition-all",
                     selectedHidden
                       ? "bg-surface-highlight border-brand-300 cursor-pointer hover:bg-brand-100"
-                      : "bg-chip-active border-border-subtle cursor-default"
+                      : "bg-surface-highest border-border-subtle text-text-primary cursor-default shadow-sm"
                   )}
                 >
                   {LLM_PROVIDERS_CONFIG.find(p => p.id === pid)?.name || pid}
@@ -709,12 +692,26 @@ const ProviderResponseBlock = ({
           </div>
 
           {/* Cards grid (aligned under visible pills) */}
-          <div className="cards-grid grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-[1200px]">
+          <div className="cards-grid grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-[1200px] relative">
             {visibleSlots.map((id: string) => (
               <div key={id} className="flex items-stretch justify-center">
                 {renderProviderCard(id, true)}
               </div>
             ))}
+
+            {/* Copy All Button - Positioned at bottom right */}
+            <div className="absolute -bottom-12 right-2">
+              <CopyButton
+                text={copyAllText || allProviderIds
+                  .map((id) => {
+                    const state = effectiveProviderStates[id] || { text: "" } as any;
+                    const provider = getProviderConfig(id);
+                    return `${provider?.name || id}:\n${state?.text || ""}`;
+                  })
+                  .join("\n\n---\n\n")}
+                label="Copy all responses"
+              />
+            </div>
           </div>
         </div>
 
