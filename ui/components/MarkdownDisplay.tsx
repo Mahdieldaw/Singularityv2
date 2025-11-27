@@ -76,6 +76,8 @@ const PreBlock = ({ children }: any) => {
     } catch { }
   }, [codeText, language]);
 
+
+
   return (
     <div className="relative bg-surface-code border border-border-subtle rounded-lg my-3 overflow-hidden">
       {/* Header / Language Label */}
@@ -117,24 +119,21 @@ const PreBlock = ({ children }: any) => {
 };
 
 // --- 3. CODE COMPONENT (The Text Style) ---
-const CodeText = ({ inline, className, children, ...props }: any) => {
-  // IF INLINE (Single Backtick): Render the small bubble style
-  if (inline) {
+const CodeText = ({ className = '', children, ...props }: any) => {
+  const isBlock = className.includes('language-');
+  if (isBlock) {
+    // fenced/block code: PreBlock / CSS will style
     return (
-      <code
-        className="bg-chip-soft text-text-primary rounded border border-border-subtle
-                   px-1 py-0.5 font-mono font-medium whitespace-pre-wrap break-words inline"
-        {...props}
-      >
+      <code className={className} {...props}>
         {children}
       </code>
     );
   }
 
-  // IF BLOCK (Inside Pre): Just render clean text logic, parent <PreBlock> handles the box
+  // inline code: bubble style
   return (
     <code
-      className="text-sm leading-relaxed block font-mono whitespace-pre"
+      className={`inline font-mono text-xs text-text-primary bg-surface-highlight/80 border border-border-subtle rounded px-1.5 py-0.5 whitespace-normal align-baseline ${className}`}
       {...props}
     >
       {children}
@@ -230,9 +229,9 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = React.memo(
                 <li className="mb-1">{children}</li>
               </ListContext.Provider>
             ),
-            h1: ({ children }) => <h1 className="text-xl font-semibold mt-2 mb-2 text-text-primary">{children}</h1>,
-            h2: ({ children }) => <h2 className="text-[17px] font-semibold mt-2 mb-2 text-text-primary">{children}</h2>,
-            h3: ({ children }) => <h3 className="text-[16px] font-semibold mt-2 mb-2 text-text-primary">{children}</h3>,
+            h1: ({ children }) => <h1 className="text-2xl font-semibold mt-4 mb-2 text-text-primary">{children}</h1>,
+            h2: ({ children }) => <h2 className="text-xl font-semibold mt-3 mb-2 text-text-primary">{children}</h2>,
+            h3: ({ children }) => <h3 className="text-lg font-semibold mt-2 mb-1.5 text-text-secondary">{children}</h3>,
             blockquote: ({ children }) => <blockquote className="border-l-4 border-border-subtle pl-4 ml-0 text-text-muted italic">{children}</blockquote>,
 
             // --- TABLE STYLING (Restored) ---

@@ -240,6 +240,15 @@
   .htos-citation-pill:active {
     transform: translateY(0);
   }
+
+  /* Reset block code inside pre to prevent bubble styling */
+  .markdown-body pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    display: inline;
+    white-space: pre;
+  }
 }
 
 @layer utilities {
