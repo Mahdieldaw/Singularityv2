@@ -507,17 +507,44 @@ const ProviderResponseBlock = ({
                 {showHistory && history.length > 1 && (
                   <div className="mt-6 pt-4 border-t border-border-subtle space-y-4 animate-in slide-in-from-top-2 duration-200">
                     <div className="text-xs font-medium text-text-muted uppercase tracking-wider">Previous Attempts</div>
-                    {history.slice(0, -1).reverse().map((resp, idx) => (
-                      <div key={idx} className="bg-surface p-3 rounded border border-border-subtle opacity-75 hover:opacity-100 transition-opacity">
-                        <div className="text-[10px] text-text-muted mb-1 flex justify-between">
-                          <span>Attempt {history.length - 1 - idx}</span>
-                          <span>{new Date(resp.createdAt).toLocaleTimeString()}</span>
+                    {history.slice(0, -1).reverse().map((resp, idx) => {
+                      // Debug logging for empty responses
+                      if (!resp.text || resp.text.trim().length === 0) {
+                        console.log(`[ProviderResponseBlock] Empty history item found for provider ${providerId} at index ${idx}`, resp);
+                      }
+
+                      const { cleanText, artifacts: histArtifacts } = extractClaudeArtifacts(resp.text);
+                      const hasContent = cleanText || histArtifacts.length > 0;
+
+                      return (
+                        <div key={idx} className="bg-surface p-3 rounded border border-border-subtle opacity-75 hover:opacity-100 transition-opacity">
+                          <div className="text-[10px] text-text-muted mb-1 flex justify-between">
+                            <span>Attempt {history.length - 1 - idx}</span>
+                            <span>{new Date(resp.createdAt).toLocaleTimeString()}</span>
+                          </div>
+                          <div className="prose prose-sm max-w-none dark:prose-invert text-xs text-text-secondary line-clamp-3 hover:line-clamp-none transition-all">
+                            {hasContent ? (
+                              <>
+                                <MarkdownDisplay content={cleanText || (histArtifacts.length ? "*Artifact content*" : resp.text)} />
+                                {histArtifacts.length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-1">
+                                    {histArtifacts.map((art, i) => (
+                                      <span key={i} className="text-[10px] bg-brand-500/10 text-brand-500 px-1.5 py-0.5 rounded border border-brand-500/20 flex items-center gap-1">
+                                        📄 {art.title}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="text-text-muted italic opacity-70">
+                                No content available (empty response)
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="prose prose-sm max-w-none dark:prose-invert text-xs text-text-secondary line-clamp-3 hover:line-clamp-none transition-all">
-                          <MarkdownDisplay content={resp.text} />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </>

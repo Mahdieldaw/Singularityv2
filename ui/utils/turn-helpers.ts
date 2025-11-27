@@ -129,9 +129,24 @@ export function applyStreamingUpdates(
         (aiTurn as any).batchResponses[providerId],
       );
 
-      if (arr.length > 0) {
-        // Update latest response
-        const latest = arr[arr.length - 1];
+      // Check if we should start a new response (branching/retry)
+      // If the latest response is terminal (completed/error) and the new update is active (streaming/pending),
+      // we must preserve the history and start a new entry.
+      const latest = arr.length > 0 ? arr[arr.length - 1] : undefined;
+      const isLatestTerminal = latest && (latest.status === "completed" || latest.status === "error");
+      const isNewStream = status === "streaming" || status === "pending";
+
+      if (latest && !isLatestTerminal) {
+        // Update existing active response
+        arr[arr.length - 1] = {
+          ...latest,
+          text: (latest.text || "") + delta,
+          status: status as any,
+          updatedAt: Date.now(),
+        } as any;
+      } else if (isLatestTerminal && !isNewStream) {
+        // Edge case: late arrival of terminal update for already terminal response?
+        // Or maybe just updating metadata. For safety, we update the latest.
         arr[arr.length - 1] = {
           ...latest,
           text: (latest.text || "") + delta,
@@ -139,7 +154,7 @@ export function applyStreamingUpdates(
           updatedAt: Date.now(),
         } as any;
       } else {
-        // Create new response
+        // Create new response (either first one, or branching from terminal)
         arr.push({
           providerId: providerId as ProviderKey,
           text: delta,
@@ -155,9 +170,11 @@ export function applyStreamingUpdates(
       if (!aiTurn.synthesisResponses) aiTurn.synthesisResponses = {};
       const arr = normalizeResponseArray(aiTurn.synthesisResponses[providerId]);
 
-      if (arr.length > 0) {
-        // Update latest response
-        const latest = arr[arr.length - 1];
+      const latest = arr.length > 0 ? arr[arr.length - 1] : undefined;
+      const isLatestTerminal = latest && (latest.status === "completed" || latest.status === "error");
+      const isNewStream = status === "streaming" || status === "pending";
+
+      if (latest && !isLatestTerminal) {
         arr[arr.length - 1] = {
           ...latest,
           text: (latest.text || "") + delta,
@@ -165,7 +182,6 @@ export function applyStreamingUpdates(
           updatedAt: Date.now(),
         };
       } else {
-        // Create new response
         arr.push({
           providerId: providerId as ProviderKey,
           text: delta,
@@ -181,9 +197,11 @@ export function applyStreamingUpdates(
       if (!aiTurn.mappingResponses) aiTurn.mappingResponses = {};
       const arr = normalizeResponseArray(aiTurn.mappingResponses[providerId]);
 
-      if (arr.length > 0) {
-        // Update latest response
-        const latest = arr[arr.length - 1];
+      const latest = arr.length > 0 ? arr[arr.length - 1] : undefined;
+      const isLatestTerminal = latest && (latest.status === "completed" || latest.status === "error");
+      const isNewStream = status === "streaming" || status === "pending";
+
+      if (latest && !isLatestTerminal) {
         arr[arr.length - 1] = {
           ...latest,
           text: (latest.text || "") + delta,
@@ -191,7 +209,6 @@ export function applyStreamingUpdates(
           updatedAt: Date.now(),
         };
       } else {
-        // Create new response
         arr.push({
           providerId: providerId as ProviderKey,
           text: delta,

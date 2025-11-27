@@ -789,6 +789,8 @@ export class WorkflowEngine {
       const batchResponses = {};
       const synthesisResponses = {};
       const mappingResponses = {};
+      let primarySynthesizer = null;
+      let primaryMapper = null;
 
       const stepById = new Map((steps || []).map((s) => [s.stepId, s]));
       stepResults.forEach((value, stepId) => {
@@ -825,7 +827,7 @@ export class WorkflowEngine {
               meta: result?.meta || {},
             });
             // Set the primary synthesizer for this turn
-            aiTurn.meta.synthesizer = providerId;
+            primarySynthesizer = providerId;
             break;
           }
           case "mapping": {
@@ -842,7 +844,7 @@ export class WorkflowEngine {
               meta: result?.meta || {},
             });
             // Set the primary mapper for this turn
-            aiTurn.meta.mapper = providerId;
+            primaryMapper = providerId;
             break;
           }
         }
@@ -868,6 +870,10 @@ export class WorkflowEngine {
         batchResponses,
         synthesisResponses,
         mappingResponses,
+        meta: {
+          synthesizer: primarySynthesizer,
+          mapper: primaryMapper,
+        },
       };
 
       console.log("[WorkflowEngine] Emitting TURN_FINALIZED", {

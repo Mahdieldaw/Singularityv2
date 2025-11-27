@@ -226,6 +226,7 @@ export default function HistoryPanelConnected() {
         onToggleBatchMode={handleToggleBatchMode}
         onToggleSessionSelected={handleToggleSelected}
         onConfirmBatchDelete={handleConfirmBatchDelete}
+        currentSessionId={currentSessionId}
       />
 
       <Suspense fallback={null}>

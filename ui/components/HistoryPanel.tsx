@@ -33,7 +33,8 @@ const HistoryPanel = ({
   onToggleBatchMode,
   onToggleSessionSelected,
   onConfirmBatchDelete,
-}: HistoryPanelProps) => {
+  currentSessionId,
+}: HistoryPanelProps & { currentSessionId?: string | null }) => {
   return (
     <div className="relative w-full h-full bg-surface-soft/90 backdrop-blur-xl border-r border-border-subtle text-text-secondary p-5 overflow-y-auto overflow-x-hidden flex flex-col">
       {isOpen && (
@@ -107,10 +108,14 @@ const HistoryPanel = ({
                         onSelectChat(session);
                       }
                     }}
-                    className={`p-2.5 px-3 rounded-lg border border-border-subtle bg-chip text-text-secondary text-[16px] cursor-pointer mb-2 flex items-start justify-between gap-2 transition-all duration-200 hover:bg-surface-highlight hover:border-border-strong ${!!deletingIds &&
-                      (deletingIds as Set<string>).has(session.sessionId)
-                      ? "opacity-60 pointer-events-none"
-                      : ""
+                    className={`p-2.5 px-3 rounded-lg border text-[16px] cursor-pointer mb-2 flex items-start justify-between gap-2 transition-all duration-200 
+                      ${session.sessionId === currentSessionId
+                        ? "bg-brand-500/10 border-brand-500 text-text-primary shadow-sm"
+                        : "bg-chip border-border-subtle text-text-secondary hover:bg-surface-highlight hover:border-border-strong"
+                      }
+                      ${!!deletingIds && (deletingIds as Set<string>).has(session.sessionId)
+                        ? "opacity-60 pointer-events-none"
+                        : ""
                       }`}
                     role="button"
                     tabIndex={0}

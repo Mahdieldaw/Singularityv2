@@ -59,8 +59,9 @@ const ChatInputConnected = () => {
 
   const handleSend = useCallback(
     (prompt: string) => {
-      // Always send message directly (Launch)
-      sendMessage(prompt, "new");
+      // Send message with correct mode based on continuation state
+      const mode = isContinuationMode ? "continuation" : "new";
+      sendMessage(prompt, mode);
 
       // If refiner was open, clear its state
       if (isRefinerOpen) {
@@ -72,7 +73,7 @@ const ChatInputConnected = () => {
         setShowExplanation(false);
       }
     },
-    [sendMessage, isRefinerOpen, setIsRefinerOpen, setRefinerData, setChatInputValue],
+    [sendMessage, isContinuationMode, isRefinerOpen, setIsRefinerOpen, setRefinerData, setChatInputValue],
   );
 
   const handleCont = useCallback(
