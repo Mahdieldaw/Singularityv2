@@ -13,10 +13,12 @@ export default function UserTurnBlockConnected({ userTurn }: any) {
 
 
   return (
+
     <UserTurnBlock
       userTurn={userTurn}
       isExpanded={isExpanded}
       onToggle={handleToggle}
     />
+
   );
 }

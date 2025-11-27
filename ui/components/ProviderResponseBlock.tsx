@@ -698,20 +698,20 @@ const ProviderResponseBlock = ({
                 {renderProviderCard(id, true)}
               </div>
             ))}
+          </div>
 
-            {/* Copy All Button - Positioned at bottom right */}
-            <div className="absolute -bottom-12 right-2">
-              <CopyButton
-                text={copyAllText || allProviderIds
-                  .map((id) => {
-                    const state = effectiveProviderStates[id] || { text: "" } as any;
-                    const provider = getProviderConfig(id);
-                    return `${provider?.name || id}:\n${state?.text || ""}`;
-                  })
-                  .join("\n\n---\n\n")}
-                label="Copy all responses"
-              />
-            </div>
+          {/* Copy All Button - Positioned below grid */}
+          <div className="w-full max-w-[1200px] flex justify-end px-2">
+            <CopyButton
+              text={copyAllText || allProviderIds
+                .map((id) => {
+                  const state = effectiveProviderStates[id] || { text: "" } as any;
+                  const provider = getProviderConfig(id);
+                  return `${provider?.name || id}:\n${state?.text || ""}`;
+                })
+                .join("\n\n---\n\n")}
+              label="Copy all responses"
+            />
           </div>
         </div>
 

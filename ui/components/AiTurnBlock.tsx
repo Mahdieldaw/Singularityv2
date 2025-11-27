@@ -499,7 +499,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
     null;
 
   return (
-    <div className="turn-block pb-4 border-b border-border-subtle">
+    <div className="turn-block pb-8 border-b border-border-subtle mb-4">
       {userPrompt && (
         <div className="user-prompt-block mb-2">
           <div className="text-xs text-text-muted mb-1.5">
