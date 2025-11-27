@@ -82,7 +82,7 @@ const PreBlock = ({ children }: any) => {
     <div className="relative bg-surface-code border border-border-subtle rounded-lg my-3 overflow-hidden">
       {/* Header / Language Label */}
       {language && (
-        <div className="absolute top-0 left-0 px-2 py-0.5 text-[10px] uppercase text-text-muted bg-surface-modal/50 rounded-br pointer-events-none z-[1]">
+        <div className="absolute top-0 left-0 px-2 py-0.5 text-xs uppercase text-text-muted bg-surface-modal/50 rounded-br pointer-events-none z-[1]">
           {language}
         </div>
       )}
@@ -195,7 +195,7 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = React.memo(
     }, [content, isMathLoaded]);
 
     return (
-      <div className="markdown-body text-[16px] leading-relaxed text-text-primary">
+      <div className="markdown-body text-base leading-relaxed text-text-primary">
         <ReactMarkdown
           remarkPlugins={[remarkGfm, ...mathPlugins.remarkPlugins]}
           rehypePlugins={[...mathPlugins.rehypePlugins]}
@@ -237,7 +237,7 @@ const MarkdownDisplay: React.FC<MarkdownDisplayProps> = React.memo(
             // --- TABLE STYLING (Restored) ---
             table: ({ children }) => (
               <div className="overflow-x-auto my-4">
-                <table className="w-full border-collapse text-[16px] text-text-primary">
+                <table className="w-full border-collapse text-base text-text-primary">
                   {children}
                 </table>
               </div>

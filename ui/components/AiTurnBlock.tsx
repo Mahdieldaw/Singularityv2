@@ -505,11 +505,8 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
           <div className="text-xs text-text-muted mb-1.5">
             User
           </div>
-          {/* Prose wrapper for consistent line width */}
-          <div className="mx-auto max-w-prose">
-            <div className="bg-surface border border-border-subtle rounded-lg p-3 text-text-secondary">
-              {userPrompt}
-            </div>
+          <div className="bg-surface border border-border-subtle rounded-lg p-3 text-text-secondary">
+            {userPrompt}
           </div>
         </div>
       )}
@@ -517,7 +514,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
       <div className="ai-turn-block">
         <div className="ai-turn-content flex flex-col gap-3">
           <div className="primaries mb-4 relative">
-            <div className="controls-row mx-auto max-w-prose px-1 mt-6 mb-1 flex items-center justify-start gap-2">
+            <div className="controls-row px-1 mt-6 mb-1 flex items-center justify-start gap-2">
               <button
                 type="button"
                 onClick={() => onSetPrimaryView?.(primaryView === "synthesis" ? "decision-map" : "synthesis")}
@@ -579,7 +576,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
               >
                 {isSynthesisExpanded && (
                   <div className="flex-1 flex flex-col min-h-0" style={{ overflow: synthTruncated && !synthExpanded ? "hidden" : "visible" }}>
-                    <div className="mx-auto max-w-prose h-6 mb-1" />
+                    <div className="h-6 mb-1" />
 
                     <div
                       className="clip-content rounded-2xl p-3 flex-1 min-w-0 break-words"
@@ -685,7 +682,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
                                 return (
                                   <>
-                                    <div className="mx-auto max-w-prose">
+                                    <div className="mx-auto max-w-3xl">
                                       {/* Header Row: Model Info & Copy Button */}
                                       <div className="flex items-center justify-between gap-2 mb-2">
                                         <div className="text-xs text-text-muted">
@@ -712,7 +709,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                           📋 Copy
                                         </button>
                                       </div>
-                                      <div className="text-[16px] leading-relaxed text-text-primary">
+                                      <div className="text-base leading-relaxed text-text-primary">
                                         <MarkdownDisplay content={String(cleanText || take.text || "")} />
                                       </div>
                                     </div>
@@ -918,7 +915,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                               </div>
                             );
                           return (
-                            <div className="mx-auto max-w-prose">
+                            <div className="mx-auto max-w-3xl">
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <div className="text-xs text-text-muted">
                                   All Available Options • via {activeMappingPid}
@@ -937,7 +934,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                 </button>
                               </div>
                               <div
-                                className="text-[16px] leading-relaxed text-text-primary"
+                                className="text-base leading-relaxed text-text-primary"
                               >
                                 <MarkdownDisplay
                                   content={transformCitations(options)}
@@ -1002,7 +999,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
                                   return (
                                     <>
-                                      <div className="mx-auto max-w-prose">
+                                      <div className="mx-auto max-w-3xl">
                                         <div className="flex items-center justify-between gap-2 mb-2">
                                           <div className="text-xs text-text-muted">
                                             {activeMappingPid} · {take.status}
@@ -1023,7 +1020,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                           </button>
                                         </div>
                                         <div
-                                          className="text-[16px] leading-relaxed text-text-primary"
+                                          className="text-base leading-relaxed text-text-primary"
                                         >
                                           <MarkdownDisplay
                                             content={transformCitations(cleanText || displayedMappingText)}
@@ -1062,7 +1059,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                         return (
                           <>
                             {primaryView === "decision-map" && (
-                              <div className="mx-auto max-w-prose h-6 mb-1 flex items-center">
+                              <div className="h-6 mb-1 flex items-center">
                                 <div className="flex items-center gap-1">
                                   <button
                                     onClick={() => onSetMappingTab && onSetMappingTab("map")}

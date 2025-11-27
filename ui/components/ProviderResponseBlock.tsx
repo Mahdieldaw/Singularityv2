@@ -396,7 +396,7 @@ const ProviderResponseBlock = ({
         aria-live="polite"
       >
         {isBranching && (
-          <div className="absolute top-2 right-2 z-10 text-[10px] font-bold bg-brand-500 text-white px-2 py-0.5 rounded-full shadow-sm animate-in fade-in zoom-in duration-300">
+          <div className="absolute top-2 right-2 z-10 text-xs font-bold bg-brand-500 text-white px-2 py-0.5 rounded-full shadow-sm animate-in fade-in zoom-in duration-300">
             Branching...
           </div>
         )}
@@ -419,12 +419,12 @@ const ProviderResponseBlock = ({
             {provider?.name || providerId}
           </div>
           {isTargeted && (
-            <div className="bg-brand-500 text-white text-[10px] px-1.5 py-0.5 rounded font-medium animate-in fade-in zoom-in duration-200">
+            <div className="bg-brand-500 text-white text-xs px-1.5 py-0.5 rounded font-medium animate-in fade-in zoom-in duration-200">
               Targeted
             </div>
           )}
           {context && (
-            <div className="text-[10px] text-text-muted/70 ml-1">
+            <div className="text-xs text-text-muted/70 ml-1">
               {context.rateLimitRemaining &&
                 `(${context.rateLimitRemaining} left)`}
               {context.modelName && ` • ${context.modelName}`}
@@ -518,7 +518,7 @@ const ProviderResponseBlock = ({
 
                       return (
                         <div key={idx} className="bg-surface p-3 rounded border border-border-subtle opacity-75 hover:opacity-100 transition-opacity">
-                          <div className="text-[10px] text-text-muted mb-1 flex justify-between">
+                          <div className="text-xs text-text-muted mb-1 flex justify-between">
                             <span>Attempt {history.length - 1 - idx}</span>
                             <span>{new Date(resp.createdAt).toLocaleTimeString()}</span>
                           </div>
@@ -529,7 +529,7 @@ const ProviderResponseBlock = ({
                                 {histArtifacts.length > 0 && (
                                   <div className="mt-2 flex flex-wrap gap-1">
                                     {histArtifacts.map((art, i) => (
-                                      <span key={i} className="text-[10px] bg-brand-500/10 text-brand-500 px-1.5 py-0.5 rounded border border-brand-500/20 flex items-center gap-1">
+                                      <span key={i} className="text-xs bg-brand-500/10 text-brand-500 px-1.5 py-0.5 rounded border border-brand-500/20 flex items-center gap-1">
                                         📄 {art.title}
                                       </span>
                                     ))}
@@ -583,7 +583,7 @@ const ProviderResponseBlock = ({
                 Send
               </button>
             </div>
-            <div className="text-[10px] text-text-muted mt-1.5 px-1">
+            <div className="text-xs text-text-muted mt-1.5 px-1">
               Enter to send • ESC to cancel
             </div>
           </div>
@@ -598,7 +598,7 @@ const ProviderResponseBlock = ({
                 e.stopPropagation();
                 setShowHistory(!showHistory);
               }}
-              className="text-[10px] text-text-muted hover:text-text-primary flex items-center gap-1 px-1.5 py-1 rounded hover:bg-surface-highlight transition-colors"
+              className="text-xs text-text-muted hover:text-text-primary flex items-center gap-1 px-1.5 py-1 rounded hover:bg-surface-highlight transition-colors"
             >
               {showHistory ? '▼' : '▶'} {history.length - 1} previous
             </button>

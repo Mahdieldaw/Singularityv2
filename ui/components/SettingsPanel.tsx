@@ -85,7 +85,7 @@ export default function SettingsPanel() {
                 <div className="flex flex-col">
                   <span className="text-text-secondary">{provider.name}</span>
                   {!isAuth && (
-                    <span className="text-[10px] text-intent-danger">
+                    <span className="text-xs text-intent-danger">
                       Login Required
                     </span>
                   )}

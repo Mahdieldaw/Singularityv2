@@ -44,7 +44,7 @@
 
   /* Base Styles */
   body {
-    @apply font-sans text-text-primary bg-surface text-[16px] leading-[1.6];
+    @apply font-sans text-text-primary bg-surface text-base leading-relaxed;
   }
 
   #root {

@@ -274,7 +274,7 @@ const CompactModelTray = ({
               }}
             >
               <span>{getWitnessLabel()}</span>
-              <span className="text-[10px] text-text-muted">▼</span>
+              <span className="text-xs text-text-muted">▼</span>
             </button>
             {showModelsDropdown && (
               <div
@@ -331,7 +331,7 @@ const CompactModelTray = ({
               }
             >
               <span>{getMapLabel()}</span>
-              <span className="text-[10px] text-text-muted">▼</span>
+              <span className="text-xs text-text-muted">▼</span>
             </button>
             {showMapDropdown && canRefine && (
               <div
@@ -447,7 +447,7 @@ const CompactModelTray = ({
               }
             >
               <span>{getUnifyLabel()}</span>
-              <span className="text-[10px] text-text-muted">▼</span>
+              <span className="text-xs text-text-muted">▼</span>
             </button>
             {showUnifyDropdown && canRefine && (
               <div
@@ -642,7 +642,7 @@ const CompactModelTray = ({
               }}
             >
               <span>{getDraftLabel()}</span>
-              <span className="text-[10px] text-text-muted">▼</span>
+              <span className="text-xs text-text-muted">▼</span>
             </button>
             {showDraftDropdown && (
               <div
@@ -653,7 +653,7 @@ const CompactModelTray = ({
               >
                 {/* Author Section */}
                 <div>
-                  <div className="text-[11px] font-semibold text-text-muted mb-1.5 uppercase">
+                  <div className="text-sm font-semibold text-text-muted mb-1.5 uppercase">
                     Author Model
                   </div>
                   {LLM_PROVIDERS_CONFIG.map((provider) => {
@@ -675,7 +675,7 @@ const CompactModelTray = ({
 
                 {/* Analyst Section */}
                 <div>
-                  <div className="text-[11px] font-semibold text-text-muted mb-1.5 uppercase">
+                  <div className="text-sm font-semibold text-text-muted mb-1.5 uppercase">
                     Analyst Model
                   </div>
                   {LLM_PROVIDERS_CONFIG.map((provider) => {
@@ -751,7 +751,7 @@ const CompactModelTray = ({
                   });
                 }}
                 disabled={isLoading}
-                className={`ml-auto px-2 py-0.5 text-[10px] bg-chip-soft border border-border-subtle rounded text-text-muted transition-all duration-200 ${isLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-surface-highlight'}`}
+                className={`ml-auto px-2 py-0.5 text-xs bg-chip-soft border border-border-subtle rounded text-text-muted transition-all duration-200 ${isLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-surface-highlight'}`}
               >
                 [All]
               </button>
@@ -899,7 +899,7 @@ const CompactModelTray = ({
                   </select>
                 </label>
                 {!canRefine && (
-                  <div className="text-[10px] text-text-muted mt-1">
+                  <div className="text-xs text-text-muted mt-1">
                     Select 2+ models to enable.
                   </div>
                 )}
@@ -1078,7 +1078,7 @@ const CompactModelTray = ({
                   )}
                 </label>
                 {!canRefine && (
-                  <div className="text-[10px] text-text-muted mt-1">
+                  <div className="text-xs text-text-muted mt-1">
                     Select 2+ models to enable.
                   </div>
                 )}
@@ -1161,7 +1161,7 @@ const CompactModelTray = ({
                 <span className="text-xs text-text-muted">
                   Think mode for ChatGPT
                 </span>
-                <span className={`text-[10px] font-medium ${thinkOnChatGPT ? 'text-intent-success' : 'text-text-muted'}`}>
+                <span className={`text-xs font-medium ${thinkOnChatGPT ? 'text-intent-success' : 'text-text-muted'}`}>
                   {thinkOnChatGPT ? "ON" : "OFF"}
                 </span>
               </label>

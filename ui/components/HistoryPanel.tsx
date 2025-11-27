@@ -108,7 +108,7 @@ const HistoryPanel = ({
                         onSelectChat(session);
                       }
                     }}
-                    className={`p-2.5 px-3 rounded-lg border text-[16px] cursor-pointer mb-2 flex items-start justify-between gap-2 transition-all duration-200 
+                    className={`p-2.5 px-3 rounded-lg border text-base cursor-pointer mb-2 flex items-start justify-between gap-2 transition-all duration-200 
                       ${session.sessionId === currentSessionId
                         ? "bg-brand-500/10 border-brand-500 text-text-primary shadow-sm"
                         : "bg-chip border-border-subtle text-text-secondary hover:bg-surface-highlight hover:border-border-strong"
