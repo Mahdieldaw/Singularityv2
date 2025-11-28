@@ -431,6 +431,7 @@ export function useChat() {
 
   const authorModel = useAtomValue(authorModelAtom);
   const analystModel = useAtomValue(analystModelAtom);
+  const refinerModel = useAtomValue(refineModelAtom);
 
   const setChatInputValue = useSetAtom(chatInputValueAtom);
 
@@ -485,7 +486,7 @@ export function useChat() {
         };
 
         if (mode === "refiner") {
-          const result = await api.runRefiner(draftPrompt, context);
+          const result = await api.runRefiner(draftPrompt, context, refinerModel);
           if (result) {
             setRefinerData({
               refinedPrompt: result.refinedPrompt,
@@ -498,7 +499,12 @@ export function useChat() {
         } else {
           // Author -> Analyst flow
           // 1. Run Author
-          const authorResult = await api.runAuthor(draftPrompt, context, context.isInitialize);
+          const authorResult = await api.runAuthor(
+            draftPrompt,
+            context,
+            context.isInitialize,
+            authorModel
+          );
 
           if (authorResult) {
             // Update UI immediately with Author result
@@ -512,32 +518,27 @@ export function useChat() {
             setChatInputValue(authorResult.authored);
             setIsRefinerOpen(true);
 
-            // 2. Run Analyst (if not initialize) - Independent async update
-            if (!context.isInitialize) {
-              // We don't await this if we want to return early, but here we are inside an async function
-              // that is void-returned to the UI. So we can await it to keep the loading state correct 
-              // OR we can let it run and clear loading state early.
-              // The user requested: "return authors output as soon as he reponds, and then analysys when he responds"
-              // So we should probably clear loading state after Author? 
-              // But `isRefining` controls the spinner. If we clear it, spinner stops.
-              // Maybe we want spinner to stop when Author is done, as the user can now interact?
-              // Yes, let's clear loading after Author.
-              setIsRefining(false);
+            // 2. Run Analyst - Always run, no longer checking isInitialize
+            setIsRefining(false); // Clear loading state after Author
 
-              try {
-                const analystResult = await api.runAnalyst(draftPrompt, context, authorResult.authored);
-                if (analystResult) {
-                  setRefinerData((prev) => prev ? ({
-                    ...prev,
-                    audit: analystResult.audit,
-                    variants: analystResult.variants
-                  }) : null);
-                }
-              } catch (e) {
-                console.warn("Analyst run failed in background:", e);
+            try {
+              const analystResult = await api.runAnalyst(
+                draftPrompt,
+                context,
+                authorResult.authored,
+                analystModel
+              );
+              if (analystResult) {
+                setRefinerData((prev) => prev ? ({
+                  ...prev,
+                  audit: analystResult.audit,
+                  variants: analystResult.variants
+                }) : null);
               }
-              return; // Exit function
+            } catch (e) {
+              console.warn("Analyst run failed in background:", e);
             }
+            return; // Exit function
           }
         }
 

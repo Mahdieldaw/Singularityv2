@@ -203,7 +203,8 @@ const CompactModelTray = ({
   const getDraftLabel = () => {
     const authorName = getProviderName(authorModel);
     const analystName = getProviderName(analystModel);
-    return `[Draft: ${authorName}/${analystName}]`;
+    const refinerName = getProviderName(refineModel);
+    return `[Draft: ${authorName}/${analystName}/${refinerName}]`;
   };
 
   // Handle outside clicks for closing expanded and dropdowns
@@ -687,6 +688,28 @@ const CompactModelTray = ({
                           if (onSetAnalystModel) onSetAnalystModel(provider.id);
                         }}
                         className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-sm ${isSelected ? 'bg-intent-warning/10 text-intent-warning' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
+                      >
+                        {provider.name}
+                        {isSelected && " ✓"}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Refiner Section */}
+                <div>
+                  <div className="text-sm font-semibold text-text-muted mb-1.5 uppercase">
+                    Refiner Model
+                  </div>
+                  {LLM_PROVIDERS_CONFIG.map((provider) => {
+                    const isSelected = refineModel === provider.id;
+                    return (
+                      <button
+                        key={`refiner-${provider.id}`}
+                        onClick={() => {
+                          if (onSetRefineModel) onSetRefineModel(provider.id);
+                        }}
+                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-sm ${isSelected ? 'bg-intent-success/10 text-intent-success' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
                       >
                         {provider.name}
                         {isSelected && " ✓"}

@@ -138,7 +138,7 @@ const ChatInput = ({
   };
 
   const handleMouseDown = () => {
-    if (isLoading || !prompt.trim() || isRefinerOpen || hasRejectedRefinement) return;
+    if (isLoading || !prompt.trim() || isRefinerOpen) return;
 
     hasTriggeredMenuRef.current = false;
     longPressTimerRef.current = setTimeout(() => {

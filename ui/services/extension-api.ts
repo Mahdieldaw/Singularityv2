@@ -290,32 +290,35 @@ class ExtensionAPI {
   runAuthor(
     fragment: string,
     context: any,
-    isInitialize: boolean = false
+    isInitialize: boolean = false,
+    authorModel?: string
   ): Promise<{ authored: string; explanation: string } | null> {
     return this.queryBackend<{ authored: string; explanation: string } | null>({
       type: "RUN_AUTHOR",
-      payload: { fragment, context, isInitialize },
+      payload: { fragment, context, isInitialize, authorModel },
     });
   }
 
   runAnalyst(
     fragment: string,
     context: any,
-    authoredPrompt: string
+    authoredPrompt: string,
+    analystModel?: string
   ): Promise<{ audit: string; variants: string[] } | null> {
     return this.queryBackend<{ audit: string; variants: string[] } | null>({
       type: "RUN_ANALYST",
-      payload: { fragment, context, authoredPrompt },
+      payload: { fragment, context, authoredPrompt, analystModel },
     });
   }
 
   runRefiner(
     draftPrompt: string,
-    context: any
+    context: any,
+    refinerModel?: string
   ): Promise<{ refinedPrompt: string; explanation: string } | null> {
     return this.queryBackend<{ refinedPrompt: string; explanation: string } | null>({
       type: "RUN_REFINER",
-      payload: { draftPrompt, context },
+      payload: { draftPrompt, context, refinerModel },
     });
   }
 

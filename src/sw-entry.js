@@ -622,7 +622,7 @@ async function initializeGlobalServices() {
     await initializeOrchestrator();
     const compiler = new WorkflowCompiler(sm);
     const contextResolver = new ContextResolver(sm);
-    promptRefinerService = new PromptRefinerService({ refinerModel: "gemini" });
+    promptRefinerService = new PromptRefinerService({}); // No hardcoded defaults
     console.log("[SW] ✅ Global services ready");
     return {
       orchestrator: self.faultTolerantOrchestrator,
@@ -663,11 +663,11 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
       case "RUN_AUTHOR": {
         (async () => {
           try {
-            const { fragment, context, isInitialize } = message.payload;
+            const { fragment, context, isInitialize, authorModel } = message.payload;
             const result = await services.promptRefinerService.runAuthor(
               fragment,
               context,
-              undefined, // Use default author model
+              authorModel, // Use model from payload
               isInitialize
             );
             sendResponse({ success: true, data: result });
@@ -682,11 +682,12 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
       case "RUN_ANALYST": {
         (async () => {
           try {
-            const { fragment, context, authoredPrompt } = message.payload;
+            const { fragment, context, authoredPrompt, analystModel } = message.payload;
             const result = await services.promptRefinerService.runAnalyst(
               fragment,
               context,
-              authoredPrompt
+              authoredPrompt,
+              analystModel // Use model from payload
             );
             sendResponse({ success: true, data: result });
           } catch (e) {
@@ -700,10 +701,11 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
       case "RUN_REFINER": {
         (async () => {
           try {
-            const { draftPrompt, context } = message.payload;
+            const { draftPrompt, context, refinerModel } = message.payload;
             const result = await services.promptRefinerService.runRefiner(
               draftPrompt,
-              context
+              context,
+              refinerModel // Use model from payload
             );
             sendResponse({ success: true, data: result });
           } catch (e) {

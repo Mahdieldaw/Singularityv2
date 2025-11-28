@@ -44,8 +44,12 @@ export function useClipActions() {
           ? aiTurn.synthesisResponses || {}
           : aiTurn.mappingResponses || {};
       const responseEntry = responsesMap[providerId];
-      const hasExisting =
-        Array.isArray(responseEntry) && responseEntry.length > 0;
+
+      // Check if we have a valid (non-error) existing response
+      const lastResponse = Array.isArray(responseEntry) && responseEntry.length > 0
+        ? responseEntry[responseEntry.length - 1]
+        : undefined;
+      const hasValidExisting = lastResponse && lastResponse.status !== "error";
 
       setActiveClips((prev) => ({
         ...prev,
@@ -80,33 +84,11 @@ export function useClipActions() {
         });
       }
 
-      if (hasExisting) return;
+      if (hasValidExisting) return;
 
       if (type === "synthesis") {
-        // For historical turns, allow synthesis even if mapping doesn't exist yet
-        const isHistoricalTurn =
-          !aiTurn.batchResponses ||
-          Object.keys(aiTurn.batchResponses).length === 0;
-        if (!isHistoricalTurn) {
-          const mappingResponses = aiTurn.mappingResponses || {};
-          const hasCompletedMapping = Object.values(mappingResponses).some(
-            (value: any) => {
-              const arr = Array.isArray(value) ? value : [value];
-              const last = arr[arr.length - 1];
-              return !!(
-                last &&
-                last.status === "completed" &&
-                last.text?.trim()
-              );
-            },
-          );
-          if (!hasCompletedMapping) {
-            setAlertText(
-              "No mapping result exists for this round. Run mapping first before synthesizing.",
-            );
-            return;
-          }
-        }
+        // We rely on runSynthesisForAiTurn to validate if there are enough inputs
+        // (either batch outputs OR mapping OR existing synthesis)
         await runSynthesisForAiTurn(aiTurnId, providerId);
       } else {
         await runMappingForAiTurn(aiTurnId, providerId);

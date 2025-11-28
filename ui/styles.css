@@ -337,4 +337,16 @@
     vertical-align: sub;
     line-height: 0;
   }
+
+  /* 
+     FIX: Global Safety Net for Math Scrollbars
+     Ensure the parent chat bubble allows the child to handle scrolling.
+     We target the markdown body and the turn block to ensure no overflow: hidden clips the scrollbar.
+  */
+  .markdown-body,
+  .ai-turn-block,
+  .user-turn-block {
+    overflow-wrap: break-word;
+    /* overflow: hidden;  <-- DO NOT USE THIS, it clips the scrollbar */
+  }
 }
