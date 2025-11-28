@@ -149,16 +149,16 @@ const ChatInputConnected = () => {
     setHasRejectedRefinement(true);
   }, [refinerData, setChatInputValue, setIsRefinerOpen, setRefinerData, setHasRejectedRefinement]);
 
-  const handleExplore = useCallback(
+  const handleExplain = useCallback(
     (prompt: string) => {
-      void refinePrompt(prompt, "author-analyst");
+      void refinePrompt(prompt, "explain");
     },
     [refinePrompt],
   );
 
-  const handleAsk = useCallback(
+  const handleCompose = useCallback(
     (prompt: string) => {
-      void refinePrompt(prompt, "refiner");
+      void refinePrompt(prompt, "compose");
     },
     [refinePrompt],
   );
@@ -193,8 +193,8 @@ const ChatInputConnected = () => {
           showExplanation={showExplanation}
         />
       }
-      onExplore={handleExplore}
-      onAsk={handleAsk}
+      onExplain={handleExplain}
+      onCompose={handleCompose}
       // Targeted Mode
       activeTarget={activeTarget}
       onCancelTarget={() => setActiveTarget(null)}

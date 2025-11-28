@@ -34,8 +34,8 @@ interface ChatInputProps {
   refinerContent?: React.ReactNode;
   // New Refiner Actions
   // New Refiner Actions
-  onExplore?: (prompt: string) => void;
-  onAsk?: (prompt: string) => void;
+  onExplain?: (prompt: string) => void;
+  onCompose?: (prompt: string) => void;
   // Targeted Continuation
   activeTarget?: { aiTurnId: string; providerId: string } | null;
   onCancelTarget?: () => void;
@@ -67,8 +67,8 @@ const ChatInput = ({
   showVariants = false,
   showExplanation = false,
   refinerContent,
-  onExplore,
-  onAsk,
+  onExplain,
+  onCompose,
   activeTarget,
   onCancelTarget,
 }: ChatInputProps) => {
@@ -164,15 +164,15 @@ const ChatInput = ({
     }
   };
 
-  const handleMenuAction = (action: "explore" | "ask") => {
+  const handleMenuAction = (action: "explain" | "compose") => {
     setShowMenu(false);
     const trimmed = prompt.trim();
     if (!trimmed) return;
 
-    if (action === "explore") {
-      onExplore?.(trimmed);
-    } else if (action === "ask") {
-      onAsk?.(trimmed);
+    if (action === "explain") {
+      onExplain?.(trimmed);
+    } else if (action === "compose") {
+      onCompose?.(trimmed);
     }
   };
 
@@ -270,19 +270,19 @@ const ChatInput = ({
           {showMenu && (
             <div
               ref={menuRef}
-              className="absolute bottom-full right-0 mb-2 w-32 bg-surface-base border border-border-subtle rounded-xl shadow-lg overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200"
+              className="absolute bottom-full right-0 mb-2 w-36 bg-surface-base border border-border-subtle rounded-xl shadow-lg overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200"
             >
               <button
-                onClick={() => handleMenuAction("explore")}
+                onClick={() => handleMenuAction("compose")}
                 className="w-full px-4 py-2.5 text-left text-sm text-text-primary hover:bg-surface-highlight flex items-center gap-2 transition-colors"
               >
-                <span>🧭</span> Explore
+                <span>✨</span> Compose
               </button>
               <button
-                onClick={() => handleMenuAction("ask")}
+                onClick={() => handleMenuAction("explain")}
                 className="w-full px-4 py-2.5 text-left text-sm text-text-primary hover:bg-surface-highlight flex items-center gap-2 transition-colors"
               >
-                <span>🤔</span> Ask
+                <span>🧠</span> Explain
               </button>
             </div>
           )}

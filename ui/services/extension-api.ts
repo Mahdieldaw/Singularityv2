@@ -303,22 +303,24 @@ class ExtensionAPI {
     fragment: string,
     context: any,
     authoredPrompt: string,
-    analystModel?: string
+    analystModel?: string,
+    originalPrompt?: string
   ): Promise<{ audit: string; variants: string[] } | null> {
     return this.queryBackend<{ audit: string; variants: string[] } | null>({
       type: "RUN_ANALYST",
-      payload: { fragment, context, authoredPrompt, analystModel },
+      payload: { fragment, context, authoredPrompt, analystModel, originalPrompt },
     });
   }
 
-  runRefiner(
+  runComposer(
     draftPrompt: string,
     context: any,
-    refinerModel?: string
+    composerModel?: string,
+    analystCritique?: string
   ): Promise<{ refinedPrompt: string; explanation: string } | null> {
     return this.queryBackend<{ refinedPrompt: string; explanation: string } | null>({
-      type: "RUN_REFINER",
-      payload: { draftPrompt, context, refinerModel },
+      type: "RUN_COMPOSER",
+      payload: { draftPrompt, context, composerModel, analystCritique },
     });
   }
 

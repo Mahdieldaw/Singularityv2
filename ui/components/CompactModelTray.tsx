@@ -26,14 +26,12 @@ interface CompactModelTrayProps {
   onAcknowledgeFirstLoad?: () => void; // New callback for parent to clear isFirstLoad
   chatInputHeight?: number; // New prop for dynamic positioning
   // Refine props
-  refineModel: string;
-  onSetRefineModel: (model: string) => void;
-  isHistoryPanelOpen?: boolean;
-  providerStatus?: Record<string, boolean>;
-  authorModel?: string;
-  onSetAuthorModel?: (model: string) => void;
+  // Composer props
+  composerModel?: string;
+  onSetComposerModel?: (model: string) => void;
   analystModel?: string;
   onSetAnalystModel?: (model: string) => void;
+  providerStatus?: Record<string, boolean>;
 }
 
 const CompactModelTray = ({
@@ -54,14 +52,11 @@ const CompactModelTray = ({
   isFirstLoad = false,
   onAcknowledgeFirstLoad,
   chatInputHeight = 80, // Default height
-  refineModel,
-  onSetRefineModel,
-  isHistoryPanelOpen = false,
-  providerStatus = {}, // Default empty
-  authorModel = "gemini",
-  onSetAuthorModel,
+  composerModel = "gemini",
+  onSetComposerModel,
   analystModel = "gemini",
   onSetAnalystModel,
+  providerStatus = {},
 }: CompactModelTrayProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showModelsDropdown, setShowModelsDropdown] = useState(false);
@@ -201,10 +196,9 @@ const CompactModelTray = ({
   };
 
   const getDraftLabel = () => {
-    const authorName = getProviderName(authorModel);
+    const composerName = getProviderName(composerModel);
     const analystName = getProviderName(analystModel);
-    const refinerName = getProviderName(refineModel);
-    return `[Draft: ${authorName}/${analystName}/${refinerName}]`;
+    return `[Draft: ${composerName}/${analystName}]`;
   };
 
   // Handle outside clicks for closing expanded and dropdowns
@@ -652,18 +646,18 @@ const CompactModelTray = ({
                 aria-label="Draft model selection"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Author Section */}
+                {/* Composer Section */}
                 <div>
                   <div className="text-sm font-semibold text-text-muted mb-1.5 uppercase">
-                    Author Model
+                    Composer Model
                   </div>
                   {LLM_PROVIDERS_CONFIG.map((provider) => {
-                    const isSelected = authorModel === provider.id;
+                    const isSelected = composerModel === provider.id;
                     return (
                       <button
-                        key={`author-${provider.id}`}
+                        key={`composer-${provider.id}`}
                         onClick={() => {
-                          if (onSetAuthorModel) onSetAuthorModel(provider.id);
+                          if (onSetComposerModel) onSetComposerModel(provider.id);
                         }}
                         className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-sm ${isSelected ? 'bg-brand-500/10 text-brand-400' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
                       >
@@ -676,7 +670,7 @@ const CompactModelTray = ({
 
                 {/* Analyst Section */}
                 <div>
-                  <div className="text-sm font-semibold text-text-muted mb-1.5 uppercase">
+                  <div className="text-sm font-semibold text-text-muted mb-1.5 uppercase mt-3">
                     Analyst Model
                   </div>
                   {LLM_PROVIDERS_CONFIG.map((provider) => {
@@ -687,29 +681,7 @@ const CompactModelTray = ({
                         onClick={() => {
                           if (onSetAnalystModel) onSetAnalystModel(provider.id);
                         }}
-                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-sm ${isSelected ? 'bg-intent-warning/10 text-intent-warning' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
-                      >
-                        {provider.name}
-                        {isSelected && " ✓"}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Refiner Section */}
-                <div>
-                  <div className="text-sm font-semibold text-text-muted mb-1.5 uppercase">
-                    Refiner Model
-                  </div>
-                  {LLM_PROVIDERS_CONFIG.map((provider) => {
-                    const isSelected = refineModel === provider.id;
-                    return (
-                      <button
-                        key={`refiner-${provider.id}`}
-                        onClick={() => {
-                          if (onSetRefineModel) onSetRefineModel(provider.id);
-                        }}
-                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-sm ${isSelected ? 'bg-intent-success/10 text-intent-success' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
+                        className={`block w-full text-left px-2.5 py-1.5 rounded mb-0.5 text-sm ${isSelected ? 'bg-brand-500/10 text-brand-400' : 'bg-transparent text-text-secondary hover:bg-surface-highlight'}`}
                       >
                         {provider.name}
                         {isSelected && " ✓"}
@@ -1108,26 +1080,49 @@ const CompactModelTray = ({
               </div>
 
               {/* Refine Model */}
+              {/* Composer Model */}
               <div>
                 <label className="flex flex-col gap-1 cursor-pointer">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-text-muted">
-                      Refine Model
+                      Composer
                     </span>
                   </div>
                   <select
-                    value={refineModel || ''}
+                    value={composerModel || ''}
                     onChange={(e) => {
                       const model = e.target.value;
-                      onSetRefineModel(model);
-                      try {
-                        localStorage.setItem("htos_refine_model", model);
-                      } catch (_) { }
+                      if (onSetComposerModel) onSetComposerModel(model);
                     }}
                     disabled={isLoading}
                     className="bg-white/10 border border-white/20 rounded text-text-secondary text-xs px-1.5 py-0.5"
                   >
-                    <option value="auto">Auto</option>
+                    {LLM_PROVIDERS_CONFIG.map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {/* Analyst Model */}
+              <div>
+                <label className="flex flex-col gap-1 cursor-pointer">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-text-muted">
+                      Analyst
+                    </span>
+                  </div>
+                  <select
+                    value={analystModel || ''}
+                    onChange={(e) => {
+                      const model = e.target.value;
+                      if (onSetAnalystModel) onSetAnalystModel(model);
+                    }}
+                    disabled={isLoading}
+                    className="bg-white/10 border border-white/20 rounded text-text-secondary text-xs px-1.5 py-0.5"
+                  >
                     {LLM_PROVIDERS_CONFIG.map((provider) => (
                       <option key={provider.id} value={provider.id}>
                         {provider.name}

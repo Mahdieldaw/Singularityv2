@@ -22,8 +22,7 @@ import {
   refinerDataAtom,
   isRefinerOpenAtom,
   isRefiningAtom, // Import new atom
-  refineModelAtom, // Import new atom
-  authorModelAtom,
+  composerModelAtom, // Import new atom
   analystModelAtom,
   chatInputValueAtom,
   hasRejectedRefinementAtom,
@@ -56,7 +55,9 @@ export function useChat() {
   const thinkOnChatGPT = useAtomValue(thinkOnChatGPTAtom);
   const currentSessionId = useAtomValue(currentSessionIdAtom);
   const turnIds = useAtomValue(turnIdsAtom);
-  const refineModel = useAtomValue(refineModelAtom); // Read new atom
+
+  const refinerData = useAtomValue(refinerDataAtom);
+  const chatInputValue = useAtomValue(chatInputValueAtom);
 
   // Writes
   const setTurnsMap = useSetAtom(turnsMapAtom);
@@ -429,14 +430,13 @@ export function useChat() {
 
   const turnsMap = useAtomValue(turnsMapAtom);
 
-  const authorModel = useAtomValue(authorModelAtom);
+  const composerModel = useAtomValue(composerModelAtom);
   const analystModel = useAtomValue(analystModelAtom);
-  const refinerModel = useAtomValue(refineModelAtom);
 
   const setChatInputValue = useSetAtom(chatInputValueAtom);
 
   const refinePrompt = useCallback(
-    async (draftPrompt: string, mode: "author-analyst" | "refiner" = "author-analyst") => {
+    async (draftPrompt: string, mode: "compose" | "explain") => {
       if (!draftPrompt || !draftPrompt.trim()) return;
 
       setIsRefining(true); // Set loading state
@@ -485,60 +485,57 @@ export function useChat() {
           isInitialize: !currentSessionId || turnIds.length === 0,
         };
 
-        if (mode === "refiner") {
-          const result = await api.runRefiner(draftPrompt, context, refinerModel);
+        if (mode === "compose") {
+          // Compose Mode: Run Composer with optional Analyst critique
+          const analystCritique = refinerData?.audit;
+          const result = await api.runComposer(draftPrompt, context, composerModel, analystCritique);
+
           if (result) {
             setRefinerData({
               refinedPrompt: result.refinedPrompt,
               explanation: result.explanation,
               originalPrompt: draftPrompt,
+              // Preserve existing analyst data if any, or maybe clear it?
+              // User said: "make run analyst another distinct action... without the pre need for a composer"
+              // But if we are composing, we might want to keep the critique that influenced this composition?
+              // For now, let's keep the critique but maybe clear variants as they are stale?
+              // Actually, if we re-compose, the old audit is "consumed", so maybe we should keep it visible until new analyst run?
+              // Let's keep it simple: update refined prompt and explanation.
+              audit: refinerData?.audit,
+              variants: refinerData?.variants
             });
             setChatInputValue(result.refinedPrompt);
             setIsRefinerOpen(true);
           }
         } else {
-          // Author -> Analyst flow
-          // 1. Run Author
-          const authorResult = await api.runAuthor(
-            draftPrompt,
+          // Explain Mode: Run Analyst
+          // Candidate prompt is what's in the box (chatInputValue) or the refined prompt if box is empty/matching
+          // Actually, user said: "surface a similar mechanism for how authors outputs is sent to the analyst"
+          // "analyst outputs can be sent in authors prompt when built"
+          // "analyst runs through explore... without pre need for composer"
+
+          // We use the current input value as the "composed prompt" to analyze.
+          // If the user typed it manually, it's the "composed prompt".
+          const candidatePrompt = chatInputValue || refinerData?.refinedPrompt || draftPrompt;
+          const originalPrompt = refinerData?.originalPrompt || draftPrompt;
+
+          const result = await api.runAnalyst(
+            draftPrompt, // This is the fragment/original intent
             context,
-            context.isInitialize,
-            authorModel
+            candidatePrompt, // This is what we are analyzing
+            analystModel,
+            originalPrompt
           );
 
-          if (authorResult) {
-            // Update UI immediately with Author result
-            setRefinerData({
-              refinedPrompt: authorResult.authored,
-              explanation: authorResult.explanation,
-              originalPrompt: draftPrompt,
-              audit: undefined,
-              variants: undefined
-            });
-            setChatInputValue(authorResult.authored);
+          if (result) {
+            setRefinerData((prev) => ({
+              refinedPrompt: candidatePrompt, // Ensure we track what was analyzed
+              explanation: prev?.explanation || "",
+              originalPrompt: originalPrompt,
+              audit: result.audit,
+              variants: result.variants
+            }));
             setIsRefinerOpen(true);
-
-            // 2. Run Analyst - Always run, no longer checking isInitialize
-            setIsRefining(false); // Clear loading state after Author
-
-            try {
-              const analystResult = await api.runAnalyst(
-                draftPrompt,
-                context,
-                authorResult.authored,
-                analystModel
-              );
-              if (analystResult) {
-                setRefinerData((prev) => prev ? ({
-                  ...prev,
-                  audit: analystResult.audit,
-                  variants: analystResult.variants
-                }) : null);
-              }
-            } catch (e) {
-              console.warn("Analyst run failed in background:", e);
-            }
-            return; // Exit function
           }
         }
 
@@ -556,6 +553,10 @@ export function useChat() {
       setIsRefining,
       currentSessionId,
       setChatInputValue,
+      composerModel,
+      analystModel,
+      refinerData,
+      chatInputValue,
     ],
   );
 

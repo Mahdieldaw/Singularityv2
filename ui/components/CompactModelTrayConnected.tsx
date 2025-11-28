@@ -12,9 +12,7 @@ import {
   chatInputHeightAtom,
   isFirstTurnAtom,
   isLoadingAtom,
-  refineModelAtom,
-  isHistoryPanelOpenAtom,
-  authorModelAtom, // Import
+  composerModelAtom, // Import
   analystModelAtom, // Import
 } from "../state/atoms";
 // NEW: Import the hook
@@ -34,10 +32,8 @@ const CompactModelTrayConnected = () => {
   const [chatInputHeight] = useAtom(chatInputHeightAtom);
   const [isFirstLoad] = useAtom(isFirstTurnAtom);
   const [isLoading] = useAtom(isLoadingAtom);
-  const [refineModel, setRefineModel] = useAtom(refineModelAtom);
-  const [isHistoryOpen] = useAtom(isHistoryPanelOpenAtom);
-  const [authorModel, setAuthorModel] = useAtom(authorModelAtom); // Use atom
-  const [analystModel, setAnalystModel] = useAtom(analystModelAtom); // Use atom
+  const [composerModel, setComposerModel] = useAtom(composerModelAtom);
+  const [analystModel, setAnalystModel] = useAtom(analystModelAtom);
 
   const handleToggleModel = (providerId: string) => {
     setSelectedModels((prev) => ({
@@ -89,17 +85,10 @@ const CompactModelTrayConnected = () => {
     setThinkOnChatGPT((prev) => !prev);
   };
 
-  const handleSetRefineModel = (model: string) => {
-    setRefineModel(model);
+  const handleSetComposerModel = (model: string) => {
+    setComposerModel(model);
     try {
-      localStorage.setItem('htos_refine_model', model);
-    } catch { }
-  };
-
-  const handleSetAuthorModel = (model: string) => {
-    setAuthorModel(model);
-    try {
-      localStorage.setItem('htos_author_model', model);
+      localStorage.setItem('htos_composer_model', model);
     } catch { }
   };
 
@@ -133,12 +122,8 @@ const CompactModelTrayConnected = () => {
         } catch { }
       }}
       chatInputHeight={chatInputHeight}
-      refineModel={refineModel}
-      onSetRefineModel={handleSetRefineModel}
-      isHistoryPanelOpen={!!isHistoryOpen}
-      providerStatus={providerStatus}
-      authorModel={authorModel}
-      onSetAuthorModel={handleSetAuthorModel}
+      composerModel={composerModel}
+      onSetComposerModel={handleSetComposerModel}
       analystModel={analystModel}
       onSetAnalystModel={handleSetAnalystModel}
     />

@@ -400,15 +400,9 @@ export const refinerDataAtom = atom<{
 } | null>(null);
 export const isRefinerOpenAtom = atom<boolean>(false);
 export const isRefiningAtom = atom<boolean>(false);
-export const refineModelAtom = atomWithStorage<string>(
-  "htos_refine_model",
-  "auto",
-  undefined,
-  { getOnInit: true }
-);
-export const authorModelAtom = atomWithStorage<string>(
-  "htos_author_model",
-  "qwen",
+export const composerModelAtom = atomWithStorage<string>(
+  "htos_composer_model",
+  "gemini",
   undefined,
   { getOnInit: true }
 );

@@ -682,12 +682,13 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
       case "RUN_ANALYST": {
         (async () => {
           try {
-            const { fragment, context, authoredPrompt, analystModel } = message.payload;
+            const { fragment, context, authoredPrompt, analystModel, originalPrompt } = message.payload;
             const result = await services.promptRefinerService.runAnalyst(
               fragment,
               context,
               authoredPrompt,
-              analystModel // Use model from payload
+              analystModel, // Use model from payload
+              originalPrompt
             );
             sendResponse({ success: true, data: result });
           } catch (e) {
@@ -698,18 +699,19 @@ async function handleUnifiedMessage(message, sender, sendResponse) {
         return true;
       }
 
-      case "RUN_REFINER": {
+      case "RUN_COMPOSER": {
         (async () => {
           try {
-            const { draftPrompt, context, refinerModel } = message.payload;
-            const result = await services.promptRefinerService.runRefiner(
+            const { draftPrompt, context, composerModel, analystCritique } = message.payload;
+            const result = await services.promptRefinerService.runComposer(
               draftPrompt,
               context,
-              refinerModel // Use model from payload
+              composerModel, // Use model from payload
+              analystCritique
             );
             sendResponse({ success: true, data: result });
           } catch (e) {
-            console.error("[SW] RUN_REFINER failed:", e);
+            console.error("[SW] RUN_COMPOSER failed:", e);
             sendResponse({ success: false, error: e.message });
           }
         })();

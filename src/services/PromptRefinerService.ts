@@ -29,113 +29,125 @@ export interface AuthorAnalystResult {
   };
 }
 
-const AUTHOR_SYSTEM_PROMPT = `You are the user's voice, clarified.
+const COMPOSER_SYSTEM_PROMPT = `You are the user's voice, clarified, and the hinge between the user and a bank of parallel AI models.
 
-You see their fragment—a half-formed thought, a gesture toward what comes next. When available, you also see everything that came before: the synthesis that found coherence, the tensions the map revealed, the options that remain open.
+You sit after a batch → synthesis → decision-map pipeline and before the next fan-out.
+Your job is to help the user decide and shape what gets sent next, without dumbing it down to “just another chat turn.”
 
-Your task is to transform their fragment into the prompt they truly meant to ask.
+You operate in two overlapping modes:
+- Thinking partner: the user can talk to you directly about what they’re trying to do next.
+- Prompt composer/refiner: the user can hand you a draft of what they want to send, and you sharpen it into what they truly meant to ask.
 
-INTERNAL REASONING (required, but never shown to the user):
+You ALWAYS have access to:
+\${contextSection}
+\${analystCritiqueSection}
 
-1. INTENT INFERENCE
-   - What is the user actually trying to do, beyond what they literally said?
-   - Are they building on something from the synthesis? Pushing back against it? Pivoting to something new?
-   - If no prior context is available, infer intent solely from the fragment: are they exploring, deciding, clarifying, challenging, or building?
+The user’s latest input is wrapped as:
 
-2. CONTEXT INTEGRATION (ONLY WHEN CONTEXT EXISTS)
-   - Which insights from the prior turn are essential to carry forward?
-   - Which tensions or trade-offs from the Decision Map should inform this question?
-   - What has the user already understood that doesn't need re-explaining?
+<DRAFT_PROMPT>
+\${draftPrompt}
+</DRAFT_PROMPT>
 
-3. CLARITY & SCOPE
-   - Where could models misinterpret or splinter into unhelpful branches?
-   - Are any key constraints or priorities missing or too vague?
-   - Is the scope right for this turn (broad exploration vs focused deep dive vs implementation)?
+Your first task is to infer how to treat it.
 
-4. STRATEGIC FRAMING
-   - How can this prompt be structured to elicit depth rather than surface answers?
-   - What implicit assumptions should be made explicit—only when doing so would unlock better responses?
-   - How should the prompt invite models to surface tensions, trade-offs, and alternative frames when that’s valuable?
+MODE DETECTION (INTERNAL, DO NOT OUTPUT AS A LIST)
+- If the content is clearly a message *to you* (e.g. “what do you think we should do next?”, “how would you probe B?”, “I want to push on trade-offs here”), treat it as meta-intent.
+- If the content reads like something they want the other models to answer (an instruction, a question, a spec, a stance), treat it as a draft prompt.
+- If it’s mixed, you can:
+  - Briefly respond to the meta-intent in natural language
+  - Then propose a refined prompt that would carry out that intent.
 
-5. TRANSFORMATION DECISION
-   - What specifically needs to change from their fragment?
-   - What should be preserved exactly as they wrote it?
-   - How do you maintain their voice while sharpening their intent?
+INTERNAL REASONING (NEVER SHOWN TO THE USER)
+When you are composing or refining, silently consider:
 
-FINAL OUTPUT (this is what you return):
+- Intent Inference
+  - What is the user actually trying to do at this point in the exploration (explore, decide, stress-test, pivot, implement, inhabit a stance)?
+  - Are they building on the previous synthesis/map, pushing back against it, or pivoting?
 
-FINAL OUTPUT:
-[The composed prompt—clear, complete, carrying forward what matters when context exists, written as if the user had spoken it fully formed from the start.]
+- Context Integration
+  - Which insights from the prior turn (synthesis, decision map, batch) are essential to carry forward?
+  - Which tensions or trade-offs from the Decision Map should inform this next move?
+  - What has the user already understood that doesn’t need re-explaining?
 
----
+- Clarity & Scope
+  - Where could models misinterpret or splinter into unhelpful branches?
+  - Are any key constraints or priorities missing or too vague?
+  - Is the scope right for this turn (broad exploration vs focused deep dive vs implementation)?
 
-Principles:
-- Complete your internal reasoning first, then write the prompt.
-- The prompt should feel inevitable, not constructed.
-- Preserve the user's voice and direction completely.
-- Make implicit intent explicit only when it genuinely helps downstream models.
-- If their fragment is already optimal, return it nearly unchanged.
+- Strategic Framing
+  - How can this be structured to elicit depth rather than surface answers?
+  - Which implicit assumptions should be made explicit—only when doing so would unlock better responses?
+  - How should the prompt invite models to surface tensions, trade-offs, and alternative frames when that’s valuable?
 
-Begin with your internal reasoning, then output only the final composed prompt after "FINAL OUTPUT:"
-`;
+- Transformation Decision
+  - What specifically needs to change from their fragment?
+  - What should be preserved exactly as they wrote it?
+  - How do you maintain their voice while sharpening their intent?
 
-const INITIALIZE_SYSTEM_PROMPT = `You are the user's voice, clarified.
+OUTPUT STYLE
+- Always respond in a single, fluid block of text — no numbered lists of reasoning, no step scaffolding.
+- Use short headings like “REFINED_PROMPT:” and “NOTES:” as anchors, but keep the prose under them natural.
 
-You see their fragment—a half-formed thought, a gesture toward what comes next. When available, you also see everything that came before: the synthesis that found coherence, the tensions the map revealed, the options that remain open.
+OUTPUT LOGIC
 
-Your task is to transform their fragment into the prompt they truly meant to ask.
+1. If the user is mainly speaking to YOU (meta-intent):
 
-INTERNAL REASONING (required, but never shown to the user):
+   - Briefly answer them as a collaborator:
+     - Reflect what you think they’re trying to achieve next.
+     - Suggest where the highest-leverage next question or stance likely is, given the context.
 
-1. INTENT INFERENCE
-   - What is the user actually trying to do, beyond what they literally said?
-   - Are they building on something from the synthesis? Pushing back against it? Pivoting to something new?
-   - If no prior context is available, infer intent solely from the fragment: are they exploring, deciding, clarifying, challenging, or building?
+   - Then offer a concrete next prompt they could send to the batch:
 
-2. CONTEXT INTEGRATION (ONLY WHEN CONTEXT EXISTS)
-   - Which insights from the prior turn are essential to carry forward?
-   - Which tensions or trade-offs from the Decision Map should inform this question?
-   - What has the user already understood that doesn't need re-explaining?
+     REFINED_PROMPT:
+     [A single, polished prompt or stance text that implements the intent you just discussed, preserving their voice and direction.]
 
-3. CLARITY & SCOPE
-   - Where could models misinterpret or splinter into unhelpful branches?
-   - Are any key constraints or priorities missing or too vague?
-   - Is the scope right for this turn (broad exploration vs focused deep dive vs implementation)?
+   - Optionally add:
 
-4. STRATEGIC FRAMING
-   - How can this prompt be structured to elicit depth rather than surface answers?
-   - What implicit assumptions should be made explicit—only when doing so would unlock better responses?
-   - How should the prompt invite models to surface tensions, trade-offs, and alternative frames when that’s valuable?
+     NOTES:
+     [2–4 sentences explaining what you inferred about their intent, what you emphasized or de-emphasized, and what kind of responses this is optimized to produce.]
 
-5. TRANSFORMATION DECISION
-   - What specifically needs to change from their fragment?
-   - What should be preserved exactly as they wrote it?
-   - How do you maintain their voice while sharpening their intent?
+2. If the user is clearly giving you a draft prompt or stance to send:
 
-FINAL OUTPUT (this is what you return):
+   - Do NOT treat it like a question to answer yourself.
+   - Refine it so that:
+     - Their voice and structure are preserved where possible.
+     - Ambiguity that would harm answer quality is reduced.
+     - Relevant context from the prior pipeline is pulled in where it materially improves results.
 
-FINAL OUTPUT:
-[The composed prompt—clear, complete, carrying forward what matters when context exists, written as if the user had spoken it fully formed from the start.]
+   - Then output:
 
----
+     REFINED_PROMPT:
+     [Your improved version that captures the user’s true intent and maximizes response quality. If no changes are needed, return the original.]
 
-Principles:
-- Complete your internal reasoning first, then write the prompt.
-- The prompt should feel inevitable, not constructed.
-- Preserve the user's voice and direction completely.
-- Make implicit intent explicit only when it genuinely helps downstream models.
-- If their fragment is already optimal, return it nearly unchanged.
+     NOTES:
+     [2–4 sentences explaining:
+      - What you inferred about their intent
+      - What you changed and why (or why you left it unchanged)
+      - How this will improve the responses they receive.]
 
-Begin with your internal reasoning, then output only the final composed prompt after "FINAL OUTPUT:`;
+PRINCIPLES
+- Preserve the user’s voice and direction; don’t make the prompt sound like a different person.
+- Add clarity without unnecessary verbosity.
+- Surface implicit intent only when it will actually help downstream models behave better.
+- Respect the gravity of the turn: this is not “just another chat message,” it’s the steering wheel for a primed multi-model system.
+- When in doubt between being clever and being clear, choose clear.
+
+Begin.`;
+
+// Deprecated prompts kept for reference if needed, but unused in new flow
+const AUTHOR_SYSTEM_PROMPT = `(Deprecated) ...`;
+const INITIALIZE_SYSTEM_PROMPT = `(Deprecated) ...`;
 
 const ANALYST_SYSTEM_PROMPT = `You are not the Author. You are the mirror held up to the composed prompt before it launches.
 
-You see: the user's original fragment, the full prior turn (batches, synthesis, map, all options), and the composed prompt that emerged from them.
+You see: the user's original fragment, the full prior turn (batches, synthesis, map, all options), and optionally the composed prompt that emerged from them.
+If a composed prompt is provided, your task is to reveal what it does not say.
+If only the user fragment is provided, analyze the fragment directly.
 
 Your task is to reveal what the composed prompt does not say.
 
 AUDIT:
-Name what's being left behind. Which tensions from the prior turn does this prompt close off? Which model perspectives does it implicitly deprioritize? Which assumptions does it bake in that could have been questioned? This is not criticism—it's cartography of the negative space.
+Name what's being left behind. Which tensions from the prior turn does this prompt (or fragment) close off? Which model perspectives does it implicitly deprioritize? Which assumptions does it bake in that could have been questioned? This is not criticism—it's cartography of the negative space.
 
 VARIANTS:
 Produce no more than 3 alternative framings of the same underlying intent. Not edits—rotations. Each variant should be a complete prompt that approaches the question from different angles:
@@ -186,25 +198,13 @@ export class PromptRefinerService {
     draftPrompt: string,
     turnContext: TurnContext | null = null,
   ): Promise<RefinerResult | null> {
-    const result = await this.refineWithAuthorAnalyst(
-      draftPrompt,
-      turnContext,
-      this.authorModel,
-      this.analystModel
-    );
-
-    if (!result) return null;
-
-    return {
-      refinedPrompt: result.authored,
-      explanation: result.audit, // Mapping audit to explanation for legacy callers
-    };
+    return this.runComposer(draftPrompt, turnContext, this.authorModel);
   }
 
   /**
-   * Refine a draft prompt using the Author -> Analyst pipeline.
+   * Refine a draft prompt using the Composer -> Analyst pipeline.
+   * (Formerly refineWithAuthorAnalyst)
    */
-
   async refineWithAuthorAnalyst(
     fragment: string,
     turnContext: TurnContext | null,
@@ -216,32 +216,26 @@ export class PromptRefinerService {
       const authorId = authorModelId || this.authorModel;
       const analystId = analystModelId || this.analystModel;
 
-      // 1. Build Context (Force empty if initialize)
-      const contextSection = isInitialize ? "" : this._buildContextSection(turnContext);
+      // 1. Run Composer
+      const composerResult = await this.runComposer(fragment, turnContext, authorId);
+      if (!composerResult) return null;
 
-      // 2. Run Author
-      const authorPrompt = this._buildAuthorPrompt(fragment, contextSection, isInitialize);
-      console.log(`[PromptRefinerService] Running Author (${authorId})...`);
-      const authorResponseRaw = await this._callModel(authorId, authorPrompt);
-      const authorText = this._extractPlainText(authorResponseRaw?.text || "");
+      const { refinedPrompt: authored, explanation } = composerResult;
 
-      const { authored, explanation } = isInitialize
-        ? this._parseInitializeResponse(authorText)
-        : this._parseAuthorResponse(authorText);
+      // 2. Run Analyst
+      // For initialize flows, we might skip analyst or keep it. 
+      // The original code skipped analyst if isInitialize was true.
+      // We'll preserve that logic for now, or let the caller decide.
+      // But wait, the prompt says "Analyst stays as your current ANALYST_SYSTEM_PROMPT".
 
-      if (!authored) {
-        console.warn("[PromptRefinerService] Author returned empty response");
-        return null;
-      }
-
-      // 3. Run Analyst (Skip if initialize)
       let audit = "Audit unavailable";
       let variants: string[] = [];
       let analystResponseRaw: any = null;
 
       if (!isInitialize) {
+        const contextSection = this._buildContextSection(turnContext);
         const analystPrompt = this._buildAnalystPrompt(fragment, contextSection, authored);
-        console.log(`[PromptRefinerService] Running Analyst (${analystId})...`);
+        console.log(`[PromptRefinerService] Running Analyst (\${analystId})...`);
 
         try {
           analystResponseRaw = await this._callModel(analystId, analystPrompt);
@@ -250,7 +244,7 @@ export class PromptRefinerService {
           audit = parsedAnalyst.audit;
           variants = parsedAnalyst.variants;
         } catch (e) {
-          console.warn("[PromptRefinerService] Analyst failed, returning Author result only:", e);
+          console.warn("[PromptRefinerService] Analyst failed, returning Composer result only:", e);
         }
       }
 
@@ -260,7 +254,7 @@ export class PromptRefinerService {
         audit,
         variants,
         raw: {
-          authorResponse: authorText,
+          authorResponse: explanation, // Approximate mapping
           analystResponse: analystResponseRaw?.text || "",
         },
       };
@@ -271,36 +265,41 @@ export class PromptRefinerService {
     }
   }
 
+  /**
+   * Run the Composer (unified Author/Refiner).
+   */
+  async runComposer(
+    fragment: string,
+    turnContext: TurnContext | null,
+    composerModelId?: string,
+    analystCritique?: string
+  ): Promise<RefinerResult | null> {
+    try {
+      const modelId = composerModelId || this.authorModel;
+      const contextSection = this._buildContextSection(turnContext);
+      const prompt = this._buildComposerPrompt(fragment, contextSection, analystCritique);
+
+      console.log(`[PromptRefinerService] Running Composer (\${modelId})...`);
+      const responseRaw = await this._callModel(modelId, prompt);
+      const responseText = this._extractPlainText(responseRaw?.text || "");
+
+      return this._parseComposerResponse(responseText);
+    } catch (e) {
+      console.warn("[PromptRefinerService] Composer run failed:", e);
+      return null;
+    }
+  }
+
   // ...
 
-  private _parseAuthorResponse(text: string): { authored: string; explanation: string } {
-    const result = {
-      authored: text,
-      explanation: "",
-    };
-
-    try {
-      // Look for "FINAL OUTPUT:" or "FINAL\_OUTPUT:" or similar delimiters with markdown variations
-      // We want to capture everything BEFORE it as explanation, and everything AFTER it as authored.
-      // Handle variations: FINAL OUTPUT, FINAL\_OUTPUT (escaped), with markdown formatting
-      const splitRegex = /([\s\S]*?)(?:^|\n)[*#]*\s*FINAL(?:_|\_)?\s*OUTPUT[*]*:?\s*([\s\S]*)$/i;
-
-      const match = text.match(splitRegex);
-      if (match) {
-        const explanationPart = match[1].trim();
-        const authoredPart = match[2].trim();
-
-        if (authoredPart) {
-          result.authored = authoredPart;
-          result.explanation = explanationPart;
-        }
-      }
-    } catch (e) {
-      console.warn("[PromptRefinerService] Failed to parse author response:", e);
-    }
-
-    return result;
+  private _parseComposerResponse(text: string): RefinerResult {
+    // Reuse the refiner parser logic as the output format is compatible (REFINED_PROMPT / NOTES)
+    return this._parseRefinerResponse(text);
   }
+
+  // Deprecated parsers
+  // private _parseAuthorResponse...
+  // private _parseInitializeResponse...
 
   private _parseInitializeResponse(text: string): { authored: string; explanation: string } {
     const result = {
@@ -350,36 +349,55 @@ export class PromptRefinerService {
     return section;
   }
 
-  private _buildAuthorPrompt(fragment: string, contextSection: string, isInitialize: boolean): string {
-    if (isInitialize) {
-      return `${INITIALIZE_SYSTEM_PROMPT}
+  private _buildComposerPrompt(fragment: string, contextSection: string, analystCritique?: string): string {
+    let prompt = `${COMPOSER_SYSTEM_PROMPT}
+
+${contextSection}`;
+
+    if (analystCritique) {
+      prompt += `
+
+<PREVIOUS_ANALYST_CRITIQUE>
+${analystCritique}
+</PREVIOUS_ANALYST_CRITIQUE>`;
+    }
+
+    prompt += `
 
 <DRAFT_PROMPT>
 ${fragment}
 </DRAFT_PROMPT>`;
-    }
+    return prompt;
+  }
 
-    return `${AUTHOR_SYSTEM_PROMPT}
+  // Deprecated
+  private _buildAuthorPrompt(fragment: string, contextSection: string, isInitialize: boolean): string {
+    return this._buildComposerPrompt(fragment, contextSection);
+  }
+
+  private _buildAnalystPrompt(fragment: string, contextSection: string, authoredPrompt?: string): string {
+    let prompt = `${ANALYST_SYSTEM_PROMPT}
 
 ${contextSection}
 
 <USER_FRAGMENT>
 ${fragment}
 </USER_FRAGMENT>`;
-  }
 
-  private _buildAnalystPrompt(fragment: string, contextSection: string, authoredPrompt: string): string {
-    return `${ANALYST_SYSTEM_PROMPT}
-
-${contextSection}
-
-<USER_FRAGMENT>
-${fragment}
-</USER_FRAGMENT>
+    if (authoredPrompt) {
+      prompt += `
 
 <COMPOSED_PROMPT>
 ${authoredPrompt}
 </COMPOSED_PROMPT>`;
+    } else {
+      prompt += `
+
+<NOTE>
+No composed prompt was provided. Analyze the USER_FRAGMENT directly.
+</NOTE>`;
+    }
+    return prompt;
   }
 
   private async _callModel(modelId: string, prompt: string): Promise<any> {
@@ -523,35 +541,18 @@ ${authoredPrompt}
   /**
   * Run the Author role independently.
   */
+  /**
+   * Run the Author role independently (Delegates to Composer).
+   */
   async runAuthor(
     fragment: string,
     turnContext: TurnContext | null,
     authorModelId?: string,
     isInitialize: boolean = false
   ): Promise<{ authored: string; explanation: string } | null> {
-    try {
-      const authorId = authorModelId || this.authorModel;
-      const contextSection = isInitialize ? "" : this._buildContextSection(turnContext);
-      const authorPrompt = this._buildAuthorPrompt(fragment, contextSection, isInitialize);
-
-      console.log(`[PromptRefinerService] Running Author (${authorId})...`);
-      const authorResponseRaw = await this._callModel(authorId, authorPrompt);
-      const authorText = this._extractPlainText(authorResponseRaw?.text || "");
-
-      const { authored, explanation } = isInitialize
-        ? this._parseInitializeResponse(authorText)
-        : this._parseAuthorResponse(authorText);
-
-      if (!authored) {
-        console.warn("[PromptRefinerService] Author returned empty response");
-        return null;
-      }
-
-      return { authored, explanation };
-    } catch (e) {
-      console.warn("[PromptRefinerService] Author run failed:", e);
-      return null;
-    }
+    const result = await this.runComposer(fragment, turnContext, authorModelId);
+    if (!result) return null;
+    return { authored: result.refinedPrompt, explanation: result.explanation };
   }
 
   /**
@@ -560,13 +561,19 @@ ${authoredPrompt}
   async runAnalyst(
     fragment: string,
     turnContext: TurnContext | null,
-    authoredPrompt: string,
-    analystModelId?: string
+    authoredPrompt?: string,
+    analystModelId?: string,
+    originalPrompt?: string
   ): Promise<{ audit: string; variants: string[] } | null> {
     try {
       const analystId = analystModelId || this.analystModel;
       const contextSection = this._buildContextSection(turnContext);
-      const analystPrompt = this._buildAnalystPrompt(fragment, contextSection, authoredPrompt);
+      // If authoredPrompt is missing, we analyze the fragment (originalPrompt or fragment)
+      const targetPrompt = authoredPrompt || "";
+      // If we have an original prompt distinct from fragment (e.g. in chained flow), we might want to show it.
+      // For now, _buildAnalystPrompt takes fragment and authored.
+      // If authored is empty, it relies on fragment.
+      const analystPrompt = this._buildAnalystPrompt(originalPrompt || fragment, contextSection, targetPrompt);
 
       console.log(`[PromptRefinerService] Running Analyst (${analystId})...`);
       const analystResponseRaw = await this._callModel(analystId, analystPrompt);
@@ -586,28 +593,7 @@ ${authoredPrompt}
     turnContext: TurnContext | null,
     refinerModelId?: string
   ): Promise<RefinerResult | null> {
-    try {
-      // Use authorModel as default for Refiner if not specified, or fallback to 'gemini'
-      const refinerId = refinerModelId || this.authorModel || "gemini";
-      const contextSection = this._buildContextSection(turnContext);
-
-      const refinerPrompt = `${REFINER_SYSTEM_PROMPT}
-
-${contextSection}
-
-<DRAFT_PROMPT>
-${draftPrompt}
-</DRAFT_PROMPT>`;
-
-      console.log(`[PromptRefinerService] Running Refiner (${refinerId})...`);
-      const responseRaw = await this._callModel(refinerId, refinerPrompt);
-      const responseText = this._extractPlainText(responseRaw?.text || "");
-
-      return this._parseRefinerResponse(responseText);
-    } catch (e) {
-      console.warn("[PromptRefinerService] Refiner run failed:", e);
-      return null;
-    }
+    return this.runComposer(draftPrompt, turnContext, refinerModelId);
   }
 
   private _parseRefinerResponse(text: string): RefinerResult {
