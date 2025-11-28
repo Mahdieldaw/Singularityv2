@@ -38,6 +38,7 @@ export const messagesAtom = atom<TurnMessage[]>((get) => {
 
 /**
  * Selector: provider responses for a specific AI turn (isolated subscription).
+ * DEPRECATED: Use providerEffectiveStateFamily for component isolation.
  */
 export const providerResponsesForTurnAtom = atom(
   (get) =>
@@ -57,6 +58,65 @@ export const providerResponsesForTurnAtom = atom(
       });
       return out;
     },
+);
+
+// -----------------------------
+// Provider Island Isolation Atoms
+// -----------------------------
+/**
+ * Atom family: Get the full response array for a specific provider in a turn.
+ * Returns the complete history as an array (never flattened).
+ * If the provider has no responses, returns an empty array.
+ */
+export const providerResponseArrayFamily = atomFamily(
+  ({ turnId, providerId }: { turnId: string; providerId: string }) =>
+    atom((get) => {
+      const turn = get(turnsMapAtom).get(turnId);
+      if (!turn || turn.type !== "ai") return [];
+
+      const aiTurn = turn as AiTurn;
+      const responses = aiTurn.batchResponses?.[providerId];
+
+      // Always return array, normalize if needed
+      if (!responses) return [];
+      return Array.isArray(responses) ? responses : [responses];
+    }),
+  (a, b) => a.turnId === b.turnId && a.providerId === b.providerId
+);
+
+/**
+ * Derived atom family: Stable, UI-optimized state for a provider.
+ * Prevents expensive recalculations during render.
+ */
+export const providerEffectiveStateFamily = atomFamily(
+  ({ turnId, providerId }: { turnId: string; providerId: string }) =>
+    atom((get) => {
+      const responses = get(providerResponseArrayFamily({ turnId, providerId }));
+
+      return {
+        latestResponse: responses.length > 0 ? responses[responses.length - 1] : null,
+        historyCount: responses.length,
+        isEmpty: responses.length === 0,
+        allResponses: responses, // Include full array for history expansion
+      };
+    }),
+  (a, b) => a.turnId === b.turnId && a.providerId === b.providerId
+);
+
+/**
+ * Atom family: Get only the list of provider IDs for a turn.
+ * Parent layout subscribes to this to avoid re-rendering on provider data changes.
+ */
+export const providerIdsForTurnFamily = atomFamily(
+  (turnId: string) =>
+    atom((get) => {
+      const turn = get(turnsMapAtom).get(turnId);
+      if (!turn || turn.type !== "ai") return [];
+
+      const aiTurn = turn as AiTurn;
+      return Object.keys(aiTurn.batchResponses || {});
+    }),
+  (a, b) => a === b
 );
 
 /**
@@ -95,6 +155,12 @@ export const isContinuationModeAtom = atom((get) => {
 // Streaming performance optimization
 // -----------------------------
 /**
+ * Tracks which provider is currently streaming (for granular streaming indicators).
+ * Updated by usePortMessageHandler when processing PARTIAL_RESULT messages.
+ */
+export const lastStreamingProviderAtom = atom<string | null>(null);
+
+/**
  * Derived atom: represents the turn that should be "live" in the UI.
  * Merges recompute targeting and normal streaming into a single source of truth.
  */
@@ -117,22 +183,32 @@ const globalStreamingStateAtom = atom((get) => ({
  * Shared idle state object: ensures reference equality for non-active turns.
  * Critical: without this, every turn re-renders on every streaming tick.
  */
-const idleStreamingState: { isLoading: boolean; appStep: AppStep } = {
+const idleStreamingState: { isLoading: boolean; appStep: AppStep; activeProviderId: string | null } = {
   isLoading: false,
   appStep: "initial",
+  activeProviderId: null,
 };
 
 /**
- * Per-turn derived streaming state. Only the active turn sees changing values.
- * All other turns share the same idleStreamingState reference, preventing re-renders.
+ * Per-turn derived streaming state with active provider tracking.
+ * Only the active turn sees changing values. All other turns share idleStreamingState.
+ * Extended to track which specific provider is streaming for granular UI indicators.
  */
 export const turnStreamingStateFamily = atomFamily(
   (turnId: string) =>
     atom((get) => {
       const { activeId, isLoading, appStep } = get(globalStreamingStateAtom);
+      const recompute = get(activeRecomputeStateAtom);
+      const lastStreamingProvider = get(lastStreamingProviderAtom);
+
       if (activeId === turnId) {
+        // Priority: recompute provider > last streaming provider > null
+        const activeProviderId = recompute?.aiTurnId === turnId
+          ? recompute.providerId
+          : (isLoading ? lastStreamingProvider : null);
+
         // New object only for active turn – triggers re-render
-        return { isLoading, appStep };
+        return { isLoading, appStep, activeProviderId };
       }
       // All non-active turns share this single, stable reference
       return idleStreamingState;

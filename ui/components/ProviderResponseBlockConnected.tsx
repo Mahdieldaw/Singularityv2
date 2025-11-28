@@ -4,10 +4,10 @@ import {
   isReducedMotionAtom,
   turnsMapAtom,
   currentSessionIdAtom,
-  providerContextsAtom,
   turnStreamingStateFamily,
   activeRecomputeStateAtom,
   activeProviderTargetAtom,
+  providerIdsForTurnFamily,
 } from "../state/atoms";
 import { useAtom } from "jotai";
 import { ProviderKey, ProviderResponse } from "../types";
@@ -28,49 +28,26 @@ function ProviderResponseBlockConnected({
   aiTurnId,
   expectedProviders
 }: ProviderResponseBlockConnectedProps) {
-  // Per-turn streaming state (only active turn sees changing values)
+  // Per-turn streaming state with active provider tracking
   const streamingState = useAtomValue(turnStreamingStateFamily(aiTurnId));
-  const { isLoading, appStep: currentAppStep } = streamingState;
+  const { isLoading, appStep: currentAppStep, activeProviderId } = streamingState;
 
   // Other global state
   const turnsMap = useAtomValue(turnsMapAtom);
   const isReducedMotion = useAtomValue(isReducedMotionAtom);
   const sessionId = useAtomValue(currentSessionIdAtom);
-  const providerContexts = useAtomValue(providerContextsAtom);
+
+  // Subscribe to provider IDs only (not data) - critical for isolation
+  const providerIds = useAtomValue(providerIdsForTurnFamily(aiTurnId));
 
   const aiTurn = turnsMap.get(aiTurnId) as AiTurn | undefined;
+  if (!aiTurn) return null;
 
-  // Pre-allocate responses only during loading and for expected providers
-  const providerResponses = useMemo(() => {
-    if (!aiTurn) return undefined;
-
-    // Build a flat map of latest responses per provider from arrays
-    const base: Record<string, ProviderResponse> = {};
-
-    Object.entries(aiTurn.batchResponses || {}).forEach(([pid, arr]) => {
-      const latest = getLatestResponse(normalizeResponseArray(arr));
-      if (latest) base[pid] = latest as ProviderResponse;
-    });
-
-    if (expectedProviders?.length && isLoading) {
-      const now = Date.now();
-      // Normalize expected provider IDs to canonical form
-      expectedProviders.forEach((providerId) => {
-        const normId = normalizeProviderId(providerId);
-        if (!base[normId]) {
-          base[normId] = {
-            providerId: normId,
-            text: "",
-            status: "pending" as const,
-            createdAt: now,
-            updatedAt: now,
-          } as ProviderResponse;
-        }
-      });
-    }
-
-    return base;
-  }, [aiTurn, expectedProviders, isLoading]);
+  // Check if a specific provider is the streaming target
+  const isStreamingTarget = useCallback(
+    (providerId: string) => activeProviderId === providerId,
+    [activeProviderId]
+  );
 
   // Retry handler for failed providers (recompute in-place)
   const setActiveRecomputeState = useSetAtom(activeRecomputeStateAtom);
@@ -212,59 +189,50 @@ function ProviderResponseBlockConnected({
     }
   }, [activeTarget, aiTurnId, setActiveTarget]);
 
-  // Compute full history for stacking
-  const providerResponseHistory = useMemo(() => {
-    if (!aiTurn) return undefined;
-    const history: Record<string, ProviderResponse[]> = {};
-    Object.entries(aiTurn.batchResponses || {}).forEach(([pid, arr]) => {
-      history[pid] = normalizeResponseArray(arr);
-    });
-    return history;
-  }, [aiTurn]);
+  // Branch continuation handler
+  const handleBranchContinue = useCallback(async (providerId: string, prompt: string) => {
+    if (!sessionId || !aiTurn) {
+      console.warn("[ProviderResponseBlock] Cannot branch: missing session or turn");
+      return;
+    }
+
+    try {
+      setActiveRecomputeState({ aiTurnId, stepType: "batch" as any, providerId });
+    } catch (_) { /* non-fatal */ }
+
+    const primitive: PrimitiveWorkflowRequest = {
+      type: "recompute",
+      sessionId,
+      sourceTurnId: aiTurnId,
+      stepType: "batch" as any,
+      targetProvider: providerId as ProviderKey,
+      userMessage: prompt,
+      useThinking: false,
+    } as any;
+
+    try {
+      await api.executeWorkflow(primitive);
+    } catch (error) {
+      console.error("[ProviderResponseBlock] Branch failed:", error);
+      try { setActiveRecomputeState(null); } catch { }
+    }
+  }, [sessionId, aiTurn, aiTurnId, setActiveRecomputeState]);
 
   return (
     <ProviderResponseBlock
-      providerResponses={providerResponses}
-      providerResponseHistory={providerResponseHistory}
-      activeTarget={activeTarget?.aiTurnId === aiTurnId ? activeTarget : null}
-      onToggleTarget={handleToggleTarget}
-      isLoading={isLoading}
-      currentAppStep={currentAppStep}
-      isReducedMotion={isReducedMotion}
+      providerIds={providerIds}
+      isStreamingTarget={isStreamingTarget}
       aiTurnId={aiTurnId}
       sessionId={sessionId || undefined}
-      onRetryProvider={handleRetryProvider}
       userTurnId={aiTurn.userTurnId}
+      onRetryProvider={handleRetryProvider}
+      onToggleTarget={handleToggleTarget}
+      onBranchContinue={handleBranchContinue}
+      activeTarget={activeTarget?.aiTurnId === aiTurnId ? activeTarget : null}
+      isLoading={isLoading}
+      currentAppStep={currentAppStep}
       copyAllText={copyAllText}
-      onBranchContinue={async (providerId: string, _prompt: string) => {
-        // Branch continuation: trigger recompute on this provider.
-        if (!sessionId || !aiTurn) {
-          console.warn("[ProviderResponseBlock] Cannot branch: missing session or turn");
-          return;
-        }
-
-        try {
-          setActiveRecomputeState({ aiTurnId, stepType: "batch" as any, providerId });
-        } catch (_) { /* non-fatal */ }
-
-        const primitive: PrimitiveWorkflowRequest = {
-          type: "recompute",
-          sessionId,
-          sourceTurnId: aiTurnId,
-          stepType: "batch" as any,
-          targetProvider: providerId as ProviderKey,
-          // For inline branching: send the inline prompt, never the original turn prompt
-          userMessage: _prompt,
-          useThinking: false,
-        } as any;
-
-        try {
-          await api.executeWorkflow(primitive);
-        } catch (error) {
-          console.error("[ProviderResponseBlock] Branch failed:", error);
-          try { setActiveRecomputeState(null); } catch { }
-        }
-      }}
+      isReducedMotion={isReducedMotion}
     />
   );
 }

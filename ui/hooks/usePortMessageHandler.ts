@@ -15,7 +15,7 @@ import {
   synthesisProviderAtom,
   lastActivityAtAtom,
 } from "../state/atoms";
-import { activeRecomputeStateAtom } from "../state/atoms";
+import { activeRecomputeStateAtom, lastStreamingProviderAtom } from "../state/atoms";
 import { StreamingBuffer } from "../utils/streamingBuffer";
 import {
   applyStreamingUpdates,
@@ -93,6 +93,7 @@ export function usePortMessageHandler() {
 
   const activeRecomputeState = useAtomValue(activeRecomputeStateAtom);
   const setActiveRecomputeState = useSetAtom(activeRecomputeStateAtom);
+  const setLastStreamingProvider = useSetAtom(lastStreamingProviderAtom);
   useEffect(() => {
     activeRecomputeRef.current = activeRecomputeState;
   }, [activeRecomputeState]);
@@ -346,6 +347,9 @@ export function usePortMessageHandler() {
             return;
           }
 
+          // Track which provider is actively streaming (for granular UI indicators)
+          setLastStreamingProvider(pid);
+
           // Log the first partial per provider per step only
           try {
             let perStep = partialLoggedRef.current.get(stepId);
@@ -584,7 +588,7 @@ export function usePortMessageHandler() {
                 const targetId = (message as any).isRecompute && (message as any).sourceTurnId
                   ? (message as any).sourceTurnId
                   : activeRecomputeRef.current?.aiTurnId ||
-                    activeAiTurnIdRef.current;
+                  activeAiTurnIdRef.current;
                 if (targetId && providerId) {
                   setTurnsMap((draft: Map<string, TurnMessage>) => {
                     const existing = draft.get(targetId);
