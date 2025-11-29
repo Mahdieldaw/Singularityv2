@@ -1,6 +1,7 @@
 import React from "react";
 import { useAtom, useSetAtom } from "jotai";
 import { isHistoryPanelOpenAtom, isSettingsOpenAtom } from "../state/atoms";
+import logoIcon from "../assets/logos/logo-icon.svg";
 
 // MenuIcon component (inline for simplicity)
 const MenuIcon = ({ className }: { className?: string }) => (
@@ -35,11 +36,22 @@ export default function Header() {
         >
           <MenuIcon className="w-6 h-6" />
         </button>
-        <div className="flex items-center gap-2 font-semibold text-base text-text-secondary">
-          <div className="w-6 h-6 bg-brand-500/25 rounded-md flex items-center justify-center text-xs">
-            ⚡
-          </div>
-          Singularity
+        <div className="flex items-center gap-2">
+          {/* Orb Icon */}
+          <img
+            src={logoIcon}
+            alt=""
+            className="w-5 h-5"
+          />
+          {/* Wordmark - Desktop only */}
+          <span className="hidden sm:block font-semibold text-base tracking-wide">
+            <span className="text-text-primary">SINGULAR</span>
+            <span className="text-brand-400">ITY</span>
+          </span>
+          {/* Compact - Mobile */}
+          <span className="sm:hidden font-semibold text-base text-text-primary">
+            S
+          </span>
         </div>
       </div>
       <div className="flex gap-2">
@@ -50,6 +62,6 @@ export default function Header() {
           ⚙️ Models
         </button>
       </div>
-    </header>
+    </header >
   );
 }
