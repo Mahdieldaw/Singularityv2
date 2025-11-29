@@ -54,7 +54,7 @@ interface ProviderCardProps {
     activeTarget?: { aiTurnId: string; providerId: string } | null;
     onCardClick?: (providerId: string) => void;
     isHighlighted?: boolean;
-    isSwapActive?: boolean; // When a hidden provider is selected for swapping
+    isSwapSource?: boolean; // When this card is selected as the source for a swap
     onArtifactOpen?: (artifact: { title: string; identifier: string; content: string }) => void;
 }
 
@@ -71,7 +71,7 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({
     activeTarget,
     onCardClick,
     isHighlighted = false,
-    isSwapActive = false,
+    isSwapSource = false,
     onArtifactOpen,
 }) => {
     // Subscribe to effective state for this provider
@@ -188,8 +188,8 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({
                     ? "border-brand-500 shadow-glow-brand"
                     : derivedState.isTargeted
                         ? "border-brand-500 ring-2 ring-brand-500/50 shadow-glow-brand"
-                        : isSwapActive
-                            ? "ring-2 ring-brand-300 shadow-glow-brand-soft"
+                        : isSwapSource
+                            ? "border-brand-400 ring-2 ring-brand-400 shadow-glow-brand-soft bg-brand-500/5"
                             : "border-border-subtle hover:border-border-strong",
                 isBranching && "animate-pulse-ring"
             )}

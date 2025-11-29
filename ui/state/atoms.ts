@@ -327,10 +327,11 @@ export const visibleProvidersAtom = atomWithStorage<string[]>(
 );
 
 /**
- * Tracks which hidden provider is currently selected for swapping.
- * Null = no selection active. Two-click swap: select pill → click card/pill to swap.
+ * Tracks which provider is currently selected for swapping.
+ * Can be a visible provider (click-to-swap) or a hidden provider (swap source).
+ * Null = no selection active.
  */
-export const selectedHiddenProviderAtom = atom<string | null>(null);
+export const swapSourceProviderAtom = atom<string | null>(null);
 
 // -----------------------------
 // Round-level selections

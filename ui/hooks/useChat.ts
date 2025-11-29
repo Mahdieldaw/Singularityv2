@@ -57,6 +57,7 @@ export function useChat() {
   const turnIds = useAtomValue(turnIdsAtom);
 
   const refinerData = useAtomValue(refinerDataAtom);
+  const isRefinerOpen = useAtomValue(isRefinerOpenAtom);
   const chatInputValue = useAtomValue(chatInputValueAtom);
 
   // Writes
@@ -476,6 +477,15 @@ export function useChat() {
           }
         }
 
+        // Determine the effective original prompt (Re-roll logic)
+        // If we are already refining AND the user hasn't edited the output, use the preserved original.
+        // If the user HAS edited the text, treat that edit as the new "original" draft.
+        const isUnchangedOutput = isRefinerOpen && refinerData?.refinedPrompt === draftPrompt;
+
+        const effectiveOriginal = (isUnchangedOutput && refinerData?.originalPrompt)
+          ? refinerData.originalPrompt
+          : draftPrompt;
+
         const context = {
           userPrompt,
           synthesisText,
@@ -488,19 +498,14 @@ export function useChat() {
         if (mode === "compose") {
           // Compose Mode: Run Composer with optional Analyst critique
           const analystCritique = refinerData?.audit;
-          const result = await api.runComposer(draftPrompt, context, composerModel, analystCritique);
+          // Use effectiveOriginal to ensure we refine the user's intent, not the previous AI output
+          const result = await api.runComposer(effectiveOriginal, context, composerModel, analystCritique);
 
           if (result) {
             setRefinerData({
               refinedPrompt: result.refinedPrompt,
               explanation: result.explanation,
-              originalPrompt: draftPrompt,
-              // Preserve existing analyst data if any, or maybe clear it?
-              // User said: "make run analyst another distinct action... without the pre need for a composer"
-              // But if we are composing, we might want to keep the critique that influenced this composition?
-              // For now, let's keep the critique but maybe clear variants as they are stale?
-              // Actually, if we re-compose, the old audit is "consumed", so maybe we should keep it visible until new analyst run?
-              // Let's keep it simple: update refined prompt and explanation.
+              originalPrompt: effectiveOriginal, // Persist the true original
               audit: refinerData?.audit,
               variants: refinerData?.variants
             });
@@ -509,29 +514,24 @@ export function useChat() {
           }
         } else {
           // Explain Mode: Run Analyst
-          // Candidate prompt is what's in the box (chatInputValue) or the refined prompt if box is empty/matching
-          // Actually, user said: "surface a similar mechanism for how authors outputs is sent to the analyst"
-          // "analyst outputs can be sent in authors prompt when built"
-          // "analyst runs through explore... without pre need for composer"
+          // We analyze the current text box content (draftPrompt) as the "candidate"
+          // But we use effectiveOriginal as the "fragment" (user intent) context
 
-          // We use the current input value as the "composed prompt" to analyze.
-          // If the user typed it manually, it's the "composed prompt".
-          const candidatePrompt = chatInputValue || refinerData?.refinedPrompt || draftPrompt;
-          const originalPrompt = refinerData?.originalPrompt || draftPrompt;
+          const candidatePrompt = draftPrompt;
 
           const result = await api.runAnalyst(
-            draftPrompt, // This is the fragment/original intent
+            effectiveOriginal, // Fragment: The original user intent
             context,
-            candidatePrompt, // This is what we are analyzing
+            candidatePrompt, // Composed/Candidate: What we are analyzing
             analystModel,
-            originalPrompt
+            effectiveOriginal
           );
 
           if (result) {
             setRefinerData((prev) => ({
-              refinedPrompt: candidatePrompt, // Ensure we track what was analyzed
+              refinedPrompt: candidatePrompt,
               explanation: prev?.explanation || "",
-              originalPrompt: originalPrompt,
+              originalPrompt: effectiveOriginal,
               audit: result.audit,
               variants: result.variants
             }));
@@ -557,6 +557,7 @@ export function useChat() {
       analystModel,
       refinerData,
       chatInputValue,
+      isRefinerOpen,
     ],
   );
 

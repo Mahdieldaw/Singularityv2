@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { HistorySessionSummary } from "../types";
 import logoIcon from "../assets/logos/logo-icon.svg";
-import { PlusIcon, TrashIcon } from "./Icons";
+import { PlusIcon, TrashIcon, EllipsisHorizontalIcon } from "./Icons";
 
 interface HistoryPanelProps {
   isOpen: boolean;
@@ -37,6 +37,14 @@ const HistoryPanel = ({
   onConfirmBatchDelete,
   currentSessionId,
 }: HistoryPanelProps & { currentSessionId?: string | null }) => {
+  const [activeMenuId, setActiveMenuId] = React.useState<string | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => setActiveMenuId(null);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
+
   return (
     <div className="relative w-full h-full bg-surface-soft/90 backdrop-blur-xl border-r border-border-subtle text-text-secondary p-5 overflow-y-auto overflow-x-hidden flex flex-col">
       {isOpen && (
@@ -169,41 +177,58 @@ const HistoryPanel = ({
                       </span>
                     </div>
                     {!isBatchMode && (
-                      <div className="flex gap-1.5">
+                      <div className="relative ml-2">
                         <button
-                          aria-label={`Rename chat ${session.title}`}
-                          title="Rename chat"
-                          className="flex-shrink-0 ml-2 bg-intent-success/10 border border-intent-success/40 text-intent-success rounded-md px-1.5 py-1 cursor-pointer text-xs transition-all duration-200 hover:bg-intent-success/20"
+                          className="p-1 rounded-md hover:bg-surface-highlight text-text-secondary transition-colors"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onRenameChat &&
-                              onRenameChat(session.sessionId, session.title);
+                            setActiveMenuId(
+                              activeMenuId === session.sessionId
+                                ? null
+                                : session.sessionId,
+                            );
                           }}
                         >
-                          ✏️
+                          <EllipsisHorizontalIcon className="w-5 h-5" />
                         </button>
-                        <button
-                          aria-label={`Delete chat ${session.title}`}
-                          title="Delete chat"
-                          className={`flex-shrink-0 ml-2 bg-intent-danger/10 border border-intent-danger/45 text-intent-danger rounded-md px-1.5 py-1 text-xs transition-all duration-200 ${!!deletingIds &&
-                            (deletingIds as Set<string>).has(session.sessionId)
-                            ? "cursor-not-allowed opacity-60"
-                            : "cursor-pointer hover:bg-intent-danger/20"
-                            }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteChat(session.sessionId);
-                          }}
-                          disabled={
-                            !!deletingIds &&
-                            (deletingIds as Set<string>).has(session.sessionId)
-                          }
-                        >
-                          {!!deletingIds &&
-                            (deletingIds as Set<string>).has(session.sessionId)
-                            ? "Deleting…"
-                            : "🗑️"}
-                        </button>
+
+                        {activeMenuId === session.sessionId && (
+                          <div
+                            className="absolute right-0 top-full mt-1 w-32 bg-surface-raised border border-border-subtle rounded-lg shadow-lg z-20 overflow-hidden flex flex-col py-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              className="text-left px-3 py-2 text-sm hover:bg-surface-highlight text-text-primary flex items-center gap-2 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRenameChat &&
+                                  onRenameChat(session.sessionId, session.title);
+                                setActiveMenuId(null);
+                              }}
+                            >
+                              <span className="text-xs">✏️</span> Rename
+                            </button>
+                            <button
+                              className={`text-left px-3 py-2 text-sm hover:bg-intent-danger/10 text-intent-danger flex items-center gap-2 transition-colors ${!!deletingIds &&
+                                  (deletingIds as Set<string>).has(session.sessionId)
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : ""
+                                }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (
+                                  !!deletingIds &&
+                                  (deletingIds as Set<string>).has(session.sessionId)
+                                )
+                                  return;
+                                onDeleteChat(session.sessionId);
+                                setActiveMenuId(null);
+                              }}
+                            >
+                              <span className="text-xs">🗑️</span> Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -3,7 +3,7 @@ import React, { useMemo, useCallback, useState, useEffect } from "react";
 import { LLMProvider, AppStep, ProviderResponse } from "../types";
 import { LLM_PROVIDERS_CONFIG } from "../constants";
 import { useAtom, useSetAtom } from "jotai";
-import { visibleProvidersAtom, selectedHiddenProviderAtom, toastAtom } from "../state/atoms";
+import { visibleProvidersAtom, swapSourceProviderAtom, toastAtom } from "../state/atoms";
 import clsx from "clsx";
 import ProviderCard from "./ProviderCard";
 import MarkdownDisplay from "./MarkdownDisplay";
@@ -86,7 +86,7 @@ const ProviderResponseBlock = ({
 
   // --- PILL-MENU SWAP SYSTEM ---
   const [visibleProviders, setVisibleProviders] = useAtom(visibleProvidersAtom);
-  const [selectedHidden, setSelectedHidden] = useAtom(selectedHiddenProviderAtom);
+  const [swapSource, setSwapSource] = useAtom(swapSourceProviderAtom);
 
   // Calculate visible slots from atom, fallback to first 3 providers if none persisted
   const visibleSlots = useMemo(() => {
@@ -112,50 +112,66 @@ const ProviderResponseBlock = ({
 
   // Pill click: Select hidden provider for swapping
   const handlePillClick = useCallback((providerId: string) => {
-    // If no selection active and provider has no response yet, auto-bring into view and target
-    const isHidden = !visibleSlots.includes(providerId);
-    // Note: We don't check hasData here anymore as we don't have direct access to state.
-    // We assume if user clicks a hidden pill they want to interact with it.
-
-    if (!selectedHidden && isHidden) {
-      // Place it into the center slot (index 1) for prominence
-      setVisibleProviders((prev) => {
-        const next = [...prev];
-        next[1] = providerId;
-        return next;
-      });
-      // Target it to reveal inline input
-      try { onToggleTarget?.(providerId); } catch { }
+    // If a swap source is already selected, swap with it
+    if (swapSource) {
+      if (swapSource === providerId) {
+        setSwapSource(null); // Deselect if clicking same
+      } else {
+        // Swap logic: find where swapSource is (visible or hidden) and swap
+        setVisibleProviders(prev => {
+          const next = [...prev];
+          const sourceIdx = next.indexOf(swapSource);
+          if (sourceIdx !== -1) {
+            next[sourceIdx] = providerId;
+          }
+          return next;
+        });
+        setSwapSource(null);
+      }
       return;
     }
 
-    // Default behavior: toggle hidden selection for two-click swap
-    if (selectedHidden === providerId) {
-      setSelectedHidden(null); // Deselect if clicking same pill
-    } else {
-      setSelectedHidden(providerId);
+    // If NO swap source selected, immediate column-based swap
+    const hiddenIndex = hiddenProviders.indexOf(providerId);
+    if (hiddenIndex !== -1) {
+      const targetColIndex = hiddenIndex % 3; // 0, 1, 2
+      // Ensure we have enough visible slots, though we should (min 3)
+      if (targetColIndex < visibleSlots.length) {
+        const targetVisibleId = visibleSlots[targetColIndex];
+        setVisibleProviders(prev => {
+          const next = [...prev];
+          next[targetColIndex] = providerId;
+          return next;
+        });
+        // Optional: Target it to reveal inline input?
+        // try { onToggleTarget?.(providerId); } catch { }
+      }
     }
-  }, [selectedHidden, setSelectedHidden, visibleSlots, setVisibleProviders, onToggleTarget]);
+  }, [swapSource, setSwapSource, hiddenProviders, visibleSlots, setVisibleProviders]);
 
-  // Card click: Complete swap if selection active
-  const handleCardSwap = useCallback((targetSlotProviderId: string) => {
-    if (!selectedHidden) return;
+  // Card click: Complete swap or set as source
+  const handleCardSwap = useCallback((clickedProviderId: string) => {
+    if (swapSource) {
+      if (swapSource === clickedProviderId) {
+        setSwapSource(null);
+        return;
+      }
+      // Swap swapSource into clicked position
+      setVisibleProviders(prev =>
+        prev.map(id => id === clickedProviderId ? swapSource : id)
+      );
+      setSwapSource(null);
+    } else {
+      // Set as source AND target for inline chat
+      setSwapSource(clickedProviderId);
+      try { onToggleTarget?.(clickedProviderId); } catch { }
+    }
+  }, [swapSource, setVisibleProviders, setSwapSource, onToggleTarget]);
 
-    setVisibleProviders(prev =>
-      prev.map(id => id === targetSlotProviderId ? selectedHidden : id)
-    );
-    setSelectedHidden(null);
-  }, [selectedHidden, setVisibleProviders, setSelectedHidden]);
-
-  // Visible pill click: Alternative swap target (pill-to-pill)
+  // Visible pill click: Same as card click
   const handleVisiblePillClick = useCallback((visibleProviderId: string) => {
-    if (!selectedHidden) return;
-
-    setVisibleProviders(prev =>
-      prev.map(id => id === visibleProviderId ? selectedHidden : id)
-    );
-    setSelectedHidden(null);
-  }, [selectedHidden, setVisibleProviders, setSelectedHidden]);
+    handleCardSwap(visibleProviderId);
+  }, [handleCardSwap]);
 
   // Highlight target provider on citation click and scroll into view
   const [highlightedProviderId, setHighlightedProviderId] = useState<
@@ -224,7 +240,7 @@ const ProviderResponseBlock = ({
                       onClick={() => handlePillClick(pid)}
                       className={clsx(
                         "text-xs px-3 py-1.5 rounded-full border transition-all",
-                        selectedHidden === pid
+                        swapSource === pid
                           ? "bg-chip-active border-border-strong text-text-primary shadow-glow-brand"
                           : "bg-chip-active border-border-subtle text-text-muted hover:bg-surface-highlight opacity-60"
                       )}
@@ -251,12 +267,12 @@ const ProviderResponseBlock = ({
               <div key={pid} className="flex items-center justify-center">
                 <button
                   onClick={() => handleVisiblePillClick(pid)}
-                  disabled={!selectedHidden}
+                  disabled={false}
                   className={clsx(
                     "text-xs px-3 py-1.5 rounded-full border transition-all",
-                    selectedHidden
+                    swapSource === pid
                       ? "bg-surface-highlight border-brand-300 cursor-pointer hover:bg-brand-100"
-                      : "bg-surface-highest border-border-subtle text-text-primary cursor-default shadow-sm"
+                      : "bg-surface-highest border-border-subtle text-text-primary cursor-pointer shadow-sm hover:bg-surface-highlight"
                   )}
                 >
                   {LLM_PROVIDERS_CONFIG.find(p => p.id === pid)?.name || pid}
@@ -289,12 +305,10 @@ const ProviderResponseBlock = ({
                   onBranchContinue={onBranchContinue}
                   activeTarget={activeTarget}
                   onCardClick={() => {
-                    if (selectedHidden) {
-                      handleCardSwap(id);
-                    }
+                    handleCardSwap(id);
                   }}
                   isHighlighted={highlightedProviderId === id}
-                  isSwapActive={!!selectedHidden}
+                  isSwapSource={swapSource === id}
                   onArtifactOpen={setSelectedArtifact}
                 />
               </div>
