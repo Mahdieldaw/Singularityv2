@@ -1,5 +1,7 @@
 import React, { useEffect } from "react";
 import { HistorySessionSummary } from "../types";
+import logoIcon from "../assets/logos/logo-icon.svg";
+import { PlusIcon, TrashIcon } from "./Icons";
 
 interface HistoryPanelProps {
   isOpen: boolean;
@@ -39,13 +41,17 @@ const HistoryPanel = ({
     <div className="relative w-full h-full bg-surface-soft/90 backdrop-blur-xl border-r border-border-subtle text-text-secondary p-5 overflow-y-auto overflow-x-hidden flex flex-col">
       {isOpen && (
         <>
+          <div className="flex items-center gap-2 mb-4 px-1">
+            <img src={logoIcon} alt="Singularity" className="w-6 h-6" />
+            <span className="font-semibold text-lg text-text-primary">History</span>
+          </div>
           <div className="flex gap-2">
             <button
               onClick={onNewChat}
-              className="flex-1 px-3 py-2.5 rounded-lg border border-border-subtle bg-brand-500/15 text-text-secondary cursor-pointer mb-3 transition-all duration-200 hover:bg-brand-500/20 hover:border-border-strong"
+              className="flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg border border-border-subtle bg-brand-500/15 text-text-secondary cursor-pointer mb-3 transition-all duration-200 hover:bg-brand-500/20 hover:border-border-strong"
               title="Start a new chat"
             >
-              + New Chat
+              <PlusIcon className="w-5 h-5" />
             </button>
             <button
               onClick={() => {
@@ -61,7 +67,7 @@ const HistoryPanel = ({
                   onToggleBatchMode && onToggleBatchMode();
                 }
               }}
-              className={`flex-1 px-3 py-2.5 rounded-lg border cursor-pointer mb-3 transition-all duration-200 ${isBatchMode
+              className={`flex-1 flex items-center justify-center px-3 py-2.5 rounded-lg border cursor-pointer mb-3 transition-all duration-200 ${isBatchMode
                 ? "bg-intent-danger/15 border-intent-danger/45 text-text-secondary hover:bg-intent-danger/20"
                 : "bg-brand-500/15 border-border-subtle text-text-secondary hover:bg-brand-500/20 hover:border-border-strong"
                 }`}
@@ -71,9 +77,13 @@ const HistoryPanel = ({
                   : "Select chats to delete"
               }
             >
-              {isBatchMode
-                ? `Delete Selected${selectedIds && selectedIds.size ? ` (${selectedIds.size})` : ""}`
-                : "Delete…"}
+              {isBatchMode ? (
+                <span className="text-sm font-medium">
+                  {selectedIds && selectedIds.size ? `Delete (${selectedIds.size})` : "Delete"}
+                </span>
+              ) : (
+                <TrashIcon className="w-5 h-5" />
+              )}
             </button>
           </div>
           <div className="history-items flex-grow overflow-y-auto">
@@ -108,10 +118,10 @@ const HistoryPanel = ({
                         onSelectChat(session);
                       }
                     }}
-                    className={`p-2.5 px-3 rounded-lg border text-base cursor-pointer mb-2 flex items-start justify-between gap-2 transition-all duration-200 
+                    className={`p-2.5 px-3 rounded-lg text-base cursor-pointer mb-2 flex items-start justify-between gap-2 transition-all duration-200 
                       ${session.sessionId === currentSessionId
-                        ? "bg-brand-500/10 border-brand-500 text-text-primary shadow-sm"
-                        : "bg-chip border-border-subtle text-text-secondary hover:bg-surface-highlight hover:border-border-strong"
+                        ? "bg-brand-500/10 text-text-primary shadow-sm"
+                        : "bg-chip text-text-secondary hover:bg-surface-highlight"
                       }
                       ${!!deletingIds && (deletingIds as Set<string>).has(session.sessionId)
                         ? "opacity-60 pointer-events-none"

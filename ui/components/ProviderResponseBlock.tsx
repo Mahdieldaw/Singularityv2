@@ -22,6 +22,7 @@ interface ProviderResponseBlockProps {
   activeTarget?: { aiTurnId: string; providerId: string } | null;
   onToggleTarget?: (providerId: string) => void;
   onBranchContinue?: (providerId: string, prompt: string) => void;
+  providerStatuses?: Record<string, 'streaming' | 'completed' | 'error' | 'idle'>;
 }
 
 const CopyButton = ({ text, label }: { text: string; label: string }) => {
@@ -68,6 +69,7 @@ const ProviderResponseBlock = ({
   activeTarget,
   onToggleTarget,
   onBranchContinue,
+  providerStatuses = {},
 }: ProviderResponseBlockProps) => {
   // State for Claude artifact overlay
   const [selectedArtifact, setSelectedArtifact] = useState<{
@@ -228,6 +230,14 @@ const ProviderResponseBlock = ({
                       )}
                     >
                       {LLM_PROVIDERS_CONFIG.find(p => p.id === pid)?.name || pid}
+                      {providerStatuses[pid] && providerStatuses[pid] !== 'idle' && (
+                        <span className={clsx(
+                          "ml-1.5 w-1.5 h-1.5 rounded-full inline-block",
+                          providerStatuses[pid] === 'streaming' && "bg-intent-warning animate-pulse",
+                          providerStatuses[pid] === 'completed' && "bg-intent-success",
+                          providerStatuses[pid] === 'error' && "bg-intent-danger"
+                        )} />
+                      )}
                     </button>
                   </div>
                 );
@@ -250,6 +260,14 @@ const ProviderResponseBlock = ({
                   )}
                 >
                   {LLM_PROVIDERS_CONFIG.find(p => p.id === pid)?.name || pid}
+                  {providerStatuses[pid] && providerStatuses[pid] !== 'idle' && (
+                    <span className={clsx(
+                      "ml-1.5 w-1.5 h-1.5 rounded-full inline-block",
+                      providerStatuses[pid] === 'streaming' && "bg-intent-warning animate-pulse",
+                      providerStatuses[pid] === 'completed' && "bg-intent-success",
+                      providerStatuses[pid] === 'error' && "bg-intent-danger"
+                    )} />
+                  )}
                 </button>
               </div>
             ))}

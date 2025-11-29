@@ -544,23 +544,6 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                   ↔
                 </span>
               </button>
-              {primaryView === "synthesis" ? (
-                <ProviderSelector
-                  providers={LLM_PROVIDERS_CONFIG}
-                  responsesMap={synthesisResponses}
-                  activeProviderId={activeSynthPid}
-                  onSelect={(pid) => onClipClick?.("synthesis", pid)}
-                  type="synthesis"
-                />
-              ) : (
-                <ProviderSelector
-                  providers={LLM_PROVIDERS_CONFIG}
-                  responsesMap={mappingResponses}
-                  activeProviderId={activeMappingPid}
-                  onSelect={(pid) => onClipClick?.("mapping", pid)}
-                  type="mapping"
-                />
-              )}
             </div>
 
 
@@ -685,9 +668,13 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                     <div className="mx-auto max-w-3xl">
                                       {/* Header Row: Model Info & Copy Button */}
                                       <div className="flex items-center justify-between gap-2 mb-2">
-                                        <div className="text-xs text-text-muted">
-                                          {activeSynthPid} · {take.status}
-                                        </div>
+                                        <ClipsCarousel
+                                          providers={LLM_PROVIDERS_CONFIG}
+                                          responsesMap={synthesisResponses}
+                                          activeProviderId={activeSynthPid}
+                                          onClipClick={(pid) => onClipClick?.("synthesis", pid)}
+                                          type="synthesis"
+                                        />
                                         <button
                                           type="button"
                                           onClick={async (e) => {
@@ -1001,9 +988,13 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                     <>
                                       <div className="mx-auto max-w-3xl">
                                         <div className="flex items-center justify-between gap-2 mb-2">
-                                          <div className="text-xs text-text-muted">
-                                            {activeMappingPid} · {take.status}
-                                          </div>
+                                          <ClipsCarousel
+                                            providers={LLM_PROVIDERS_CONFIG}
+                                            responsesMap={mappingResponses}
+                                            activeProviderId={activeMappingPid}
+                                            onClipClick={(pid) => onClipClick?.("mapping", pid)}
+                                            type="mapping"
+                                          />
                                           <button
                                             type="button"
                                             onClick={async (e) => {

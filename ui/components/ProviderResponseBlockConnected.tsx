@@ -218,6 +218,32 @@ function ProviderResponseBlockConnected({
     }
   }, [sessionId, aiTurn, aiTurnId, setActiveRecomputeState]);
 
+  // Compute provider statuses for LEDs
+  const providerStatuses = useMemo(() => {
+    const statuses: Record<string, 'streaming' | 'completed' | 'error' | 'idle'> = {};
+    if (!aiTurn) return statuses;
+
+    LLM_PROVIDERS_CONFIG.forEach(p => {
+      const pid = String(p.id);
+      const synth = getLatestResponse(normalizeResponseArray(aiTurn.synthesisResponses?.[pid]));
+      const map = getLatestResponse(normalizeResponseArray(aiTurn.mappingResponses?.[pid]));
+      const batch = getLatestResponse(normalizeResponseArray(aiTurn.batchResponses?.[pid]));
+
+      const all = [synth, map, batch].filter(Boolean);
+
+      if (all.some(r => r?.status === 'streaming' || r?.status === 'pending')) {
+        statuses[pid] = 'streaming';
+      } else if (all.some(r => r?.status === 'error')) {
+        statuses[pid] = 'error';
+      } else if (all.some(r => r?.status === 'completed')) {
+        statuses[pid] = 'completed';
+      } else {
+        statuses[pid] = 'idle';
+      }
+    });
+    return statuses;
+  }, [aiTurn]);
+
   return (
     <ProviderResponseBlock
       providerIds={providerIds}
@@ -233,6 +259,7 @@ function ProviderResponseBlockConnected({
       currentAppStep={currentAppStep}
       copyAllText={copyAllText}
       isReducedMotion={isReducedMotion}
+      providerStatuses={providerStatuses}
     />
   );
 }
