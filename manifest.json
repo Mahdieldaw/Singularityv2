@@ -2,7 +2,9 @@
   "manifest_version": 3,
   "name": "HTOS",
   "version": "0.1",
-  "background": { "service_worker": "bg.js" },
+  "background": {
+    "service_worker": "bg.js"
+  },
   "permissions": [
     "alarms",
     "declarativeNetRequest",
@@ -16,25 +18,38 @@
     "http://localhost:3000/*",
     "https://x.com/*"
   ],
-
   "content_scripts": [
     {
-      "matches": ["https://*.openai.com/*"],
-      "js": ["cs-openai.js"],
+      "matches": [
+        "https://*.openai.com/*"
+      ],
+      "js": [
+        "cs-openai.js"
+      ],
       "run_at": "document_start",
       "all_frames": true
     }
   ],
-  "action": { "default_title": "HTOS" },
+  "action": {
+    "default_title": "HTOS"
+  },
   "icons": {
     "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
   "web_accessible_resources": [
     {
-      "resources": ["main-world-injector.js", "oi.html", "oi.js", "src/oi.js"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "main-world-injector.js",
+        "oi.html",
+        "oi.js",
+        "src/oi.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "content_security_policy": {

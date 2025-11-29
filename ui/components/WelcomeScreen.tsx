@@ -1,6 +1,7 @@
 import React from "react";
 import { useSetAtom } from "jotai";
 import { EXAMPLE_PROMPT } from "../constants";
+import logoIcon from "../assets/logos/logo-icon.svg";
 
 interface WelcomeScreenProps {
   onSendPrompt?: (prompt: string) => void;
@@ -10,11 +11,20 @@ interface WelcomeScreenProps {
 const WelcomeScreen = ({ onSendPrompt, isLoading }: WelcomeScreenProps) => {
   return (
     <div className="flex flex-col items-center justify-center h-full text-center p-10">
-      <div className="w-20 h-20 bg-gradient-brand-icon rounded-2xl flex items-center justify-center text-[32px] mb-6">
-        🧠
-      </div>
+      {/* Orb Icon */}
+      <img
+        src={logoIcon}
+        alt="Singularity AI"
+        className="h-32 w-32 mb-6"
+      />
 
-      <h2 className="text-2xl font-semibold mb-3 text-text-primary">
+      {/* Brand Text */}
+      <h1 className="text-4xl font-semibold tracking-[0.15em] mb-2 uppercase">
+        <span className="text-white">SINGULAR</span>
+        <span className="text-brand-400">ITY AI</span>
+      </h1>
+
+      <h2 className="text-xl font-medium mb-3 text-text-primary">
         Intelligence Augmentation
       </h2>
 

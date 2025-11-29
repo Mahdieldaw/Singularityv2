@@ -15,7 +15,7 @@ if (fs.existsSync("ui/index.html")) {
   let html = fs.readFileSync("ui/index.html", "utf8");
   html = html
     .replace("index.tsx", "index.js")
-    .replace("/icons/icon-16.png", "/icons/icon32.svg");
+    .replace("/icons/icon-16.png", "/icons/icon16.png");
   fs.writeFileSync("dist/ui/index.html", html);
 }
 
@@ -38,19 +38,18 @@ if (fs.existsSync("ui/fonts")) {
   }
 }
 
-// icons
+/// icons - copy all PNG icons for the extension  
 const map = [
   ["icon-16.png", "icon16.png"],
+  ["icon-32.png", "icon32.png"],
   ["icon-48.png", "icon48.png"],
+  ["Icon-48.png", "icon48.png"],  // fallback for capitalized version
   ["icon-128.png", "icon128.png"],
+  ["icon-192.png", "icon192.png"],
 ];
 for (const [src, dst] of map) {
-  if (fs.existsSync(src)) fs.copyFileSync(src, p.join("dist/icons", dst));
+  if (fs.existsSync(src)) {
+    fs.copyFileSync(src, p.join("dist/icons", dst));
+    console.log(`[postbuild] Copied ${src} → dist/icons/${dst}`);
+  }
 }
-if (!fs.existsSync("dist/icons/icon32.svg"))
-  fs.writeFileSync(
-    "dist/icons/icon32.svg",
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="100%" height="100%" fill="#764ba2"/><text x="50%" y="54%" font-family="Arial, Helvetica, sans-serif" font-size="10" text-anchor="middle" fill="#fff">HT</text></svg>',
-  );
-
-console.log("[postbuild] Completed");
