@@ -74,7 +74,7 @@ const UserTurnBlock = ({
       <div className="user-avatar w-8 h-8 rounded-lg bg-brand-500/20 flex items-center justify-center flex-shrink-0">
         <UserIcon className="w-4.5 h-4.5 text-brand-500" />
       </div>
-      <div className="user-content flex-1 min-w-0 flex flex-col overflow-visible min-h-[80px]">
+      <div className="user-content flex-1 min-w-0 flex flex-col overflow-x-hidden min-h-[80px]">
         <div
           className={clsx(
             "flex justify-between items-center cursor-pointer",
@@ -95,8 +95,11 @@ const UserTurnBlock = ({
         {isExpanded ? (
           <>
             {/* Prose wrapper for consistent line width */}
-            <div className="mx-auto max-w-3xl">
-              <div className="user-message text-base leading-relaxed text-text-primary break-words mb-2">
+            <div className="mx-auto max-w-3xl w-full">
+              <div
+                className="user-message text-base leading-relaxed text-text-primary break-words mb-2"
+                style={{ overflowWrap: "anywhere" }}
+              >
                 <MarkdownDisplay content={String(userTurn.text || "")} />
               </div>
             </div>
@@ -119,9 +122,10 @@ const UserTurnBlock = ({
             </div>
           </>
         ) : (
-          <div className="mx-auto max-w-3xl">
+          <div className="mx-auto max-w-3xl w-full">
             <div
-              className="user-message-preview text-base text-text-secondary overflow-hidden pt-1 mb-1 line-clamp-3"
+              className="user-message-preview text-base text-text-secondary overflow-hidden pt-1 mb-1 line-clamp-3 break-words"
+              style={{ overflowWrap: "anywhere" }}
             >
               <MarkdownDisplay content={String(userTurn.text || "")} />
             </div>
@@ -137,7 +141,7 @@ const UserTurnBlock = ({
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 

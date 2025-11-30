@@ -238,6 +238,12 @@ export interface ProviderResponse {
   createdAt: number;
   updatedAt?: number;
   attemptNumber?: number;
+  artifacts?: Array<{
+    title: string;
+    identifier: string;
+    content: string;
+    type: string;
+  }>;
   meta?: {
     conversationId?: string;
     parentMessageId?: string;

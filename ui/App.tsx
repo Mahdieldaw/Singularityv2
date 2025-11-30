@@ -63,12 +63,12 @@ export default function App() {
         {isHistoryOpen && (
           <>
             <div
-              className="history-backdrop fixed inset-0 bg-overlay-backdrop/10 backdrop-blur-md z-[1000]"
+              className="history-backdrop fixed inset-0 bg-overlay-backdrop/10 backdrop-blur-md z-[2999]"
               onClick={closePanel}
             />
             <div
               ref={historyPanelRef}
-              className="fixed top-0 left-0 w-[320px] h-screen z-[1100]"
+              className="fixed top-0 left-0 w-[320px] h-screen z-[3000]"
             >
               <Suspense fallback={null}>
                 <HistoryPanelConnected />

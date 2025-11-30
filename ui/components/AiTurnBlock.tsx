@@ -23,63 +23,50 @@ function parseMappingResponse(response?: string | null) {
   // NOTE: This function is SPECIFICALLY for the "Decision Map" / "Options" split.
   // It should NOT be used on the Synthesis text, which is pure markdown.
   if (!response) return { mapping: "", options: null };
+
   const separator = "===ALL_AVAILABLE_OPTIONS===";
-  if (response.includes(separator)) {
-    const [mainMapping, optionsSection] = response.split(separator);
-    return { mapping: mainMapping.trim(), options: optionsSection.trim() };
-  }
   const optionsPatterns = [
-    /\*\*All Available Options:\*\*/i,
-    /## All Available Options/i,
+    /\*\*All Available Options:?\*\*/i,
+    /## All Available Options:?/i,
     /All Available Options:/i,
+    /\*\*Options:?\*\*/i,
+    /## Options:?/i,
+    /^Options:/im,
   ];
+
+  let bestIndex = -1;
+  let splitLength = 0;
+
+  // 1. Check strict separator
+  const separatorIndex = response.indexOf(separator);
+  if (separatorIndex !== -1) {
+    bestIndex = separatorIndex;
+    splitLength = separator.length;
+  }
+
+  // 2. Check regex patterns for an EARLIER match
   for (const pattern of optionsPatterns) {
     const match = response.match(pattern);
     if (match && typeof match.index === "number") {
-      return {
-        mapping: response.substring(0, match.index).trim(),
-        options: response.substring(match.index).trim(),
-      };
+      // If we haven't found a match yet, OR this one is earlier
+      if (bestIndex === -1 || match.index < bestIndex) {
+        bestIndex = match.index;
+        splitLength = match[0].length;
+      }
     }
   }
+
+  if (bestIndex !== -1) {
+    return {
+      mapping: response.substring(0, bestIndex).trim(),
+      options: response.substring(bestIndex + splitLength).trim(), // Skip the header itself
+    };
+  }
+
   return { mapping: response, options: null };
 }
 
-/**
- * Extract Claude artifacts from response text
- * Artifacts are wrapped in <document> tags with title and identifier attributes
- */
-function extractClaudeArtifacts(text: string | null | undefined): {
-  cleanText: string;
-  artifacts: Array<{ title: string; identifier: string; content: string }>;
-} {
-  if (!text) return { cleanText: "", artifacts: [] };
-
-  const artifacts: Array<{ title: string; identifier: string; content: string }> = [];
-
-  // Regex to match <document title="..." identifier="...">content</document>
-  const artifactRegex = /<document\s+title="([^"]+)"\s+identifier="([^"]+)"\s*>([\s\S]*?)<\/document>/gi;
-
-  let match;
-  let cleanText = text;
-
-  while ((match = artifactRegex.exec(text)) !== null) {
-    const [fullMatch, title, identifier, content] = match;
-    artifacts.push({
-      title: title || "Untitled Artifact",
-      identifier: identifier || "unknown",
-      content: content.trim(),
-    });
-
-    // Remove artifact from clean text
-    cleanText = cleanText.replace(fullMatch, "");
-  }
-
-  return {
-    cleanText: cleanText.trim(),
-    artifacts,
-  };
-}
+// extractClaudeArtifacts removed - handled by backend
 
 
 interface AiTurnBlockProps {
@@ -514,7 +501,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
       <div className="ai-turn-block">
         <div className="ai-turn-content flex flex-col gap-3">
           <div className="primaries mb-4 relative">
-            <div className="controls-row px-1 mt-6 mb-1 flex items-center justify-start gap-2">
+            <div className="controls-row px-1 mt-6 mb-1 flex items-center justify-center gap-2">
               <button
                 type="button"
                 onClick={() => onSetPrimaryView?.(primaryView === "synthesis" ? "decision-map" : "synthesis")}
@@ -659,8 +646,9 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                           return (
                             <div>
                               {(() => {
-                                // Extract Claude artifacts
-                                const { cleanText, artifacts } = extractClaudeArtifacts(take.text);
+                                // ✅ Artifacts already extracted by backend
+                                const cleanText = take.text || '';
+                                const artifacts = take.artifacts || [];
 
 
                                 return (
@@ -703,7 +691,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
 
                                     {/* Artifact badges */}
                                     {artifacts.length > 0 && (
-                                      <div className="mt-3 flex flex-wrap gap-2">
+                                      <div className="mt-3 flex flex-wrap gap-2 justify-center">
                                         {artifacts.map((artifact, idx) => (
                                           <button
                                             key={idx}
@@ -981,8 +969,9 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                             return (
                               <div>
                                 {(() => {
-                                  // Extract Claude artifacts from mapping text
-                                  const { cleanText, artifacts } = extractClaudeArtifacts(displayedMappingText);
+                                  // ✅ Artifacts already extracted by backend
+                                  const cleanText = take.text || '';
+                                  const artifacts = take.artifacts || [];
 
                                   return (
                                     <>
@@ -1014,7 +1003,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                           className="text-base leading-relaxed text-text-primary"
                                         >
                                           <MarkdownDisplay
-                                            content={transformCitations(cleanText || displayedMappingText)}
+                                            content={transformCitations(displayedMappingText)}
                                             components={markdownComponents}
                                           />
                                         </div>
@@ -1023,7 +1012,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                                       {/* Artifact badges */}
                                       {artifacts.length > 0 && (
                                         <div className="mt-3 flex flex-wrap gap-2">
-                                          {artifacts.map((artifact, idx) => (
+                                          {artifacts.map((artifact: any, idx: number) => (
                                             <button
                                               key={idx}
                                               onClick={() => setSelectedArtifact(artifact)}
@@ -1050,7 +1039,7 @@ const AiTurnBlock: React.FC<AiTurnBlockProps> = ({
                         return (
                           <>
                             {primaryView === "decision-map" && (
-                              <div className="h-6 mb-1 flex items-center">
+                              <div className="h-6 mb-1 flex items-center justify-center">
                                 <div className="flex items-center gap-1">
                                   <button
                                     onClick={() => onSetMappingTab && onSetMappingTab("map")}

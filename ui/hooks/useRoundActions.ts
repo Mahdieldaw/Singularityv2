@@ -14,6 +14,7 @@ import {
   thinkSynthByRoundAtom,
   thinkMappingByRoundAtom,
   activeRecomputeStateAtom,
+  alertTextAtom,
 } from "../state/atoms";
 import api from "../services/extension-api";
 import { PRIMARY_STREAMING_PROVIDER_IDS } from "../constants";
@@ -41,6 +42,7 @@ export function useRoundActions() {
   const [thinkSynthByRound] = useAtom(thinkSynthByRoundAtom);
   const [thinkMappingByRound] = useAtom(thinkMappingByRoundAtom);
   const setActiveRecomputeState = useSetAtom(activeRecomputeStateAtom);
+  const setAlertText = useSetAtom(alertTextAtom);
 
   const isSynthRunningRef = useRef(false);
 
@@ -97,6 +99,7 @@ export function useRoundActions() {
         console.warn(
           `[RoundActions] Not enough outputs for synthesis in turn ${aiTurnId}`,
         );
+        setAlertText("Not enough source data to run synthesis. Please wait for more providers to finish.");
         return;
       }
 
@@ -183,6 +186,24 @@ export function useRoundActions() {
         }
       } catch (err) {
         console.error("[RoundActions] Synthesis run failed:", err);
+        setAlertText("Synthesis request failed. Please try again.");
+
+        // Revert optimistic state to error
+        setTurnsMap((draft) => {
+          const turn = draft.get(ai.id) as AiTurn | undefined;
+          if (!turn || turn.type !== "ai" || !turn.synthesisResponses) return;
+          selected.forEach((pid) => {
+            const arr = turn.synthesisResponses?.[pid];
+            if (Array.isArray(arr) && arr.length > 0) {
+              const last = arr[arr.length - 1];
+              if (last.status === "streaming" || last.status === "pending") {
+                last.status = "error";
+                last.text = "Request failed";
+              }
+            }
+          });
+        });
+
         setIsLoading(false);
         setUiPhase("awaiting_action");
         setActiveAiTurnId(null);
@@ -257,6 +278,7 @@ export function useRoundActions() {
         console.warn(
           `[RoundActions] Not enough outputs for mapping in turn ${aiTurnId}`,
         );
+        setAlertText("Not enough source data to run mapping. Please wait for more providers to finish.");
         return;
       }
 
@@ -337,6 +359,22 @@ export function useRoundActions() {
         await api.executeWorkflow(primitive);
       } catch (err) {
         console.error("[RoundActions] Mapping run failed:", err);
+        setAlertText("Mapping request failed. Please try again.");
+
+        // Revert optimistic state to error
+        setTurnsMap((draft) => {
+          const turn = draft.get(ai.id) as AiTurn | undefined;
+          if (!turn || turn.type !== "ai" || !turn.mappingResponses) return;
+          const arr = turn.mappingResponses[effectiveMappingProvider];
+          if (Array.isArray(arr) && arr.length > 0) {
+            const last = arr[arr.length - 1];
+            if (last.status === "streaming" || last.status === "pending") {
+              last.status = "error";
+              last.text = "Request failed";
+            }
+          }
+        });
+
         setIsLoading(false);
         setUiPhase("awaiting_action");
         setActiveAiTurnId(null);

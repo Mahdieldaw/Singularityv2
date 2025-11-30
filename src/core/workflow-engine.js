@@ -1,4 +1,5 @@
 // src/core/workflow-engine.js - FIXED VERSION
+import { ArtifactProcessor } from '../../shared/artifact-processor.ts';
 
 // =============================================================================
 // HELPER FUNCTIONS FOR PROMPT BUILDING
@@ -287,8 +288,8 @@ const wdbg = (...args) => {
  */
 const logger = {
   // Streaming-specific logs (hidden by default)
-  stream: (...args) => {
-    if (STREAMING_DEBUG) console.debug("[STREAM]", ...args);
+  stream: (msg, meta) => {
+    if (STREAMING_DEBUG) console.debug(`[WorkflowEngine] ${msg}`, meta);
   },
 
   // Always show these
@@ -1047,6 +1048,7 @@ export class WorkflowEngine {
    * Execute prompt step - FIXED to include synchronous in-memory update
    */
   async executePromptStep(step, context) {
+    const artifactProcessor = new ArtifactProcessor();
     const { prompt, providers, useThinking, providerContexts } = step.payload;
 
     return new Promise((resolve, reject) => {
@@ -1114,11 +1116,15 @@ export class WorkflowEngine {
           const formattedResults = {};
 
           results.forEach((result, providerId) => {
+            // ✅ Extract artifacts once during completion
+            const { cleanText, artifacts } = artifactProcessor.process(result.text || '');
+
             formattedResults[providerId] = {
               providerId: providerId,
-              text: result.text || "",
+              text: cleanText, // Store cleaned text
               status: "completed",
               meta: result.meta || {},
+              artifacts: artifacts, // Store extracted artifacts
               ...(result.softError ? { softError: result.softError } : {}),
             };
           });
@@ -1428,6 +1434,7 @@ export class WorkflowEngine {
     workflowContexts = {},
     resolvedContext,
   ) {
+    const artifactProcessor = new ArtifactProcessor();
     const payload = step.payload;
     const sourceData = await this.resolveSourceData(
       payload,
@@ -1543,6 +1550,13 @@ export class WorkflowEngine {
           onAllComplete: (results) => {
             const finalResult = results.get(payload.synthesisProvider);
 
+            // ✅ Extract artifacts from synthesis response
+            if (finalResult?.text) {
+              const { cleanText, artifacts } = artifactProcessor.process(finalResult.text);
+              finalResult.text = cleanText;
+              finalResult.artifacts = artifacts;
+            }
+
             // ✅ Ensure final emission for synthesis
             if (finalResult?.text) {
               this._dispatchPartialDelta(
@@ -1584,6 +1598,7 @@ export class WorkflowEngine {
               text: finalResult.text, // ✅ Return text explicitly
               status: "completed",
               meta: finalResult.meta || {},
+              artifacts: finalResult.artifacts || [],
             });
           },
         },
@@ -1601,6 +1616,7 @@ export class WorkflowEngine {
     workflowContexts = {},
     resolvedContext,
   ) {
+    const artifactProcessor = new ArtifactProcessor();
     const payload = step.payload;
     const sourceData = await this.resolveSourceData(
       payload,
@@ -1699,6 +1715,13 @@ export class WorkflowEngine {
           onAllComplete: (results) => {
             const finalResult = results.get(payload.mappingProvider);
 
+            // ✅ Extract artifacts from mapping response
+            if (finalResult?.text) {
+              const { cleanText, artifacts } = artifactProcessor.process(finalResult.text);
+              finalResult.text = cleanText;
+              finalResult.artifacts = artifacts;
+            }
+
             // ✅ Ensure final emission for mapping
             if (finalResult?.text) {
               this._dispatchPartialDelta(
@@ -1754,6 +1777,7 @@ export class WorkflowEngine {
               text: finalResultWithMeta.text, // ✅ Return text explicitly
               status: "completed",
               meta: finalResultWithMeta.meta || {},
+              artifacts: finalResult.artifacts || [],
             });
           },
         },

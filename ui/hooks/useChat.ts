@@ -26,6 +26,7 @@ import {
   analystModelAtom,
   chatInputValueAtom,
   hasRejectedRefinementAtom,
+  activeProviderTargetAtom,
 } from "../state/atoms";
 // Optimistic AI turn creation is now handled upon TURN_CREATED from backend
 import type {
@@ -74,6 +75,7 @@ export function useChat() {
   const setIsRefinerOpen = useSetAtom(isRefinerOpenAtom);
   const setIsRefining = useSetAtom(isRefiningAtom); // Set new atom
   const setHasRejectedRefinement = useSetAtom(hasRejectedRefinementAtom);
+  const setActiveTarget = useSetAtom(activeProviderTargetAtom);
 
   const sendMessage = useCallback(
     async (prompt: string, mode: "new" | "continuation") => {
@@ -234,7 +236,8 @@ export function useChat() {
     setTurnsMap(new Map());
     setTurnIds([]);
     setActiveAiTurnId(null);
-  }, [setCurrentSessionId, setTurnsMap, setTurnIds, setActiveAiTurnId]);
+    setActiveTarget(null);
+  }, [setCurrentSessionId, setTurnsMap, setTurnIds, setActiveAiTurnId, setActiveTarget]);
 
   const selectChat = useCallback(
     async (session: HistorySessionSummary) => {
@@ -245,6 +248,7 @@ export function useChat() {
       }
 
       setCurrentSessionId(sessionId);
+      setActiveTarget(null);
       setIsLoading(true);
 
       try {
@@ -370,6 +374,7 @@ export function useChat() {
       setCurrentSessionId,
       setIsLoading,
       setIsHistoryPanelOpen,
+      setActiveTarget,
     ],
   );
 
@@ -385,6 +390,7 @@ export function useChat() {
           setTurnsMap(new Map());
           setTurnIds([]);
           setActiveAiTurnId(null);
+          setActiveTarget(null);
         }
 
         return removed;
@@ -399,6 +405,7 @@ export function useChat() {
       setTurnsMap,
       setTurnIds,
       setActiveAiTurnId,
+      setActiveTarget,
     ],
   );
 
@@ -413,6 +420,7 @@ export function useChat() {
           setTurnsMap(new Map());
           setTurnIds([]);
           setActiveAiTurnId(null);
+          setActiveTarget(null);
         }
         return { removed: removedIds };
       } catch (err) {
@@ -426,6 +434,7 @@ export function useChat() {
       setTurnsMap,
       setTurnIds,
       setActiveAiTurnId,
+      setActiveTarget,
     ],
   );
 

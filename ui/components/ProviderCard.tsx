@@ -1,5 +1,5 @@
 // ProviderCard.tsx - Isolated provider card component
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useAtomValue, useAtom, useSetAtom } from "jotai";
 import {
     providerEffectiveStateFamily,
@@ -13,33 +13,7 @@ import MarkdownDisplay from "./MarkdownDisplay";
 import clsx from "clsx";
 
 // Extract Claude artifacts from text
-function extractClaudeArtifacts(text: string | null | undefined): {
-    cleanText: string;
-    artifacts: Array<{ title: string; identifier: string; content: string }>;
-} {
-    if (!text) return { cleanText: "", artifacts: [] };
-
-    const artifacts: Array<{ title: string; identifier: string; content: string }> = [];
-    const artifactRegex = /<document\s+title="([^"]+)"\s+identifier="([^"]+)"\s*>([\s\S]*?)<\/document>/gi;
-
-    let match;
-    let cleanText = text;
-
-    while ((match = artifactRegex.exec(text)) !== null) {
-        const [fullMatch, title, identifier, content] = match;
-        artifacts.push({
-            title: title || "Untitled Artifact",
-            identifier: identifier || "unknown",
-            content: content.trim(),
-        });
-        cleanText = cleanText.replace(fullMatch, "");
-    }
-
-    return {
-        cleanText: cleanText.trim(),
-        artifacts,
-    };
-}
+// Extract Claude artifacts removed - handled by backend
 
 interface ProviderCardProps {
     turnId: string;
@@ -55,6 +29,7 @@ interface ProviderCardProps {
     onCardClick?: (providerId: string) => void;
     isHighlighted?: boolean;
     isSwapSource?: boolean; // When this card is selected as the source for a swap
+    hasSwapSource?: boolean; // When ANY card is selected as source (global swap mode)
     onArtifactOpen?: (artifact: { title: string; identifier: string; content: string }) => void;
 }
 
@@ -72,6 +47,7 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({
     onCardClick,
     isHighlighted = false,
     isSwapSource = false,
+    hasSwapSource = false,
     onArtifactOpen,
 }) => {
     // Subscribe to effective state for this provider
@@ -105,11 +81,38 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({
     // Toast for copy feedback
     const setToast = useSetAtom(toastAtom);
 
+    // Scroll attention state
+    const [isScrollActive, setIsScrollActive] = useState(false);
+    const scrollTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleMouseEnter = useCallback(() => {
+        scrollTimerRef.current = setTimeout(() => {
+            setIsScrollActive(true);
+        }, 200);
+    }, []);
+
+    const handleMouseDown = useCallback(() => {
+        if (scrollTimerRef.current) {
+            clearTimeout(scrollTimerRef.current);
+            scrollTimerRef.current = null;
+        }
+        setIsScrollActive(true);
+    }, []);
+
+    const handleMouseLeave = useCallback(() => {
+        if (scrollTimerRef.current) {
+            clearTimeout(scrollTimerRef.current);
+            scrollTimerRef.current = null;
+        }
+        setIsScrollActive(false);
+    }, []);
+
     // Compute derived state with memoization
     const derivedState = useMemo(() => {
         const status = latestResponse?.status || "pending";
-        const text = latestResponse?.text || "";
-        const hasText = !!text.trim();
+        const cleanText = latestResponse?.text || ""; // Backend already cleaned this
+        const artifacts = latestResponse?.artifacts || []; // Pre-processed artifacts
+        const hasText = !!cleanText.trim();
         const isStreaming = status === "streaming" || isStreamingTarget;
         const isError = status === "error";
         const provider = LLM_PROVIDERS_CONFIG.find((p) => p.id === providerId);
@@ -117,15 +120,12 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({
         const isTargeted = activeTarget?.providerId === providerId && activeTarget?.aiTurnId === turnId;
 
         const displayText = isError
-            ? context?.errorMessage || text || "Provider error"
-            : text || (status === "completed" ? "Empty Response" : getStatusText(status));
-
-        // Extract Claude artifacts
-        const { cleanText, artifacts } = extractClaudeArtifacts(displayText);
+            ? context?.errorMessage || cleanText || "Provider error"
+            : cleanText || (status === "completed" ? "Empty Response" : getStatusText(status));
 
         return {
             status,
-            text,
+            text: cleanText,
             hasText,
             isStreaming,
             isError,
@@ -133,7 +133,7 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({
             isTargeted,
             displayText,
             cleanText,
-            artifacts
+            artifacts, // Now read directly from state
         };
     }, [latestResponse, isStreamingTarget, providerId, activeTarget, turnId, context]);
 
@@ -176,6 +176,7 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({
         <div
             id={`provider-card-${turnId}-${providerId}`}
             onClick={(e) => {
+                e.stopPropagation();
                 if ((e.target as HTMLElement).closest("button, a, .provider-card-scroll")) return;
                 onCardClick?.(providerId);
             }}
@@ -183,7 +184,12 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({
                 "flex flex-col bg-surface-raised border rounded-2xl p-3",
                 "shadow-card-sm flex-shrink-0 overflow-hidden",
                 "flex-1 basis-[320px] min-w-[260px] max-w-[380px] w-full h-[300px]",
-                "transition-[box-shadow,border-color] duration-300 cursor-pointer relative",
+                "transition-[box-shadow,border-color] duration-300 relative",
+                // Cursor logic:
+                // If this is the source -> pointer (to deselect)
+                // If swap mode is active (hasSwapSource) AND this is NOT source -> move (to swap)
+                // Else -> pointer
+                hasSwapSource && !isSwapSource ? "cursor-move" : "cursor-pointer",
                 isHighlighted
                     ? "border-brand-500 shadow-glow-brand"
                     : derivedState.isTargeted
@@ -241,8 +247,15 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({
 
             {/* Scrollable Content Area */}
             <div
-                className="provider-card-scroll flex-1 overflow-y-auto overflow-x-hidden p-3 bg-surface-overlay rounded-lg min-h-0 relative group"
+                className={clsx(
+                    "provider-card-scroll flex-1 overflow-x-hidden p-3 bg-surface-overlay rounded-lg min-h-0 relative group",
+                    isScrollActive ? "overflow-y-auto" : "overflow-y-hidden"
+                )}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                onMouseDown={handleMouseDown}
                 onWheelCapture={(e: React.WheelEvent<HTMLDivElement>) => {
+                    if (!isScrollActive) return;
                     const el = e.currentTarget;
                     const dy = e.deltaY ?? 0;
                     const canDown = el.scrollTop + el.clientHeight < el.scrollHeight;
@@ -259,7 +272,7 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({
 
                 {/* Artifact badges */}
                 {derivedState.artifacts.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-wrap gap-2 justify-center">
                         {derivedState.artifacts.map((artifact, idx) => (
                             <button
                                 key={idx}
@@ -282,7 +295,8 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({
                             Previous Attempts
                         </div>
                         {allResponses.slice(0, -1).reverse().map((resp, idx) => {
-                            const { cleanText, artifacts: histArtifacts } = extractClaudeArtifacts(resp.text);
+                            const cleanText = resp.text || ""; // Already cleaned by backend
+                            const histArtifacts = resp.artifacts || []; // Pre-processed
                             const hasContent = cleanText || histArtifacts.length > 0;
 
                             return (
@@ -301,7 +315,7 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({
                                                     content={cleanText || (histArtifacts.length ? "*Artifact content*" : resp.text)}
                                                 />
                                                 {histArtifacts.length > 0 && (
-                                                    <div className="mt-2 flex flex-wrap gap-1">
+                                                    <div className="mt-2 flex flex-wrap gap-1 justify-center">
                                                         {histArtifacts.map((art, i) => (
                                                             <span
                                                                 key={i}

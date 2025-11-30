@@ -88,6 +88,33 @@ const ProviderResponseBlock = ({
   const [visibleProviders, setVisibleProviders] = useAtom(visibleProvidersAtom);
   const [swapSource, setSwapSource] = useAtom(swapSourceProviderAtom);
 
+  // Auto-deselect after 5 seconds of inactivity
+  useEffect(() => {
+    if (!swapSource) return;
+    const timer = setTimeout(() => setSwapSource(null), 5000);
+    return () => clearTimeout(timer);
+  }, [swapSource, setSwapSource]);
+
+  // Click outside to deselect
+  useEffect(() => {
+    if (!swapSource) return;
+    const handleClickOutside = () => {
+      // We rely on stopPropagation in cards/pills to prevent this from firing on valid interactions
+      setSwapSource(null);
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [swapSource, setSwapSource]);
+
+  // Sanitize visibleProviders on mount/update to remove duplicates
+  useEffect(() => {
+    const unique = Array.from(new Set(visibleProviders));
+    if (unique.length !== visibleProviders.length) {
+      console.warn("Found duplicate providers in visible list, sanitizing...", visibleProviders);
+      setVisibleProviders(unique);
+    }
+  }, [visibleProviders, setVisibleProviders]);
+
   // Calculate visible slots from atom, fallback to first 3 providers if none persisted
   const visibleSlots = useMemo(() => {
     const validVisible = visibleProviders.filter(id => allProviderIds.includes(id));
@@ -154,12 +181,28 @@ const ProviderResponseBlock = ({
     if (swapSource) {
       if (swapSource === clickedProviderId) {
         setSwapSource(null);
+        try { onToggleTarget?.(clickedProviderId); } catch { }
         return;
       }
-      // Swap swapSource into clicked position
-      setVisibleProviders(prev =>
-        prev.map(id => id === clickedProviderId ? swapSource : id)
-      );
+
+      // Swap logic:
+      setVisibleProviders(prev => {
+        const next = [...prev];
+        const sourceIdx = next.indexOf(swapSource);
+        const targetIdx = next.indexOf(clickedProviderId);
+
+        if (sourceIdx !== -1 && targetIdx !== -1) {
+          // Case 1: Both are visible -> Swap their positions
+          next[sourceIdx] = clickedProviderId;
+          next[targetIdx] = swapSource;
+        } else if (targetIdx !== -1) {
+          // Case 2: Source is hidden, Target is visible -> Replace target with source
+          next[targetIdx] = swapSource;
+        }
+        // Case 3: Target is not visible (shouldn't happen for card click) -> Do nothing
+
+        return next;
+      });
       setSwapSource(null);
     } else {
       // Set as source AND target for inline chat
@@ -237,7 +280,10 @@ const ProviderResponseBlock = ({
                 return (
                   <div key={pid} className={clsx("flex items-center justify-center", colClass)}>
                     <button
-                      onClick={() => handlePillClick(pid)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePillClick(pid);
+                      }}
                       className={clsx(
                         "text-xs px-3 py-1.5 rounded-full border transition-all",
                         swapSource === pid
@@ -266,7 +312,10 @@ const ProviderResponseBlock = ({
             {visibleSlots.map((pid: string) => (
               <div key={pid} className="flex items-center justify-center">
                 <button
-                  onClick={() => handleVisiblePillClick(pid)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleVisiblePillClick(pid);
+                  }}
                   disabled={false}
                   className={clsx(
                     "text-xs px-3 py-1.5 rounded-full border transition-all",
@@ -309,6 +358,7 @@ const ProviderResponseBlock = ({
                   }}
                   isHighlighted={highlightedProviderId === id}
                   isSwapSource={swapSource === id}
+                  hasSwapSource={!!swapSource}
                   onArtifactOpen={setSelectedArtifact}
                 />
               </div>

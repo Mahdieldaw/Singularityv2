@@ -475,6 +475,7 @@ export function usePortMessageHandler() {
                     createdAt: Date.now(),
                     updatedAt: Date.now(),
                     meta: data?.meta || {},
+                    artifacts: data?.artifacts || [], // ✅ Preserve artifacts
                   };
 
                   if (stepType === "synthesis") {

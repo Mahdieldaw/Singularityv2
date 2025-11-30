@@ -52,7 +52,7 @@ const CompactModelTray = ({
   isFirstLoad = false,
   onAcknowledgeFirstLoad,
   chatInputHeight = 80, // Default height
-  composerModel = "gemini",
+  composerModel = "qwen",
   onSetComposerModel,
   analystModel = "gemini",
   onSetAnalystModel,
