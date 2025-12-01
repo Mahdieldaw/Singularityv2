@@ -267,124 +267,91 @@ export class SessionManager {
     if (!sourceTurn)
       throw new Error(`[SessionManager] Source turn ${sourceTurnId} not found`);
 
-    // Branch by stepType
-    if (stepType === "batch") {
-      // Append/replace the provider response for the existing AI turn (in-place retry)
-      const output = result?.batchOutputs?.[targetProvider];
-      if (!output) {
-        console.warn(
-          `[SessionManager] Recompute-batch: no output for ${targetProvider}`,
-        );
-        return { sessionId };
-      }
+    // 2) Extract Result Data (UNIFIED)
+    let output;
+    if (stepType === "batch") output = result?.batchOutputs?.[targetProvider];
+    else if (stepType === "synthesis")
+      output = result?.synthesisOutputs?.[targetProvider];
+    else if (stepType === "mapping")
+      output = result?.mappingOutputs?.[targetProvider];
 
-      const aiTurnId = sourceTurnId; // persist against the original AI turn
-      // Determine next responseIndex to avoid unique index collision on [sessionId, aiTurnId, providerId, responseType, responseIndex]
-      let nextIndex = 0;
-      try {
-        const existing = await this.adapter.getResponsesByTurnId(aiTurnId);
-        const mine = (existing || []).filter(
-          (r) => r && r.providerId === targetProvider && r.responseType === "batch",
-        );
-        if (mine.length > 0) {
-          const maxIdx = Math.max(
-            ...mine.map((r) => (typeof r.responseIndex === "number" ? r.responseIndex : 0)),
-          );
-          nextIndex = maxIdx + 1;
-        }
-      } catch (_) {}
-
-      const respId = `pr-${sessionId}-${aiTurnId}-${targetProvider}-batch-${nextIndex}-${now}`;
-      await this.adapter.put("provider_responses", {
-        id: respId,
-        sessionId,
-        aiTurnId,
-        providerId: targetProvider,
-        responseType: "batch",
-        responseIndex: nextIndex,
-        text: output?.text || "",
-        status: output?.status || "completed",
-        meta: output?.meta || {},
-        createdAt: now,
-        updatedAt: now,
-        completedAt: now,
-      });
-
-      // Update turn counters minimally
-      try {
-        const turn = await this.adapter.get("turns", aiTurnId);
-        if (turn) {
-          turn.updatedAt = now;
-          turn.batchResponseCount = (turn.batchResponseCount || 0) + 1;
-          // Merge providerContexts with latest meta
-          const contexts = turn.providerContexts || {};
-          const existing = contexts[targetProvider] || {};
-          contexts[targetProvider] = { ...(existing || {}), ...(output?.meta || {}) };
-          turn.providerContexts = contexts;
-          await this.adapter.put("turns", turn);
-        }
-      } catch (_) {}
-
+    if (!output) {
+      console.warn(
+        `[SessionManager] No output for ${stepType}/${targetProvider}`,
+      );
       return { sessionId };
     }
 
-    // 2) Derived AI turn (off-timeline) for synthesis/mapping historical recomputes
-    const aiTurnId = request.canonicalAiTurnId || `ai-recompute-${now}`;
-    const aiTurnRecord = {
-      id: aiTurnId,
-      type: "ai",
-      role: "assistant",
+    // 3) Calculate Version Index (UNIFIED "Physics")
+    let nextIndex = 0;
+    try {
+      const existingResponses = await this.adapter.getResponsesByTurnId(
+        sourceTurnId,
+      );
+      const relevantVersions = existingResponses.filter(
+        (r) => r.providerId === targetProvider && r.responseType === stepType,
+      );
+      if (relevantVersions.length > 0) {
+        const maxIndex = Math.max(
+          ...relevantVersions.map((r) => r.responseIndex || 0),
+        );
+        nextIndex = maxIndex + 1;
+      }
+    } catch (_) { }
+
+    // 4) Persist Response (UNIFIED - no if/else branching)
+    const respId = `pr-${sessionId}-${sourceTurnId}-${targetProvider}-${stepType}-${nextIndex}-${now}`;
+    await this.adapter.put("provider_responses", {
+      id: respId,
       sessionId,
-      threadId: "default-thread",
-      userTurnId: sourceTurn.userTurnId || sourceTurnId,
+      aiTurnId: sourceTurnId, // ALWAYS the original turn
+      providerId: targetProvider,
+      responseType: stepType,
+      responseIndex: nextIndex,
+      text: output.text || "",
+      status: output.status || "completed",
+      meta: {
+        ...output.meta,
+        isRecompute: true,
+        recomputeDate: now,
+      },
       createdAt: now,
       updatedAt: now,
-      providerContexts: context?.providerContextsAtSourceTurn || {},
-      isComplete: true,
-      sequence: -1,
-      batchResponseCount: 0,
-      synthesisResponseCount: stepType === "synthesis" ? 1 : 0,
-      mappingResponseCount: stepType === "mapping" ? 1 : 0,
-      meta: {
-        isHistoricalRerun: true,
-        recomputeMetadata: { stepType, targetProvider },
-        ...(await this._attachRunIdMeta(aiTurnId)),
-      },
-    };
-    await this.adapter.put("turns", aiTurnRecord);
+      completedAt: now,
+    });
 
-    // 3) Persist only recomputed response
-    const responseData =
-      stepType === "synthesis"
-        ? result.synthesisOutputs?.[targetProvider]
-        : result.mappingOutputs?.[targetProvider];
-    if (responseData) {
-      const respId = `pr-${sessionId}-${aiTurnId}-${targetProvider}-${stepType}-0-${now}`;
-      await this.adapter.put("provider_responses", {
-        id: respId,
-        sessionId,
-        aiTurnId,
-        providerId: targetProvider,
-        responseType: stepType,
-        responseIndex: 0,
-        text: responseData?.text || "",
-        status: responseData?.status || "completed",
-        meta: responseData?.meta || {},
-        createdAt: now,
-        updatedAt: now,
-        completedAt: now,
-      });
-    } else {
-      console.warn(
-        `[SessionManager] No ${stepType} output found for ${targetProvider}`,
-      );
-    }
+    // 5) Update Parent Turn Metadata (UNIFIED)
+    try {
+      const freshTurn = await this.adapter.get("turns", sourceTurnId);
+      if (freshTurn) {
+        freshTurn.updatedAt = now;
 
-    // 4) Do NOT update session.lastTurnId (branch)
+        // Increment specific counter
+        if (stepType === "batch")
+          freshTurn.batchResponseCount = (freshTurn.batchResponseCount || 0) + 1;
+        else if (stepType === "synthesis")
+          freshTurn.synthesisResponseCount =
+            (freshTurn.synthesisResponseCount || 0) + 1;
+        else if (stepType === "mapping")
+          freshTurn.mappingResponseCount =
+            (freshTurn.mappingResponseCount || 0) + 1;
 
-    // 5) No legacy cache updates for recompute; do not change session cache
+        // Update snapshot context ONLY for batch retries
+        if (stepType === "batch") {
+          const contexts = freshTurn.providerContexts || {};
+          const existingCtx = contexts[targetProvider] || {};
+          contexts[targetProvider] = {
+            ...existingCtx,
+            ...(output.meta || {}),
+          };
+          freshTurn.providerContexts = contexts;
+        }
 
-    return { sessionId, aiTurnId };
+        await this.adapter.put("turns", freshTurn);
+      }
+    } catch (_) { }
+
+    return { sessionId }; // NO new turn IDs
   }
 
   /**
@@ -407,7 +374,7 @@ export class SessionManager {
         if (output?.meta && Object.keys(output.meta).length > 0)
           contexts[pid] = output.meta;
       });
-    } catch (_) {}
+    } catch (_) { }
     return contexts;
   }
 
@@ -433,7 +400,7 @@ export class SessionManager {
           );
           nextIndex = maxIdx + 1;
         }
-      } catch (_) {}
+      } catch (_) { }
 
       const respId = `pr-${sessionId}-${aiTurnId}-${providerId}-batch-${nextIndex}-${now}-${count++}`;
       await this.adapter.put("provider_responses", {
@@ -543,7 +510,7 @@ export class SessionManager {
       if (inflight && inflight.runId) {
         return { runId: inflight.runId };
       }
-    } catch (_) {}
+    } catch (_) { }
     return {};
   }
 

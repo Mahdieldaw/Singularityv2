@@ -733,11 +733,11 @@ export class WorkflowEngine {
         finalResults: Object.fromEntries(stepResults),
       });
 
-      // Emit canonical turn to allow UI to replace optimistic placeholders
-      this._emitTurnFinalized(context, steps, stepResults);
-
       // ✅ Clean up delta cache
       clearDeltaCache(context.sessionId);
+
+      // Emit canonical turn to allow UI to replace optimistic placeholders
+      this._emitTurnFinalized(context, steps, stepResults, resolvedContext);
     } catch (error) {
       console.error(
         `[WorkflowEngine] Critical workflow execution error:`,
@@ -756,11 +756,11 @@ export class WorkflowEngine {
    * Emit TURN_FINALIZED message with canonical turn data
    * This allows UI to replace optimistic placeholders with backend-confirmed data
    */
-  _emitTurnFinalized(context, steps, stepResults) {
-    // Skip for historical reruns (they don't create new user turns)
-    if (context?.targetUserTurnId) {
+  _emitTurnFinalized(context, steps, stepResults, resolvedContext) {
+    // Skip TURN_FINALIZED for recompute operations (they don't create new turns)
+    if (resolvedContext?.type === "recompute") {
       console.log(
-        "[WorkflowEngine] Skipping TURN_FINALIZED for historical rerun",
+        "[WorkflowEngine] Skipping TURN_FINALIZED for recompute operation",
       );
       return;
     }

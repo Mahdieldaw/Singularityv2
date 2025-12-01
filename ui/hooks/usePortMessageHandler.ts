@@ -457,9 +457,10 @@ export function usePortMessageHandler() {
               ([providerId, data]: [string, any]) => {
                 // ✅ Normalize provider ID to canonical form
                 const normalizedId = normalizeProviderId(providerId);
-                const targetId = (message as any).isRecompute && (message as any).sourceTurnId
-                  ? (message as any).sourceTurnId
-                  : activeAiTurnIdRef.current;
+                const targetId =
+                  (message as any).isRecompute && (message as any).sourceTurnId
+                    ? (message as any).sourceTurnId
+                    : activeAiTurnIdRef.current;
                 if (!targetId) return;
                 _completedProviders.push(normalizedId);
 
@@ -468,7 +469,32 @@ export function usePortMessageHandler() {
                   if (!existing || existing.type !== "ai") return;
                   const aiTurn = existing as AiTurn;
 
-                  const completedEntry = {
+                  // Helper to safely update/append response
+                  const updateResponseList = (
+                    list: any[] | undefined,
+                    entry: any,
+                  ) => {
+                    const arr = Array.isArray(list) ? [...list] : [];
+                    const last = arr.length > 0 ? arr[arr.length - 1] : null;
+                    // If last item is completed/error, we append a new version (history).
+                    // If last item is streaming/pending, we update it (in-place).
+                    const isFinal =
+                      last?.status === "completed" || last?.status === "error";
+
+                    if (!last || isFinal) {
+                      arr.push(entry);
+                    } else {
+                      // Preserve creation time when updating
+                      arr[arr.length - 1] = {
+                        ...last,
+                        ...entry,
+                        createdAt: last.createdAt,
+                      };
+                    }
+                    return arr;
+                  };
+
+                  const baseEntry = {
                     providerId: normalizedId,
                     text: data?.text || "",
                     status: "completed" as const,
@@ -479,64 +505,32 @@ export function usePortMessageHandler() {
                   };
 
                   if (stepType === "synthesis") {
-                    const arr = Array.isArray(
-                      aiTurn.synthesisResponses?.[normalizedId],
-                    )
-                      ? [...(aiTurn.synthesisResponses![normalizedId] as any[])]
-                      : [];
-                    if (arr.length > 0) {
-                      arr[arr.length - 1] = {
-                        ...(arr[arr.length - 1] as any),
-                        ...completedEntry,
-                      } as any;
-                    } else {
-                      arr.push(completedEntry as any);
-                    }
                     aiTurn.synthesisResponses = {
                       ...(aiTurn.synthesisResponses || {}),
-                      [normalizedId]: arr as any,
+                      [normalizedId]: updateResponseList(
+                        aiTurn.synthesisResponses?.[normalizedId],
+                        baseEntry,
+                      ),
                     };
-                    aiTurn.synthesisVersion = (aiTurn.synthesisVersion ?? 0) + 1;
+                    aiTurn.synthesisVersion =
+                      (aiTurn.synthesisVersion ?? 0) + 1;
                   } else if (stepType === "mapping") {
-                    const arr = Array.isArray(
-                      aiTurn.mappingResponses?.[normalizedId],
-                    )
-                      ? [...(aiTurn.mappingResponses![normalizedId] as any[])]
-                      : [];
-                    if (arr.length > 0) {
-                      arr[arr.length - 1] = {
-                        ...(arr[arr.length - 1] as any),
-                        ...completedEntry,
-                      } as any;
-                    } else {
-                      arr.push(completedEntry as any);
-                    }
                     aiTurn.mappingResponses = {
                       ...(aiTurn.mappingResponses || {}),
-                      [normalizedId]: arr as any,
+                      [normalizedId]: updateResponseList(
+                        aiTurn.mappingResponses?.[normalizedId],
+                        baseEntry,
+                      ),
                     };
                     aiTurn.mappingVersion = (aiTurn.mappingVersion ?? 0) + 1;
                   } else if (stepType === "batch") {
-                    const arr = Array.isArray(aiTurn.batchResponses?.[normalizedId])
-                      ? [...(aiTurn.batchResponses![normalizedId] as any[])]
-                      : [];
-                    const completedEntry = {
-                      providerId: normalizedId,
-                      text: data?.text || "",
-                      status: "completed" as const,
-                      createdAt: arr.length > 0 ? arr[arr.length - 1]?.createdAt || Date.now() : Date.now(),
-                      updatedAt: Date.now(),
-                      meta: data?.meta || {},
-                    } as any;
-                    if (arr.length > 0) {
-                      arr[arr.length - 1] = { ...(arr[arr.length - 1] as any), ...completedEntry } as any;
-                    } else {
-                      arr.push(completedEntry);
-                    }
                     aiTurn.batchResponses = {
                       ...(aiTurn.batchResponses || {}),
-                      [normalizedId]: arr as any,
-                    } as any;
+                      [normalizedId]: updateResponseList(
+                        aiTurn.batchResponses?.[normalizedId],
+                        baseEntry,
+                      ),
+                    };
                   }
 
                   // CRITICAL: ensure the Map entry is observed as changed
